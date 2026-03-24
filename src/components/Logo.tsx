@@ -8,7 +8,7 @@ type LogoProps = {
   variant?: LogoVariant
 }
 
-const SRC = '/rentadria-logo.png'
+const SRC = `${import.meta.env.BASE_URL}rentadria-logo.png`
 
 export function Logo({ compact, variant: variantProp }: LogoProps) {
   const variant: LogoVariant = variantProp ?? (compact ? 'footer' : 'header')

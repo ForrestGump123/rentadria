@@ -9,10 +9,13 @@ import i18n from './i18n'
 import App from './App.tsx'
 import { CurrencyProvider } from './context/CurrencyContext'
 
+const routerBasename =
+  import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBasename}>
         <I18nextProvider i18n={i18n}>
           <CurrencyProvider>
             <App />
