@@ -15,6 +15,7 @@ import {
   saveOwnerProfile,
   seedOwnerListingsIfEmpty,
 } from '../utils/ownerSession'
+import { setAdminSession, verifyAdminPassword, ADMIN_LOGIN_EMAIL } from '../utils/adminSession'
 import { setLoggedIn } from '../utils/storage'
 
 const VERIFY_CTX_KEY = 'rentadria_verify_ctx'
@@ -72,10 +73,20 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     setSubmitted(true)
     if (!isValidEmail(email) || !password.trim()) return
     const em = email.trim().toLowerCase()
+
+    if (em === ADMIN_LOGIN_EMAIL.toLowerCase() && verifyAdminPassword(password)) {
+      setAdminSession(true)
+      setLoggedIn(false)
+      onClose()
+      navigate('/admin', { replace: true })
+      return
+    }
+
     const existing = getOwnerProfile()
     if (existing && existing.email === em) {
       setLoggedIn(true)
       onClose()
+      navigate('/owner', { replace: true })
       return
     }
     const profile: OwnerProfile = {
@@ -88,7 +99,9 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     }
     saveOwnerProfile(profile)
     seedOwnerListingsIfEmpty(profile)
+    setLoggedIn(true)
     onClose()
+    navigate('/owner', { replace: true })
   }
 
   const registerSubmit = (e: FormEvent) => {

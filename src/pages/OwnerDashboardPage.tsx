@@ -6,6 +6,8 @@ import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
 import { isLoggedIn } from '../utils/storage'
+import { AccommodationListingModal } from '../components/owner/AccommodationListingModal'
+import { CategoryPickerModal } from '../components/owner/CategoryPickerModal'
 import {
   clearOwnerSession,
   deleteOwnerListing,
@@ -29,6 +31,8 @@ export function OwnerDashboardPage() {
     const unlocked: ListingCategory[] = p ? getUnlockedCategories(p.plan) : ['accommodation']
     return unlocked[0] ?? 'accommodation'
   })
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false)
+  const [accommodationModalOpen, setAccommodationModalOpen] = useState(false)
 
   const reload = useCallback(() => setListVersion((v) => v + 1), [])
 
@@ -152,7 +156,19 @@ export function OwnerDashboardPage() {
               <span className="ra-owner-plan__summary">{planSummary}</span>
             </p>
           </div>
-          <button type="button" className="ra-btn ra-btn--primary" disabled title={t('owner.soon')}>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary"
+            onClick={() => {
+              if (unlocked.length === 1) {
+                const only = unlocked[0]
+                if (only === 'accommodation') setAccommodationModalOpen(true)
+                else window.alert(t('owner.soon'))
+              } else {
+                setCategoryPickerOpen(true)
+              }
+            }}
+          >
             {t('owner.newListing')}
           </button>
         </header>
@@ -287,6 +303,24 @@ export function OwnerDashboardPage() {
       </div>
 
       <Footer />
+
+      <CategoryPickerModal
+        open={categoryPickerOpen}
+        onClose={() => setCategoryPickerOpen(false)}
+        unlocked={unlocked}
+        onPick={(c) => {
+          if (c === 'accommodation') setAccommodationModalOpen(true)
+          else window.alert(t('owner.soon'))
+        }}
+      />
+
+      {profile && (
+        <AccommodationListingModal
+          open={accommodationModalOpen}
+          onClose={() => setAccommodationModalOpen(false)}
+          profile={profile}
+        />
+      )}
     </div>
   )
 }

@@ -18,9 +18,14 @@ export function setAdminSession(v: boolean): void {
   }
 }
 
-/** Set `VITE_ADMIN_PASSWORD` in `.env` for production; demo fallback for local dev only */
+/** Demo default; override with VITE_ADMIN_PASSWORD in `.env` for production */
+const DEFAULT_ADMIN_PASSWORD = 'MilanZivic1212$'
+
 export function verifyAdminPassword(pw: string): boolean {
   const expected = import.meta.env.VITE_ADMIN_PASSWORD as string | undefined
-  const pass = (expected && expected.length > 0 ? expected : 'rentadria-admin') as string
+  const pass = (expected && expected.length > 0 ? expected : DEFAULT_ADMIN_PASSWORD) as string
   return pw === pass
 }
+
+/** Admin login email (Auth modal + server-side check in production) */
+export const ADMIN_LOGIN_EMAIL = 'info@rentadria.com'
