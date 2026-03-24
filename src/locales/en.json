@@ -1,0 +1,398 @@
+{
+  "auth": {
+    "loginTitle": "Log in",
+    "registerTitle": "Registration",
+    "registerSubtitle": "Create your account",
+    "loginSubtitle": "Sign in to continue",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "emailError": "Enter a valid email address (must include @).",
+    "password": "Password",
+    "passwordPlaceholder": "Min 8 chars, uppercase, number or symbol",
+    "passwordHint": "At least 8 characters, one uppercase letter, and a number or special character",
+    "passwordError": "Use at least 8 characters, one uppercase letter, and a number or special character.",
+    "termsConsent": "I agree to the <terms>Terms of use</terms> and <privacy>Privacy policy</privacy>. I understand my data will be used only to connect me with advertisers and users on the platform.",
+    "termsConsentError": "Please accept the terms and privacy policy to continue.",
+    "selectedPlanBanner": "You selected the {{plan}} plan. It will be linked to your account after you complete registration.",
+    "passwordRequired": "Password is required.",
+    "nameLabel": "Name / company",
+    "namePlaceholder": "Full name or company",
+    "nameHint": "e.g. John Smith or Sunset Hotel LLC",
+    "nameError": "This field is required.",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "+38267123456",
+    "phoneHint": "International format starting with +38… (e.g. +382…)",
+    "phoneError": "Use international format starting with +38… (not 069… without country code).",
+    "countryLabel": "Country",
+    "countries": {
+      "cnr": "Montenegro",
+      "sr": "Serbia",
+      "hr": "Croatia",
+      "bs": "Bosnia and Herzegovina",
+      "sq": "Albania",
+      "it": "Italy",
+      "es": "Spain"
+    },
+    "promoCodeLabel": "Promo code",
+    "promoCodePlaceholder": "Optional",
+    "promoCodeHint": "If you have a promo code, enter it here.",
+    "verifyHeading": "Verification via",
+    "verifyEmail": "Email",
+    "verifyPhone": "Phone (WhatsApp)",
+    "verifyError": "Choose at least one verification method.",
+    "submitLogin": "Log in",
+    "submitRegister": "Continue",
+    "switchToRegister": "Need an account? Sign up",
+    "switchToLogin": "Already have an account? Log in",
+    "switchToRegisterPrefix": "Need an account?",
+    "switchToRegisterLink": "Sign up",
+    "switchToLoginPrefix": "Already have an account?",
+    "switchToLoginLink": "Log in",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "home": {
+    "title": "RentAdria — accommodation & vehicle rentals",
+    "ogDescription": "Find accommodation, cars and motorcycles across the Adriatic. Listings from owners — clear pricing."
+  },
+  "verify": {
+    "title": "Enter verification code",
+    "hint": "We sent a code to {{email}}. Enter it below (demo — any code continues).",
+    "codeLabel": "Code",
+    "placeholder": "e.g. 123456",
+    "submit": "Confirm",
+    "back": "Back to home"
+  },
+  "cookie": {
+    "message": "We use cookies to run the site (essential) and optionally to measure traffic. Choose “Accept all”, only essential cookies, or customise.",
+    "acceptAll": "Accept all",
+    "essentialOnly": "Essential only",
+    "customize": "Customise",
+    "savePrefs": "Save choices",
+    "back": "Back",
+    "customizeHint": "Essential cookies cannot be disabled. You can enable or disable optional analytics.",
+    "essentialLabel": "Essential cookies",
+    "essentialDesc": "Required for the site to work: language, session, security.",
+    "analyticsLabel": "Analytics (optional)",
+    "analyticsDesc": "Helps us improve the site with aggregate statistics. Not used to sell your data."
+  },
+  "pricing": {
+    "pageTitle": "Pricing",
+    "subtitle": "Choose the plan that suits you best. All plans are annual subscriptions.",
+    "perYear": "/ year",
+    "selectPlan": "Select plan",
+    "badgePopular": "Most popular",
+    "loggedInHint": "You are signed in. To activate a plan on your account, please contact support — online checkout will be available soon.",
+    "planNames": {
+      "basic": "Basic",
+      "pro": "Pro",
+      "agency": "Agency"
+    }
+  },
+  "legal": {
+    "backHome": "Back to home",
+    "backRegister": "Back to registration",
+    "termsTitle": "Terms of use — RentAdria platform",
+    "privacyTitle": "Privacy policy — RentAdria platform",
+    "faqTitle": "Frequently asked questions",
+    "pricingTitle": "Pricing",
+    "pricingLead": "Overview of fees and services.",
+    "pricingBody": "Basic listing and browsing may be free. Featured listings and paid add-ons are priced as published. Final pricing and commercial terms will be confirmed before each purchase. For questions, use the contact details on the site.",
+    "lastUpdated": "Last updated: {{date}}"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Sea-view apartment",
+      "Studio in the old town",
+      "Family villa with pool",
+      "Cozy studio",
+      "Stone house",
+      "Lux penthouse",
+      "Garden cottage",
+      "Beachfront flat"
+    ],
+    "car": [
+      "VW Tiguan SUV",
+      "Compact hatchback",
+      "Estate diesel",
+      "Convertible",
+      "SUV 4x4",
+      "City EV"
+    ],
+    "motorcycle": [
+      "Scooter 125cc",
+      "Adventure 650",
+      "Naked 600",
+      "Sport tourer",
+      "Cruiser"
+    ]
+  },
+  "nav": {
+    "accommodation": "Accommodation",
+    "car": "Cars",
+    "motorcycle": "Motorcycles",
+    "login": "Log in",
+    "register": "Sign up",
+    "ownerDashboard": "Dashboard",
+    "logout": "Log out"
+  },
+  "owner": {
+    "pageTitle": "Owner dashboard",
+    "sidebarAria": "Owner navigation",
+    "welcome": "Welcome, {{name}}!",
+    "lead": "Manage your listings by category. Categories you have not paid for are not shown here.",
+    "planSummary": {
+      "basic": "— up to 2 listings in one category, up to 2 phone numbers",
+      "pro": "— up to 5 listings per category, up to 5 phone numbers",
+      "agency": "— unlimited listings and phone numbers"
+    },
+    "newListing": "+ New listing",
+    "datesBanner": "Registration date: {{registered}} | Valid until: {{validUntil}}",
+    "statsTitle": "Statistics — monthly report",
+    "statsViews": "Views this month",
+    "statsContacts": "Show contact clicks this month",
+    "statsInquiries": "Inquiries this month",
+    "tableTitle": "My listings — {{category}}",
+    "colTitle": "Title",
+    "colViews": "Views",
+    "colContacts": "Contact clicks (month)",
+    "colDates": "Submitted / Expires",
+    "colFeatured": "Featured until",
+    "colNote": "Internal note",
+    "colActions": "Actions",
+    "actionView": "View →",
+    "actionEdit": "Edit",
+    "actionDelete": "Delete",
+    "confirmDelete": "Delete this listing?",
+    "emptyCategory": "No listings in this category.",
+    "categoriesAria": "Listing categories",
+    "soon": "Coming soon",
+    "privacyNote": "You only see listings linked to your account.",
+    "nav": {
+      "overview": "Overview",
+      "inquiries": "Visitor inquiries",
+      "messages": "Internal messages / admin",
+      "ads": "Promotions",
+      "forum": "Forum",
+      "enterCode": "Enter code",
+      "settings": "Settings",
+      "editProfile": "Edit profile"
+    }
+  },
+  "admin": {
+    "pageTitle": "Admin panel",
+    "loginTitle": "Admin sign-in",
+    "loginHint": "Enter the admin password. For local development the default is shown in the project (set VITE_ADMIN_PASSWORD in .env for production builds).",
+    "passwordLabel": "Password",
+    "loginError": "Incorrect password.",
+    "loginSubmit": "Enter admin panel",
+    "backHome": "Back to home",
+    "logout": "Exit admin",
+    "subtitle": "Full access to all listings, reviews and users (when backend is connected).",
+    "sidebarAria": "Admin navigation",
+    "cardListings": "Listings",
+    "cardReviews": "Reviews (saved)",
+    "cardOwners": "Owner accounts (local)",
+    "cardReports": "Reports",
+    "recentTitle": "Recent activity",
+    "recentEmpty": "No recent activity.",
+    "nav": {
+      "overview": "Overview",
+      "visits": "Site visits",
+      "listings": "Listings",
+      "owners": "Owners",
+      "inquiries": "Inquiries",
+      "reports": "Listing reports",
+      "reviews": "Reviews",
+      "users": "Users",
+      "images": "Images",
+      "staff": "Staff and agents",
+      "ownerMessages": "Owner messages",
+      "promo": "Promo codes",
+      "expiring": "Subscription expiring",
+      "paused": "Paused accounts",
+      "banners": "Banners",
+      "pricing": "Pricing",
+      "terms": "Terms of use",
+      "privacy": "Privacy",
+      "faq": "FAQ",
+      "import": "Universal import"
+    }
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "12,400+ accommodation available",
+      "titleBefore": "Find the perfect",
+      "titleHighlight": "accommodation by the sea",
+      "subtitle": "Apartments, villas and houses along the Adriatic and Mediterranean — directly from owners, no middlemen."
+    },
+    "car": {
+      "badge": "3,400+ vehicles available",
+      "titleBefore": "Rent the ideal",
+      "titleHighlight": "car for your trip",
+      "subtitle": "SUVs, sedans and sports cars across 5 countries. Clear pricing — no hidden fees."
+    },
+    "motorcycle": {
+      "badge": "1,900+ two-wheelers available",
+      "titleBefore": "Ride freely on your",
+      "titleHighlight": "motorcycle",
+      "subtitle": "Scooters and bikes for open roads across the Mediterranean."
+    }
+  },
+  "search": {
+    "country": "Country",
+    "countryAll": "All countries",
+    "country_al": "Albania",
+    "country_ba": "Bosnia and Herzegovina",
+    "country_me": "Montenegro",
+    "country_hr": "Croatia",
+    "country_it": "Italy",
+    "country_rs": "Serbia",
+    "country_es": "Spain",
+    "city": "City or place…",
+    "button": "Search",
+    "citiesLoading": "Loading cities…",
+    "noResults": "No listings match your search."
+  },
+  "currency": {
+    "aria": "Currency",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Convertible mark (BAM)",
+    "all": "Lek Albanian lek (ALL)"
+  },
+  "stats": {
+    "accommodations": "Accommodation",
+    "cars": "Cars",
+    "motorcycles": "Motorcycles",
+    "countries": "Countries"
+  },
+  "sections": {
+    "featured": "Featured",
+    "listings": "Latest listings"
+  },
+  "pagination": {
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "faq": "FAQ",
+    "pricing": "Pricing",
+    "rateDisclaimer": "Currency conversions are indicative only; actual rates may differ from your bank or card issuer.",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "From"
+  },
+  "listingPage": {
+    "back": "Back to listings",
+    "notFound": "This listing could not be found.",
+    "meta": "Listed on RentAdria — contact the host to book.",
+    "openAria": "Open listing"
+  },
+  "detail": {
+    "verified": "Verified",
+    "verifiedTitle": "Verified in person by RentAdria",
+    "breadcrumb": { "home": "Home" },
+    "idLabel": "ID",
+    "views": "{{count}} views",
+    "updated": "Updated:",
+    "actions": {
+      "share": "Share",
+      "report": "Report listing",
+      "pdf": "Download PDF"
+    },
+    "gallery": { "more": "photos" },
+    "basic": {
+      "title": "Basic information",
+      "propertyType": "Property type",
+      "propertyTypeVal": "Apartment",
+      "structure": "Layout",
+      "structureVal": "One bedroom",
+      "area": "Area",
+      "areaVal": "35 m²",
+      "zone": "Area",
+      "payment": "Payment",
+      "paymentVal": "Cash / card",
+      "model": "Listing",
+      "location": "Location",
+      "vehicleType": "Type"
+    },
+    "tabs": {
+      "desc": "Description",
+      "chars": "Characteristics",
+      "prices": "Prices & payment"
+    },
+    "description": {
+      "text": "One-bedroom unit with sea view. Bright, furnished, close to the coast."
+    },
+    "char": {
+      "line1": "Sea view",
+      "line2": "Wi‑Fi",
+      "line3": "Parking nearby",
+      "line4": "Non-smoking"
+    },
+    "prices": {
+      "text": "Nightly rate as shown. Security deposit may apply. Payment methods: cash, card, bank transfer."
+    },
+    "contact": {
+      "show": "Show contact",
+      "hide": "Hide contact",
+      "messagePrefill": "Hello, I'm interested in \"{{title}}\" on RentAdria."
+    },
+    "owner": {
+      "title": "Owner information",
+      "cta": "Contact owner"
+    },
+    "map": {
+      "title": "Location on map",
+      "openGoogle": "Open in Google Maps",
+      "coords": "Coordinates"
+    },
+    "reviews": {
+      "title": "Reviews",
+      "hint": "Only logged-in guests who stayed here can leave a review. Everyone can read them.",
+      "placeholder": "Write your experience…",
+      "submit": "Post review",
+      "loginOnly": "Log in to post a review.",
+      "demoLogin": "Demo: log in"
+    },
+    "similar": { "title": "Similar listings" },
+    "share": { "copied": "Link copied to clipboard." },
+    "inquiry": {
+      "title": "Send inquiry",
+      "first": "First name",
+      "last": "Last name",
+      "email": "Email",
+      "phone": "Contact phone",
+      "period": "Stay period",
+      "guests": "Number of guests",
+      "message": "Your message",
+      "terms": "I accept the Terms of use",
+      "submit": "SEND INQUIRY",
+      "phFirst": "e.g. Ana",
+      "phLast": "e.g. Kovač",
+      "phEmail": "name@example.com",
+      "phPhone": "+382 69 000 000",
+      "phPeriod": "e.g. 15 Jul – 22 Jul 2026",
+      "phGuests": "e.g. 2",
+      "phMessage": "Hello, I would like to ask about availability…"
+    },
+    "report": {
+      "title": "Report listing",
+      "hint": "Please describe why you are reporting this ad. Admin will be notified by email.",
+      "reason": "Reason",
+      "first": "First name",
+      "last": "Last name",
+      "email": "Your email",
+      "cancel": "Cancel",
+      "submit": "Send report",
+      "phReason": "Describe the issue (required)…",
+      "phFirst": "e.g. Marko",
+      "phLast": "e.g. Nikolić",
+      "phEmail": "your@email.com"
+    }
+  }
+}

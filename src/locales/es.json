@@ -1,0 +1,203 @@
+{
+  "auth": {
+    "loginTitle": "Iniciar sesión",
+    "registerTitle": "Crear cuenta",
+    "email": "Correo",
+    "password": "Contraseña",
+    "submitLogin": "Entrar",
+    "submitRegister": "Registrarse",
+    "switchToRegister": "¿No tienes cuenta? Regístrate",
+    "switchToLogin": "¿Ya tienes cuenta? Inicia sesión"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Apartamento con vistas al mar",
+      "Estudio en el casco antiguo",
+      "Villa familiar con piscina",
+      "Estudio acogedor",
+      "Casa de piedra",
+      "Ático de lujo",
+      "Casa rural en el jardín",
+      "Piso en primera línea"
+    ],
+    "car": ["VW Tiguan SUV", "Compacto", "Familiar diésel", "Descapotable", "SUV 4x4", "EV urbano"],
+    "motorcycle": ["Scooter 125cc", "Adventure 650", "Naked 600", "Sport tourer", "Cruiser"]
+  },
+  "nav": {
+    "accommodation": "Alojamientos",
+    "car": "Coches",
+    "motorcycle": "Motos",
+    "login": "Iniciar sesión",
+    "register": "Registrarse"
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "Más de 12,400 alojamientos disponibles",
+      "titleBefore": "Encuentra la estancia",
+      "titleHighlight": "perfecta junto al mar",
+      "subtitle": "Apartamentos, villas y casas a lo largo del Adriático y el Mediterráneo — directamente de los propietarios, sin intermediarios."
+    },
+    "car": {
+      "badge": "Más de 3,400 vehículos disponibles",
+      "titleBefore": "Alquila el coche",
+      "titleHighlight": "ideal para tu viaje",
+      "subtitle": "SUV, berlinas y deportivos en 5 países. Precios claros — sin costes ocultos."
+    },
+    "motorcycle": {
+      "badge": "Más de 1,900 motos disponibles",
+      "titleBefore": "Conduce libre con tu",
+      "titleHighlight": "moto",
+      "subtitle": "Scooters y motos para carreteras abiertas por el Mediterráneo."
+    }
+  },
+  "search": {
+    "country": "País",
+    "countryAll": "Todos los países",
+    "country_al": "Albania",
+    "country_ba": "Bosnia y Herzegovina",
+    "country_me": "Montenegro",
+    "country_hr": "Croacia",
+    "country_it": "Italia",
+    "country_rs": "Serbia",
+    "country_es": "España",
+    "city": "Ciudad o lugar…",
+    "button": "Buscar",
+    "citiesLoading": "Cargando ciudades…",
+    "noResults": "No hay anuncios que coincidan con la búsqueda."
+  },
+  "currency": {
+    "aria": "Moneda",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Marco convertible (BAM)",
+    "all": "Lek albanés (ALL)"
+  },
+  "stats": {
+    "accommodations": "Alojamientos",
+    "cars": "Coches",
+    "motorcycles": "Motos",
+    "countries": "Países"
+  },
+  "sections": {
+    "featured": "Destacados",
+    "listings": "Anuncios recientes"
+  },
+  "pagination": {
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Términos",
+    "privacy": "Privacidad",
+    "faq": "FAQ",
+    "pricing": "Precios",
+    "rateDisclaimer": "Las conversiones de divisa son orientativas; el tipo real puede diferir del de su banco, tarjeta o proveedor de pago.",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "Desde"
+  },
+  "listingPage": {
+    "back": "Volver a anuncios",
+    "notFound": "No se encontró el anuncio.",
+    "meta": "Anuncio en RentAdria — contacta al anfitrión para reservar.",
+    "openAria": "Abrir anuncio"
+  },
+  "detail": {
+    "breadcrumb": { "home": "Inicio" },
+    "idLabel": "ID",
+    "views": "{{count}} vistas",
+    "updated": "Actualizado:",
+    "actions": {
+      "share": "Compartir",
+      "report": "Denunciar anuncio",
+      "pdf": "Descargar PDF"
+    },
+    "gallery": { "more": "fotos" },
+    "basic": {
+      "title": "Información básica",
+      "propertyType": "Tipo de propiedad",
+      "propertyTypeVal": "Apartamento",
+      "structure": "Distribución",
+      "structureVal": "Un dormitorio",
+      "area": "Superficie",
+      "areaVal": "35 m²",
+      "zone": "Zona",
+      "payment": "Pago",
+      "paymentVal": "Efectivo / tarjeta",
+      "model": "Anuncio",
+      "location": "Ubicación",
+      "vehicleType": "Tipo"
+    },
+    "tabs": {
+      "desc": "Descripción",
+      "chars": "Características",
+      "prices": "Precios y pago"
+    },
+    "description": {
+      "text": "Vivienda de un dormitorio con vistas al mar. Luminosa, amueblada, cerca de la costa."
+    },
+    "char": {
+      "line1": "Vistas al mar",
+      "line2": "Wi‑Fi",
+      "line3": "Aparcamiento cercano",
+      "line4": "No fumadores"
+    },
+    "prices": {
+      "text": "Tarifa por noche como se indica. Posible fianza. Formas de pago: efectivo, tarjeta, transferencia."
+    },
+    "contact": { "show": "Mostrar contacto", "hide": "Ocultar contacto" },
+    "owner": {
+      "title": "Datos del propietario",
+      "cta": "Contactar al propietario"
+    },
+    "map": {
+      "title": "Ubicación en el mapa",
+      "openGoogle": "Abrir en Google Maps",
+      "coords": "Coordenadas"
+    },
+    "reviews": {
+      "title": "Reseñas",
+      "hint": "Solo huéspedes registrados que hayan estado pueden dejar una reseña. Todos pueden leerlas.",
+      "placeholder": "Escribe tu experiencia…",
+      "submit": "Publicar reseña",
+      "loginOnly": "Inicia sesión para publicar una reseña.",
+      "demoLogin": "Demo: iniciar sesión"
+    },
+    "similar": { "title": "Anuncios similares" },
+    "share": { "copied": "Enlace copiado al portapapeles." },
+    "inquiry": {
+      "title": "Enviar consulta",
+      "first": "Nombre",
+      "last": "Apellidos",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "period": "Periodo de estancia",
+      "guests": "Número de huéspedes",
+      "message": "Tu mensaje",
+      "terms": "Acepto los términos de uso",
+      "submit": "ENVIAR CONSULTA",
+      "phFirst": "p. ej. Ana",
+      "phLast": "p. ej. García",
+      "phEmail": "nombre@ejemplo.com",
+      "phPhone": "+34 600 000 000",
+      "phPeriod": "p. ej. 15 jul – 22 jul 2026",
+      "phGuests": "p. ej. 2",
+      "phMessage": "Hola, me gustaría saber la disponibilidad…"
+    },
+    "report": {
+      "title": "Denunciar anuncio",
+      "hint": "Describe por qué denuncias este anuncio. Se notificará al administrador.",
+      "reason": "Motivo",
+      "first": "Nombre",
+      "last": "Apellidos",
+      "email": "Tu correo",
+      "cancel": "Cancelar",
+      "submit": "Enviar denuncia",
+      "phReason": "Describe el problema (obligatorio)…",
+      "phFirst": "p. ej. Marco",
+      "phLast": "p. ej. López",
+      "phEmail": "tuyo@email.com"
+    }
+  }
+}

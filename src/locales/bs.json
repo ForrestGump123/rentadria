@@ -1,0 +1,203 @@
+{
+  "auth": {
+    "loginTitle": "Prijava",
+    "registerTitle": "Registracija",
+    "email": "Email",
+    "password": "Lozinka",
+    "submitLogin": "Prijavi se",
+    "submitRegister": "Registruj se",
+    "switchToRegister": "Nemate nalog? Registrujte se",
+    "switchToLogin": "Već imate nalog? Prijavite se"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Apartman s pogledom na more",
+      "Studio u starom gradu",
+      "Porodična vila s bazenom",
+      "Udoban studio",
+      "Kamena kuća",
+      "Luksuzni penthaus",
+      "Vikendica u bašti",
+      "Stan na plaži"
+    ],
+    "car": ["VW Tiguan SUV", "Kompaktni hečbek", "Karavan dizel", "Kabriolet", "SUV 4x4", "Gradski EV"],
+    "motorcycle": ["Skuter 125cc", "Adventure 650", "Naked 600", "Sport tourer", "Cruiser"]
+  },
+  "nav": {
+    "accommodation": "Smještaj",
+    "car": "Automobili",
+    "motorcycle": "Motocikli",
+    "login": "Prijava",
+    "register": "Registracija"
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "12,400+ smještaja dostupno",
+      "titleBefore": "Pronađite savršen",
+      "titleHighlight": "boravak na moru",
+      "subtitle": "Apartmani, vile i kuće duž Jadrana i Mediterana — direktno od vlasnika, bez posrednika."
+    },
+    "car": {
+      "badge": "3,400+ vozila dostupno",
+      "titleBefore": "Iznajmite idealan",
+      "titleHighlight": "automobil",
+      "subtitle": "SUV-ovi, sedani i sportski automobili u 5 zemalja. Cijene bez skrivenih troškova."
+    },
+    "motorcycle": {
+      "badge": "1,900+ motocikala dostupno",
+      "titleBefore": "Vozite slobodno na svom",
+      "titleHighlight": "motoru",
+      "subtitle": "Skuteri i motori za slobodne vožnje po najljepšim putevima Mediterana."
+    }
+  },
+  "search": {
+    "country": "Zemlja",
+    "countryAll": "Sve zemlje",
+    "country_al": "Albanija",
+    "country_ba": "Bosna i Hercegovina",
+    "country_me": "Crna Gora",
+    "country_hr": "Hrvatska",
+    "country_it": "Italija",
+    "country_rs": "Srbija",
+    "country_es": "Španija",
+    "city": "Grad ili mjesto…",
+    "button": "Pretraga",
+    "citiesLoading": "Učitavanje gradova…",
+    "noResults": "Nema oglasa koji odgovaraju pretrazi."
+  },
+  "currency": {
+    "aria": "Valuta",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Konvertibilna marka (BAM)",
+    "all": "Lek Albanski lek (ALL)"
+  },
+  "stats": {
+    "accommodations": "Smještaja",
+    "cars": "Automobila",
+    "motorcycles": "Motocikala",
+    "countries": "Zemalja"
+  },
+  "sections": {
+    "featured": "Istaknuto",
+    "listings": "Najnoviji oglasi"
+  },
+  "pagination": {
+    "prev": "Nazad",
+    "next": "Naprijed",
+    "page": "Stranica {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Uslovi",
+    "privacy": "Privatnost",
+    "faq": "FAQ",
+    "pricing": "Cjenovnik",
+    "rateDisclaimer": "Kursne konverzije su informativne; stvarni kurs može se razlikovati od prikazanog (banka, kartica, platni servis).",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "Od"
+  },
+  "listingPage": {
+    "back": "Nazad na oglase",
+    "notFound": "Oglas nije pronađen.",
+    "meta": "Oglas na RentAdriji — kontaktirajte vlasnika za rezervaciju.",
+    "openAria": "Otvori oglas"
+  },
+  "detail": {
+    "breadcrumb": { "home": "Početna" },
+    "idLabel": "ID",
+    "views": "{{count}} pregleda",
+    "updated": "Ažurirano:",
+    "actions": {
+      "share": "Podijeli",
+      "report": "Prijavi oglas",
+      "pdf": "Preuzmi PDF"
+    },
+    "gallery": { "more": "fotografija" },
+    "basic": {
+      "title": "Osnovne informacije",
+      "propertyType": "Tip nekretnine",
+      "propertyTypeVal": "Stan",
+      "structure": "Struktura",
+      "structureVal": "Jednosoban",
+      "area": "Površina",
+      "areaVal": "35 m²",
+      "zone": "Područje",
+      "payment": "Plaćanje",
+      "paymentVal": "Gotovina / kartica",
+      "model": "Oglas",
+      "location": "Lokacija",
+      "vehicleType": "Tip"
+    },
+    "tabs": {
+      "desc": "Opis",
+      "chars": "Karakteristike",
+      "prices": "Cijene i plaćanje"
+    },
+    "description": {
+      "text": "Jednosoban smještaj s pogledom na more. Svijetao, namješten, blizu obale."
+    },
+    "char": {
+      "line1": "Pogled na more",
+      "line2": "Wi‑Fi",
+      "line3": "Parking u blizini",
+      "line4": "Nepušački"
+    },
+    "prices": {
+      "text": "Cijena po noći kao na oglasu. Moguć depozit. Načini plaćanja: gotovina, kartica, bankovni transfer."
+    },
+    "contact": { "show": "Prikaži kontakt", "hide": "Sakrij kontakt" },
+    "owner": {
+      "title": "Podaci o vlasniku",
+      "cta": "Kontaktiraj vlasnika"
+    },
+    "map": {
+      "title": "Lokacija na mapi",
+      "openGoogle": "Otvori u Google Maps",
+      "coords": "Koordinate"
+    },
+    "reviews": {
+      "title": "Recenzije",
+      "hint": "Samo prijavljeni gosti koji su boravili mogu ostaviti recenziju. Svi je mogu čitati.",
+      "placeholder": "Podijelite doživljaj…",
+      "submit": "Objavi recenziju",
+      "loginOnly": "Prijavite se da ostavite recenziju.",
+      "demoLogin": "Demo: prijava"
+    },
+    "similar": { "title": "Slični oglasi" },
+    "share": { "copied": "Link je kopiran u clipboard." },
+    "inquiry": {
+      "title": "Pošalji upit",
+      "first": "Ime",
+      "last": "Prezime",
+      "email": "Email",
+      "phone": "Telefon",
+      "period": "Period boravka",
+      "guests": "Broj gostiju",
+      "message": "Poruka",
+      "terms": "Prihvatam uslove korištenja",
+      "submit": "POŠALJI UPIT",
+      "phFirst": "npr. Ana",
+      "phLast": "npr. Kovač",
+      "phEmail": "ime@primjer.com",
+      "phPhone": "+387 61 000 000",
+      "phPeriod": "npr. 15. jul – 22. jul 2026",
+      "phGuests": "npr. 2",
+      "phMessage": "Zdravo, zainteresovan sam za dostupnost…"
+    },
+    "report": {
+      "title": "Prijavi oglas",
+      "hint": "Opišite zašto prijavljujete oglas. Administrator će biti obaviješten.",
+      "reason": "Razlog",
+      "first": "Ime",
+      "last": "Prezime",
+      "email": "Vaš email",
+      "cancel": "Otkaži",
+      "submit": "Pošalji prijavu",
+      "phReason": "Opišite problem (obavezno)…",
+      "phFirst": "npr. Marko",
+      "phLast": "npr. Nikolić",
+      "phEmail": "vas@email.com"
+    }
+  }
+}

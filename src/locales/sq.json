@@ -1,0 +1,203 @@
+{
+  "auth": {
+    "loginTitle": "Hyrje",
+    "registerTitle": "Krijo llogari",
+    "email": "Email",
+    "password": "Fjalëkalimi",
+    "submitLogin": "Hyr",
+    "submitRegister": "Regjistrohu",
+    "switchToRegister": "Nuk ke llogari? Regjistrohu",
+    "switchToLogin": "Ke tashmë llogari? Hyr"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Apartament me pamje deti",
+      "Studio në qytetin e vjetër",
+      "Vilë familjare me pishinë",
+      "Studio komod",
+      "Shtëpi guri",
+      "Penthouse luksoz",
+      "Shtëpi verore në kopsht",
+      "Apartament në plazh"
+    ],
+    "car": ["VW Tiguan SUV", "Hatchback kompakt", "Karavan dizel", "Kabriolet", "SUV 4x4", "EV qyteti"],
+    "motorcycle": ["Skuter 125cc", "Adventure 650", "Naked 600", "Sport tourer", "Cruiser"]
+  },
+  "nav": {
+    "accommodation": "Akomodim",
+    "car": "Makina",
+    "motorcycle": "Motorë",
+    "login": "Hyrje",
+    "register": "Regjistrim"
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "12,400+ akomodime të disponueshme",
+      "titleBefore": "Gjej qëndrimin e përsosur",
+      "titleHighlight": "pranë detit",
+      "subtitle": "Apartamente, vila dhe shtëpi përgjatë Adriatikut dhe Mesdheut — drejtpërdrejt nga pronarët, pa ndërmjetës."
+    },
+    "car": {
+      "badge": "3,400+ automjete të disponueshme",
+      "titleBefore": "Merr me qera",
+      "titleHighlight": "automobilin ideal",
+      "subtitle": "SUV, sedanë dhe sport në 5 vende. Çmime të qarta — pa kosto të fshehura."
+    },
+    "motorcycle": {
+      "badge": "1,900+ dy-rrota të disponueshme",
+      "titleBefore": "Ecolo lirshëm me",
+      "titleHighlight": "motorin tënd",
+      "subtitle": "Skuterë dhe motorë për rrugët më të bukura të Mesdheut."
+    }
+  },
+  "search": {
+    "country": "Shteti",
+    "countryAll": "Të gjitha shtetet",
+    "country_al": "Shqipëria",
+    "country_ba": "Bosnja dhe Hercegovina",
+    "country_me": "Mali i Zi",
+    "country_hr": "Kroacia",
+    "country_it": "Italia",
+    "country_rs": "Serbia",
+    "country_es": "Spanja",
+    "city": "Qyteti ose vendi…",
+    "button": "Kërko",
+    "citiesLoading": "Duke ngarkuar qytetet…",
+    "noResults": "Nuk ka shpallje që përputhen me kërkimin."
+  },
+  "currency": {
+    "aria": "Monedha",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Marka e konvertueshme (BAM)",
+    "all": "Lek Leku shqiptar (ALL)"
+  },
+  "stats": {
+    "accommodations": "Akomodime",
+    "cars": "Makina",
+    "motorcycles": "Motorë",
+    "countries": "Shtete"
+  },
+  "sections": {
+    "featured": "Të veçuara",
+    "listings": "Shpalljet më të reja"
+  },
+  "pagination": {
+    "prev": "Prapa",
+    "next": "Para",
+    "page": "Faqja {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Kushtet",
+    "privacy": "Privatësia",
+    "faq": "FAQ",
+    "pricing": "Çmimet",
+    "rateDisclaimer": "Konvertimet e valutave janë vetëm informuese; kursi aktual mund të ndryshojë nga banka, karta ose ofruesi i pagesës.",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "Nga"
+  },
+  "listingPage": {
+    "back": "Kthehu te shpalljet",
+    "notFound": "Shpallja nuk u gjet.",
+    "meta": "Shpallje në RentAdria — kontaktoni pronarin për rezervim.",
+    "openAria": "Hap shpalljen"
+  },
+  "detail": {
+    "breadcrumb": { "home": "Kreu" },
+    "idLabel": "ID",
+    "views": "{{count}} shikime",
+    "updated": "Përditësuar:",
+    "actions": {
+      "share": "Ndaj",
+      "report": "Raporto shpalljen",
+      "pdf": "Shkarko PDF"
+    },
+    "gallery": { "more": "fotografi" },
+    "basic": {
+      "title": "Informacione bazë",
+      "propertyType": "Lloji i pronës",
+      "propertyTypeVal": "Apartament",
+      "structure": "Struktura",
+      "structureVal": "Një dhomë gjumi",
+      "area": "Sipërfaqja",
+      "areaVal": "35 m²",
+      "zone": "Zona",
+      "payment": "Pagesa",
+      "paymentVal": "Para në dorë / kartë",
+      "model": "Shpallje",
+      "location": "Vendndodhja",
+      "vehicleType": "Lloji"
+    },
+    "tabs": {
+      "desc": "Përshkrimi",
+      "chars": "Karakteristikat",
+      "prices": "Çmimet dhe pagesa"
+    },
+    "description": {
+      "text": "Një njësi me një dhomë gjumi me pamje nga deti. E ndriçuar, e mobiluar, afër bregut."
+    },
+    "char": {
+      "line1": "Pamje nga deti",
+      "line2": "Wi‑Fi",
+      "line3": "Parkim afër",
+      "line4": "Jo duhan"
+    },
+    "prices": {
+      "text": "Çmimi për natë si në shpallje. Mund të kërkohet depozitë. Mënyrat e pagesës: para, kartë, transfertë bankare."
+    },
+    "contact": { "show": "Shfaq kontaktin", "hide": "Fshih kontaktin" },
+    "owner": {
+      "title": "Të dhënat e pronarit",
+      "cta": "Kontakto pronarin"
+    },
+    "map": {
+      "title": "Vendndodhja në hartë",
+      "openGoogle": "Hape në Google Maps",
+      "coords": "Koordinatat"
+    },
+    "reviews": {
+      "title": "Shqyrtime",
+      "hint": "Vetëm mysafirët e regjistruar që kanë qëndruar mund të lënë shqyrtim. Të gjithë mund t’i lexojnë.",
+      "placeholder": "Shkruani përvojën tuaj…",
+      "submit": "Posto shqyrtimin",
+      "loginOnly": "Hyni për të postuar një shqyrtim.",
+      "demoLogin": "Demo: hyrje"
+    },
+    "similar": { "title": "Shpallje të ngjashme" },
+    "share": { "copied": "Lidhja u kopjua." },
+    "inquiry": {
+      "title": "Dërgo pyetje",
+      "first": "Emri",
+      "last": "Mbiemri",
+      "email": "Email",
+      "phone": "Telefoni",
+      "period": "Periudha e qëndrimit",
+      "guests": "Numri i mysafirëve",
+      "message": "Mesazhi juaj",
+      "terms": "Pranoj kushtet e përdorimit",
+      "submit": "DËRGO PYETJEN",
+      "phFirst": "p.sh. Ana",
+      "phLast": "p.sh. Hoxha",
+      "phEmail": "emri@shembull.com",
+      "phPhone": "+355 69 000 0000",
+      "phPeriod": "p.sh. 15 korrik – 22 korrik 2026",
+      "phGuests": "p.sh. 2",
+      "phMessage": "Përshëndetje, dua të pyes për disponueshmërinë…"
+    },
+    "report": {
+      "title": "Raporto shpalljen",
+      "hint": "Përshkruani pse raportoni këtë shpallje. Administratori do të njoftohet.",
+      "reason": "Arsyeja",
+      "first": "Emri",
+      "last": "Mbiemri",
+      "email": "Email-i juaj",
+      "cancel": "Anulo",
+      "submit": "Dërgo raportin",
+      "phReason": "Përshkruani problemin (e detyrueshme)…",
+      "phFirst": "p.sh. Mark",
+      "phLast": "p.sh. Kola",
+      "phEmail": "juaj@email.com"
+    }
+  }
+}

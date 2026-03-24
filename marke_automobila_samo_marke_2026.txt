@@ -1,0 +1,366 @@
+AC
+ACE EV Group
+Acura
+Aeolus
+Agrale
+Aion
+Aiways
+Aixam
+Alfa Romeo
+Almac
+Apex Motors
+Alpha
+Alpina
+Alpine
+Alternative Cars
+Amberavto
+AM General
+Anteros
+Apex
+Apollo
+Aptera
+Arash
+Arcimoto
+Arcfox
+Arctic Trucks
+Ariel
+Arrinera
+Aspark
+Aspid
+Aston Martin
+Atalanta
+Audi
+Automobili Estrema
+Auverland
+BAC
+Bahman
+BAIC
+Bajaj
+Baojun
+Baltasar Cars
+BAW
+Bentley
+Bestune
+Bowler
+BMC
+BMW
+Bollinger
+Bolloré
+Bolwell
+Brilliance
+Bufori
+Bugatti
+Buick
+BYD
+Cadillac
+Callaway
+Caresto
+Carver
+Caterham
+Ceer Motors
+Century
+Chamonix
+Chang'an
+Chery
+Chevrolet
+Chrysler
+Citroën
+Ciwei
+CMC
+Comarth
+Cupra
+Czinger
+Dacia
+Daihatsu
+Dakar 4x4
+David Brown
+Dax
+Dayun
+DDR Motorsport
+De la Chapelle
+De Tomaso
+Delage
+DeLorean
+Denza
+Detroit Electric
+DFSK
+Diar
+Dodge
+Dongfeng
+Donkervoort
+Drako Motors
+DR
+DS
+Dynasty
+EdisonFuture
+Edran
+Electric Raceabout
+Elemental
+Elaris
+Elfin
+Elio
+Elva
+Englon
+Esemka
+Etox
+Equus
+EVEasy
+Everus
+Exeed
+Factory Five Racing
+Falcon Motorsports
+Fangchengbao
+Faraday Future
+Fath Vehicle Industries
+FAW
+Ferrari
+Felino Corporation
+Fiat
+Fiat Professional
+Firefly
+FMC
+Foday
+Force
+Ford
+Forthing
+Foton
+Foxtron
+Fraser
+GAC
+GAZ
+Geely
+GEM
+Genesis
+Gibbs
+Gillet
+GKD
+Ginetta
+Glickenhaus
+GMC
+GMA
+Great Wall
+Grinnall
+GTA
+Gyon
+Haval
+Hawtai
+Hengchi
+Henrey
+Hispano Suiza
+Honda
+Hongqi
+Hopium
+Hozon
+Hulas Motors
+Hurtan
+Hyptec
+Hyundai
+Hennessey
+IKCO
+IM Motors
+Ineos
+Infiniti
+Intermeccanica
+Ioniq
+Isdera
+Iso
+Isuzu
+Iveco Bus
+IVM
+JAC
+Jaecoo
+Jaguar
+Jeep
+Jetour
+Jetta
+Jinbei
+JMC
+JMEV
+Jonway
+Joylong
+JY
+Karsan
+Kaipan
+Kaiyi
+Kandi
+Kantanka
+Karma
+Karry
+Keyton
+Keraboss
+KGM
+Kia
+Kiira
+Koenigsegg
+Korres Engineering
+KTM
+Leblanc
+Lada
+Lamborghini
+Lancia
+Land Rover
+Laraki
+Leapmotor
+Lepas
+LEVC
+Lexus
+Li Auto
+Lifan
+Ligier
+Lincoln
+Linghui
+Lister
+Livan
+Lobini
+Lotus
+Lucid
+Luxgen
+Lynk & Co
+Maextro
+Mahindra
+Maruti Suzuki
+Maserati
+Maxus
+Mazda
+McLaren
+Mega
+Melex
+Mercedes-AMG
+Mercedes-Benz
+Mercedes-Maybach
+MG
+Micro
+Micro Mobility Systems
+Mini
+Mitsubishi
+Mitsuoka
+Mobius
+Morgan
+Moskvitch
+MVM
+Mullen
+Munro Vehicles
+Myers EV
+Navya SAS
+Neo Motors
+Nikola
+Nio
+Nissan
+Noble
+Omoda
+Onvo
+Opel
+Ora
+Oreva
+Pagani
+PGO
+PAL-V
+Panoz
+Pars Khodro
+Perodua
+Peugeot
+Piëch Automotive
+Phoenix Motorcars
+Pininfarina
+Polaris
+Polestar
+Porsche
+Praga
+Proton
+Quantum Motors
+Radical
+RAM
+Ranz
+Renault
+Rimac
+Rinspeed
+Rivian
+Rezvani
+Roding
+Roewe
+Rolls-Royce
+RONN
+Ruf
+SAIPA
+Saker
+Saleen
+Sbarro
+SEAT
+SECMA
+Sehol
+Seres
+Sero Electric
+Shan Star
+Shelby
+SIN
+Sinogold
+Škoda
+Skyworth
+Slate Auto
+Smart
+Sono
+Soueast
+Spyker
+SSC
+Stelato
+Subaru
+Superformance
+Suzuki
+SWM
+Takeoka
+TAC
+Tata
+Tauro Sport Auto
+Techrules
+Telo Trucks
+Tesla
+Thai Rung
+Thunder Power
+Tiger Truck
+TOGG
+Toyota
+Tramontana
+Trion
+Trumpchi
+Tushek&Spigel
+TVR
+UAZ
+Ultima
+Vandenbrink
+Vanderhall
+Vauxhall
+Vega
+Vencer
+VinFast
+VLF
+Volkswagen
+Volvo
+Voyah
+VUHL
+W Motors
+Wallyscar
+WaterCar
+Weltmeister
+Westfield
+Wey
+Wheego
+Wiesmann
+Wuling
+XEV
+Xiaohu
+Xiaomi
+Xos
+XPeng
+Yangwang
+Youxia
+Yudo
+Yulon
+Zacua
+Zamyad
+ZAZ
+Zeekr
+Zenos Cars
+Zenvo
+Zinoro
+Zotye
+ZX

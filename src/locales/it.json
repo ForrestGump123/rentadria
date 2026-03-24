@@ -1,0 +1,203 @@
+{
+  "auth": {
+    "loginTitle": "Accedi",
+    "registerTitle": "Crea account",
+    "email": "Email",
+    "password": "Password",
+    "submitLogin": "Accedi",
+    "submitRegister": "Registrati",
+    "switchToRegister": "Non hai un account? Registrati",
+    "switchToLogin": "Hai già un account? Accedi"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Appartamento vista mare",
+      "Studio nel centro storico",
+      "Villa familiare con piscina",
+      "Studio accogliente",
+      "Casa in pietra",
+      "Attico di lusso",
+      "Cottage in giardino",
+      "Appartamento sulla spiaggia"
+    ],
+    "car": ["VW Tiguan SUV", "Berlina compatta", "Station wagon diesel", "Cabriolet", "SUV 4x4", "EV cittadina"],
+    "motorcycle": ["Scooter 125cc", "Adventure 650", "Naked 600", "Sport tourer", "Cruiser"]
+  },
+  "nav": {
+    "accommodation": "Alloggi",
+    "car": "Auto",
+    "motorcycle": "Moto",
+    "login": "Accedi",
+    "register": "Registrati"
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "12,400+ alloggi disponibili",
+      "titleBefore": "Trova il soggiorno",
+      "titleHighlight": "perfetto al mare",
+      "subtitle": "Appartamenti, ville e case lungo l’Adriatico e il Mediterraneo — direttamente dai proprietari, senza intermediari."
+    },
+    "car": {
+      "badge": "3,400+ veicoli disponibili",
+      "titleBefore": "Noleggia l’",
+      "titleHighlight": "auto ideale",
+      "subtitle": "SUV, berline e sportive in 5 paesi. Prezzi chiari — nessun costo nascosto."
+    },
+    "motorcycle": {
+      "badge": "1,900+ due ruote disponibili",
+      "titleBefore": "Guida libero sulla tua",
+      "titleHighlight": "moto",
+      "subtitle": "Scooter e moto per strade panoramiche nel Mediterraneo."
+    }
+  },
+  "search": {
+    "country": "Paese",
+    "countryAll": "Tutti i paesi",
+    "country_al": "Albania",
+    "country_ba": "Bosnia ed Erzegovina",
+    "country_me": "Montenegro",
+    "country_hr": "Croazia",
+    "country_it": "Italia",
+    "country_rs": "Serbia",
+    "country_es": "Spagna",
+    "city": "Città o luogo…",
+    "button": "Cerca",
+    "citiesLoading": "Caricamento città…",
+    "noResults": "Nessun annuncio corrisponde alla ricerca."
+  },
+  "currency": {
+    "aria": "Valuta",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Marco convertibile (BAM)",
+    "all": "Lek albanese (ALL)"
+  },
+  "stats": {
+    "accommodations": "Alloggi",
+    "cars": "Auto",
+    "motorcycles": "Moto",
+    "countries": "Paesi"
+  },
+  "sections": {
+    "featured": "In evidenza",
+    "listings": "Annunci recenti"
+  },
+  "pagination": {
+    "prev": "Indietro",
+    "next": "Avanti",
+    "page": "Pagina {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Termini",
+    "privacy": "Privacy",
+    "faq": "FAQ",
+    "pricing": "Listino",
+    "rateDisclaimer": "Le conversioni di valuta sono indicative; il tasso effettivo può differire da banca, carta o fornitore di pagamento.",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "Da"
+  },
+  "listingPage": {
+    "back": "Torna agli annunci",
+    "notFound": "Annuncio non trovato.",
+    "meta": "Annuncio su RentAdria — contatta il proprietario per prenotare.",
+    "openAria": "Apri annuncio"
+  },
+  "detail": {
+    "breadcrumb": { "home": "Home" },
+    "idLabel": "ID",
+    "views": "{{count}} visualizzazioni",
+    "updated": "Aggiornato:",
+    "actions": {
+      "share": "Condividi",
+      "report": "Segnala annuncio",
+      "pdf": "Scarica PDF"
+    },
+    "gallery": { "more": "foto" },
+    "basic": {
+      "title": "Informazioni di base",
+      "propertyType": "Tipo di immobile",
+      "propertyTypeVal": "Appartamento",
+      "structure": "Planimetria",
+      "structureVal": "Monolocale / una camera",
+      "area": "Superficie",
+      "areaVal": "35 m²",
+      "zone": "Zona",
+      "payment": "Pagamento",
+      "paymentVal": "Contanti / carta",
+      "model": "Annuncio",
+      "location": "Posizione",
+      "vehicleType": "Tipo"
+    },
+    "tabs": {
+      "desc": "Descrizione",
+      "chars": "Caratteristiche",
+      "prices": "Prezzi e pagamento"
+    },
+    "description": {
+      "text": "Monolocale con vista mare. Luminoso, arredato, vicino alla costa."
+    },
+    "char": {
+      "line1": "Vista mare",
+      "line2": "Wi‑Fi",
+      "line3": "Parcheggio vicino",
+      "line4": "Non fumatori"
+    },
+    "prices": {
+      "text": "Tariffa notte come indicato. Possibile cauzione. Pagamenti: contanti, carta, bonifico."
+    },
+    "contact": { "show": "Mostra contatto", "hide": "Nascondi contatto" },
+    "owner": {
+      "title": "Dati del proprietario",
+      "cta": "Contatta il proprietario"
+    },
+    "map": {
+      "title": "Posizione sulla mappa",
+      "openGoogle": "Apri in Google Maps",
+      "coords": "Coordinate"
+    },
+    "reviews": {
+      "title": "Recensioni",
+      "hint": "Solo ospiti registrati che hanno soggiornato possono lasciare una recensione. Tutti possono leggerle.",
+      "placeholder": "Scrivi la tua esperienza…",
+      "submit": "Pubblica recensione",
+      "loginOnly": "Accedi per pubblicare una recensione.",
+      "demoLogin": "Demo: accedi"
+    },
+    "similar": { "title": "Annunci simili" },
+    "share": { "copied": "Link copiato negli appunti." },
+    "inquiry": {
+      "title": "Invia richiesta",
+      "first": "Nome",
+      "last": "Cognome",
+      "email": "Email",
+      "phone": "Telefono",
+      "period": "Periodo di soggiorno",
+      "guests": "Numero di ospiti",
+      "message": "Messaggio",
+      "terms": "Accetto i termini di utilizzo",
+      "submit": "INVIA RICHIESTA",
+      "phFirst": "es. Anna",
+      "phLast": "es. Rossi",
+      "phEmail": "nome@esempio.com",
+      "phPhone": "+39 320 000 0000",
+      "phPeriod": "es. 15 lug – 22 lug 2026",
+      "phGuests": "es. 2",
+      "phMessage": "Salve, vorrei informazioni sulla disponibilità…"
+    },
+    "report": {
+      "title": "Segnala annuncio",
+      "hint": "Descrivi perché segnali questo annuncio. L’amministratore sarà avvisato.",
+      "reason": "Motivo",
+      "first": "Nome",
+      "last": "Cognome",
+      "email": "La tua email",
+      "cancel": "Annulla",
+      "submit": "Invia segnalazione",
+      "phReason": "Descrivi il problema (obbligatorio)…",
+      "phFirst": "es. Marco",
+      "phLast": "es. Bianchi",
+      "phEmail": "tua@email.com"
+    }
+  }
+}

@@ -1,0 +1,398 @@
+{
+  "auth": {
+    "loginTitle": "Prijava",
+    "registerTitle": "Registracija",
+    "registerSubtitle": "Kreirajte nalog",
+    "loginSubtitle": "Prijavite se na svoj nalog",
+    "email": "Email",
+    "emailPlaceholder": "vas@email.com",
+    "emailError": "Unesite ispravan email (mora sadržati @).",
+    "password": "Lozinka",
+    "passwordPlaceholder": "Min. 8 znakova, veliko slovo, broj ili simbol",
+    "passwordHint": "Minimum 8 karaktera, jedno veliko slovo i broj ili poseban znak",
+    "passwordError": "Koristite najmanje 8 karaktera, jedno veliko slovo i broj ili poseban znak.",
+    "termsConsent": "Saglasan sam sa <terms>Uslovima korišćenja</terms> i <privacy>Politikom privatnosti</privacy>. Razumem da će moji podaci biti korišćeni isključivo u svrhu povezivanja sa oglašivačima/korisnicima na platformi.",
+    "termsConsentError": "Morate prihvatiti uslove i politiku privatnosti da nastavite.",
+    "selectedPlanBanner": "Izabrali ste paket {{plan}}. Povezaće se s vašim nalogom nakon završetka registracije.",
+    "passwordRequired": "Lozinka je obavezna.",
+    "nameLabel": "Ime i prezime / firma",
+    "namePlaceholder": "Ime i prezime / Firma",
+    "nameHint": "npr. Marko Petrović ili Hotel Sunset d.o.o.",
+    "nameError": "Ovo polje je obavezno.",
+    "phoneLabel": "Telefon",
+    "phonePlaceholder": "+38267123456",
+    "phoneHint": "npr. +38267123456 (međunarodni format +38…)",
+    "phoneError": "Koristite međunarodni format koji počinje sa +38… (ne 069… bez pozivnog broja).",
+    "countryLabel": "Zemlja",
+    "countries": {
+      "cnr": "Crna Gora",
+      "sr": "Srbija",
+      "hr": "Hrvatska",
+      "bs": "Bosna i Hercegovina",
+      "sq": "Albanija",
+      "it": "Italija",
+      "es": "Španija"
+    },
+    "promoCodeLabel": "Promo kod",
+    "promoCodePlaceholder": "Opciono",
+    "promoCodeHint": "Ako imate promo kod, unesite ga ovdje.",
+    "verifyHeading": "Verifikacija putem",
+    "verifyEmail": "Email",
+    "verifyPhone": "Telefon (WhatsApp)",
+    "verifyError": "Odaberite bar jedan način verifikacije.",
+    "submitLogin": "Prijavi se",
+    "submitRegister": "Nastavi",
+    "switchToRegister": "Nemaš nalog? Registruj se",
+    "switchToLogin": "Već imaš nalog? Prijavi se",
+    "switchToRegisterPrefix": "Nemate nalog?",
+    "switchToRegisterLink": "Registracija",
+    "switchToLoginPrefix": "Već imate nalog?",
+    "switchToLoginLink": "Prijava",
+    "showPassword": "Prikaži lozinku",
+    "hidePassword": "Sakrij lozinku"
+  },
+  "home": {
+    "title": "RentAdria — smještaj i iznajmljivanje vozila",
+    "ogDescription": "Pronađite smještaj, automobile i motocikle duž Jadrana. Oglasi od vlasnika — jasne cijene."
+  },
+  "verify": {
+    "title": "Unesite verifikacioni kod",
+    "hint": "Poslali smo kod na {{email}}. Unesite ga ispod (demo — bilo koji kod nastavlja).",
+    "codeLabel": "Kod",
+    "placeholder": "npr. 123456",
+    "submit": "Potvrdi",
+    "back": "Nazad na početnu"
+  },
+  "cookie": {
+    "message": "Koristimo kolačiće za rad sajta (neophodni) i po izboru za statistiku posjećenosti. Možete prihvatiti sve, samo neophodne ili prilagoditi izbor.",
+    "acceptAll": "Prihvati sve",
+    "essentialOnly": "Samo neophodno",
+    "customize": "Prilagodi",
+    "savePrefs": "Sačuvaj izbor",
+    "back": "Nazad",
+    "customizeHint": "Neophodne kolačiće nije moguće isključiti. Opcionu analitiku možete uključiti ili isključiti.",
+    "essentialLabel": "Neophodni kolačići",
+    "essentialDesc": "Potrebni za rad: jezik, sesija, sigurnost.",
+    "analyticsLabel": "Analitika (opciono)",
+    "analyticsDesc": "Pomaže nam da poboljšamo sajt agregatnim statistikama. Ne koristi se za prodaju vaših podataka."
+  },
+  "pricing": {
+    "pageTitle": "Cjenovnik",
+    "subtitle": "Odaberite plan koji vam najbolje odgovara. Svi planovi uključuju godišnju pretplatu.",
+    "perYear": "/ god",
+    "selectPlan": "Odaberi plan",
+    "badgePopular": "Najpopularnije",
+    "loggedInHint": "Već ste prijavljeni. Za aktivaciju paketa na nalogu kontaktirajte podršku — uskoro i online plaćanje.",
+    "planNames": {
+      "basic": "Basic",
+      "pro": "Pro",
+      "agency": "Agency"
+    }
+  },
+  "legal": {
+    "backHome": "Nazad na početnu",
+    "backRegister": "Nazad na registraciju",
+    "termsTitle": "Uslovi korišćenja platforme RentAdria",
+    "privacyTitle": "Politika privatnosti platforme RentAdria",
+    "faqTitle": "Često postavljana pitanja",
+    "pricingTitle": "Cjenovnik",
+    "pricingLead": "Pregled naknada i usluga.",
+    "pricingBody": "Osnovno objavljivanje i pregled mogu biti besplatni. Istaknuti oglasi i dodatne usluge naplaćuju se prema aktuelnom cjenovniku. Konačna cijena i uslovi biće potvrđeni prije svake kupovine. Za pitanja koristite kontakt na sajtu.",
+    "lastUpdated": "Posljednja izmjena: {{date}}"
+  },
+  "listingTitles": {
+    "accommodation": [
+      "Apartman s pogledom na more",
+      "Studio u starom gradu",
+      "Porodična vila s bazenom",
+      "Udoban studio",
+      "Kamena kuća",
+      "Luksuzni penthaus",
+      "Vikendica u bašti",
+      "Stan na plaži"
+    ],
+    "car": [
+      "VW Tiguan SUV",
+      "Kompaktni hečbek",
+      "Karavan dizel",
+      "Kabriolet",
+      "SUV 4x4",
+      "Gradski EV"
+    ],
+    "motorcycle": [
+      "Skuter 125cc",
+      "Adventure 650",
+      "Naked 600",
+      "Sport tourer",
+      "Cruiser"
+    ]
+  },
+  "nav": {
+    "accommodation": "Smještaj",
+    "car": "Automobili",
+    "motorcycle": "Motocikli",
+    "login": "Prijava",
+    "register": "Registracija",
+    "ownerDashboard": "Panel vlasnika",
+    "logout": "Odjavi se"
+  },
+  "owner": {
+    "pageTitle": "Panel vlasnika",
+    "sidebarAria": "Navigacija za vlasnike",
+    "welcome": "Dobrodošli, {{name}}!",
+    "lead": "Upravljajte oglasima po kategorijama. Kategorije koje niste platili ovdje se ne prikazuju.",
+    "planSummary": {
+      "basic": "— do 2 oglasa u jednoj kategoriji, do 2 broja telefona",
+      "pro": "— do 5 oglasa po kategoriji, do 5 brojeva telefona",
+      "agency": "— neograničeno oglasa i brojeva telefona"
+    },
+    "newListing": "+ Novi oglas",
+    "datesBanner": "Datum prijave: {{registered}} | Važi do: {{validUntil}}",
+    "statsTitle": "Statistika — mjesečni izvještaj",
+    "statsViews": "Pregledi ovaj mjesec",
+    "statsContacts": "Prikaži kontakt klikovi ovaj mjesec",
+    "statsInquiries": "Upiti ovaj mjesec",
+    "tableTitle": "Moji oglasi — {{category}}",
+    "colTitle": "Naslov",
+    "colViews": "Pregledi",
+    "colContacts": "Prikaži kontakt klikovi ovaj mjesec",
+    "colDates": "Datum prijema / Istek",
+    "colFeatured": "Istaknut do",
+    "colNote": "Interni komentar",
+    "colActions": "Akcije",
+    "actionView": "Pogledaj →",
+    "actionEdit": "Izmijeni",
+    "actionDelete": "Obriši",
+    "confirmDelete": "Obrisati ovaj oglas?",
+    "emptyCategory": "Nema oglasa u ovoj kategoriji.",
+    "categoriesAria": "Kategorije oglasa",
+    "soon": "Uskoro",
+    "privacyNote": "Vidite samo oglase vezane za vaš nalog.",
+    "nav": {
+      "overview": "Pregled",
+      "inquiries": "Upiti od posjetilaca",
+      "messages": "Interne poruke / poruke za admina",
+      "ads": "Reklame",
+      "forum": "Forum",
+      "enterCode": "Unesi kod",
+      "settings": "Postavke",
+      "editProfile": "Izmijeni profil"
+    }
+  },
+  "admin": {
+    "pageTitle": "Admin panel",
+    "loginTitle": "Prijava administratora",
+    "loginHint": "Unesite administratorsku lozinku. Za lokalni razvoj podrazumijevana vrijednost je u kodu (za produkciju postavite VITE_ADMIN_PASSWORD u .env).",
+    "passwordLabel": "Lozinka",
+    "loginError": "Pogrešna lozinka.",
+    "loginSubmit": "Uđi u admin panel",
+    "backHome": "Nazad na početnu",
+    "logout": "Izlaz iz admina",
+    "subtitle": "Puni pristup svim oglasima, recenzijama i korisnicima (kad bude povezan backend).",
+    "sidebarAria": "Admin navigacija",
+    "cardListings": "Oglasi",
+    "cardReviews": "Recenzije (sačuvane)",
+    "cardOwners": "Vlasnici (lokalno)",
+    "cardReports": "Prijave",
+    "recentTitle": "Nedavna aktivnost",
+    "recentEmpty": "Nema nedavne aktivnosti.",
+    "nav": {
+      "overview": "Pregled",
+      "visits": "Posjeta sajtu",
+      "listings": "Oglasi",
+      "owners": "Vlasnici",
+      "inquiries": "Upiti",
+      "reports": "Prijava oglasa",
+      "reviews": "Recenzije",
+      "users": "Korisnici",
+      "images": "Slike",
+      "staff": "Osoblje i agenti",
+      "ownerMessages": "Poruke vlasnika",
+      "promo": "Promotivni kodovi",
+      "expiring": "Pred istek pretplate",
+      "paused": "Nalozi na pauzi",
+      "banners": "Reklame",
+      "pricing": "Cjenovnik",
+      "terms": "Uslovi korišćenja",
+      "privacy": "Privatnost",
+      "faq": "FAQ",
+      "import": "Univerzalni import"
+    }
+  },
+  "hero": {
+    "accommodation": {
+      "badge": "12,400+ smještaja dostupno",
+      "titleBefore": "Pronađi savršen",
+      "titleHighlight": "boravak na moru",
+      "subtitle": "Apartmani, vile i kuće duž Jadrana i Mediterana — direktno od vlasnika, bez posrednika."
+    },
+    "car": {
+      "badge": "3,400+ vozila dostupno",
+      "titleBefore": "Iznajmi idealan",
+      "titleHighlight": "automobil",
+      "subtitle": "SUV-ovi, sedani i sportski automobili u 5 zemalja. Cijene bez skrivenih troškova."
+    },
+    "motorcycle": {
+      "badge": "1,900+ motocikala dostupno",
+      "titleBefore": "Vozi slobodno na svom",
+      "titleHighlight": "motoru",
+      "subtitle": "Skuteri i motori za slobodne vožnje po najljepšim putevima Mediterana."
+    }
+  },
+  "search": {
+    "country": "Zemlja",
+    "countryAll": "Sve države",
+    "country_al": "Albanija",
+    "country_ba": "Bosna i Hercegovina",
+    "country_me": "Crna Gora",
+    "country_hr": "Hrvatska",
+    "country_it": "Italija",
+    "country_rs": "Srbija",
+    "country_es": "Španija",
+    "city": "Grad ili mjesto…",
+    "button": "Pretraga",
+    "citiesLoading": "Učitavanje gradova…",
+    "noResults": "Nema oglasa koji odgovaraju pretrazi."
+  },
+  "currency": {
+    "aria": "Valuta",
+    "eur": "€ Euro (EUR)",
+    "bam": "KM Konvertibilna marka (BAM)",
+    "all": "Lek Albanski lek (ALL)"
+  },
+  "stats": {
+    "accommodations": "Smještaja",
+    "cars": "Automobila",
+    "motorcycles": "Motocikala",
+    "countries": "Zemalja"
+  },
+  "sections": {
+    "featured": "Istaknuto",
+    "listings": "Najnoviji oglasi"
+  },
+  "pagination": {
+    "prev": "Nazad",
+    "next": "Naprijed",
+    "page": "Strana {{current}} / {{total}}"
+  },
+  "footer": {
+    "terms": "Uslovi",
+    "privacy": "Privatnost",
+    "faq": "FAQ",
+    "pricing": "Cjenovnik",
+    "rateDisclaimer": "Kursne konverzije su informativne; stvarni kurs može se razlikovati od prikazanog (banka, kartica, platni servis).",
+    "copyrightLine": "© 2026 · Powered by RentAdria"
+  },
+  "card": {
+    "from": "Od"
+  },
+  "listingPage": {
+    "back": "Nazad na oglase",
+    "notFound": "Oglas nije pronađen.",
+    "meta": "Oglas na RentAdriji — kontaktirajte vlasnika za rezervaciju.",
+    "openAria": "Otvori oglas"
+  },
+  "detail": {
+    "verified": "Provjereno",
+    "verifiedTitle": "Lično provjereno od strane RentAdria",
+    "breadcrumb": { "home": "Početna" },
+    "idLabel": "ID",
+    "views": "{{count}} pregleda",
+    "updated": "Ažurirano:",
+    "actions": {
+      "share": "Podijeli",
+      "report": "Prijavi oglas",
+      "pdf": "Preuzmi PDF"
+    },
+    "gallery": { "more": "fotografija" },
+    "basic": {
+      "title": "Osnovne informacije",
+      "propertyType": "Tip nekretnine",
+      "propertyTypeVal": "Stan",
+      "structure": "Struktura",
+      "structureVal": "Jednosoban",
+      "area": "Površina",
+      "areaVal": "35 m²",
+      "zone": "Područje",
+      "payment": "Plaćanje",
+      "paymentVal": "Gotovina / kartica",
+      "model": "Oglas",
+      "location": "Lokacija",
+      "vehicleType": "Tip"
+    },
+    "tabs": {
+      "desc": "Opis",
+      "chars": "Karakteristike",
+      "prices": "Cijene i plaćanje"
+    },
+    "description": {
+      "text": "Jednosoban smještaj s pogledom na more. Svijetao, namješten, blizu obale."
+    },
+    "char": {
+      "line1": "Pogled na more",
+      "line2": "Wi‑Fi",
+      "line3": "Parking u blizini",
+      "line4": "Nepušački"
+    },
+    "prices": {
+      "text": "Cijena po noći kao na oglasu. Moguć depozit. Načini plaćanja: gotovina, kartica, bankovni transfer."
+    },
+    "contact": {
+      "show": "Prikaži kontakt",
+      "hide": "Sakrij kontakt",
+      "messagePrefill": "Zdravo, zanimam se za oglas \"{{title}}\" na RentAdria."
+    },
+    "owner": {
+      "title": "Podaci o vlasniku",
+      "cta": "Kontaktiraj vlasnika"
+    },
+    "map": {
+      "title": "Lokacija na mapi",
+      "openGoogle": "Otvori u Google Maps",
+      "coords": "Koordinate"
+    },
+    "reviews": {
+      "title": "Recenzije",
+      "hint": "Samo prijavljeni gosti koji su boravili mogu ostaviti recenziju. Svi je mogu čitati.",
+      "placeholder": "Podijelite doživljaj…",
+      "submit": "Objavi recenziju",
+      "loginOnly": "Prijavite se da ostavite recenziju.",
+      "demoLogin": "Demo: prijava"
+    },
+    "similar": { "title": "Slični oglasi" },
+    "share": { "copied": "Link je kopiran u clipboard." },
+    "inquiry": {
+      "title": "Pošalji upit",
+      "first": "Ime",
+      "last": "Prezime",
+      "email": "Email",
+      "phone": "Telefon",
+      "period": "Period boravka",
+      "guests": "Broj gostiju",
+      "message": "Poruka",
+      "terms": "Prihvatam uslove korišćenja",
+      "submit": "POŠALJI UPIT",
+      "phFirst": "npr. Ana",
+      "phLast": "npr. Kovač",
+      "phEmail": "ime@primjer.com",
+      "phPhone": "+382 69 000 000",
+      "phPeriod": "npr. 15. jul – 22. jul 2026",
+      "phGuests": "npr. 2",
+      "phMessage": "Zdravo, zainteresovan sam za dostupnost…"
+    },
+    "report": {
+      "title": "Prijavi oglas",
+      "hint": "Opišite zašto prijavljujete oglas. Administrator će biti obaviješten.",
+      "reason": "Razlog",
+      "first": "Ime",
+      "last": "Prezime",
+      "email": "Vaš email",
+      "cancel": "Otkaži",
+      "submit": "Pošalji prijavu",
+      "phReason": "Opišite problem (obavezno)…",
+      "phFirst": "npr. Marko",
+      "phLast": "npr. Nikolić",
+      "phEmail": "vas@email.com"
+    }
+  }
+}
