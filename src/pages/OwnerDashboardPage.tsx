@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Navigate, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -6,8 +6,11 @@ import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
 import { isLoggedIn } from '../utils/storage'
-import { AccommodationListingModal } from '../components/owner/AccommodationListingModal'
 import { CategoryPickerModal } from '../components/owner/CategoryPickerModal'
+
+const AccommodationListingModal = lazy(() =>
+  import('../components/owner/AccommodationListingModal').then((m) => ({ default: m.AccommodationListingModal })),
+)
 import {
   clearOwnerSession,
   deleteOwnerListing,
@@ -314,12 +317,22 @@ export function OwnerDashboardPage() {
         }}
       />
 
-      {profile && (
-        <AccommodationListingModal
-          open={accommodationModalOpen}
-          onClose={() => setAccommodationModalOpen(false)}
-          profile={profile}
-        />
+      {profile && accommodationModalOpen && (
+        <Suspense
+          fallback={
+            <div className="ra-modal" style={{ zIndex: 130 }} role="status" aria-live="polite">
+              <div className="ra-modal__panel" style={{ padding: '1.5rem' }}>
+                {t('owner.listing.loading')}
+              </div>
+            </div>
+          }
+        >
+          <AccommodationListingModal
+            open
+            onClose={() => setAccommodationModalOpen(false)}
+            profile={profile}
+          />
+        </Suspense>
       )}
     </div>
   )

@@ -981,7 +981,8 @@
 .ra-modal {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Iznad cookie bannera (120) da se može kliknuti cijeli dijalog */
+  z-index: 130;
   background: rgba(4, 8, 18, 0.72);
   backdrop-filter: blur(12px);
   display: grid;
@@ -3015,7 +3016,7 @@
 
 /* —— Owner listing modal —— */
 .ra-modal--owner-listing {
-  z-index: 90;
+  z-index: 130;
   padding: 1rem;
   align-items: flex-start;
   overflow-y: auto;

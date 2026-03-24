@@ -179,6 +179,7 @@
       "editProfile": "Izmijeni profil"
     },
     "listing": {
+      "loading": "Učitavanje formulara…",
       "pickCategoryTitle": "Izaberite kategoriju oglasa",
       "pickCategoryHint": "Basic plan otvara samo kupljenu kategoriju.",
       "categoryLocked": "Nije u planu",
