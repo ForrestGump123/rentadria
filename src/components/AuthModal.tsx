@@ -16,6 +16,7 @@ import {
   seedOwnerListingsIfEmpty,
 } from '../utils/ownerSession'
 import { setAdminSession, verifyAdminPassword, ADMIN_LOGIN_EMAIL } from '../utils/adminSession'
+import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import { setLoggedIn } from '../utils/storage'
 
 const VERIFY_CTX_KEY = 'rentadria_verify_ctx'
@@ -45,10 +46,9 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     isRegistrationCountry(i18n.language) ? i18n.language : 'cnr',
   )
   const [promoCode, setPromoCode] = useState('')
-  const [verifyEmail, setVerifyEmail] = useState(true)
-  const [verifyPhone, setVerifyPhone] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -59,8 +59,6 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     setName('')
     setPhone('')
     setPromoCode('')
-    setVerifyEmail(true)
-    setVerifyPhone(false)
     setTermsAccepted(false)
     const lng = i18n.language
     setCountry(isRegistrationCountry(lng) ? lng : 'cnr')
@@ -104,7 +102,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     navigate('/owner', { replace: true })
   }
 
-  const registerSubmit = (e: FormEvent) => {
+  const registerSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSubmitted(true)
     const okEmail = isValidEmail(email)
@@ -112,22 +110,36 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     const okPw = isValidRegisterPassword(password)
     const okName = name.trim().length > 0
     const okCountry = isRegistrationCountry(country)
-    const okVerify = verifyEmail || verifyPhone
     const okTerms = termsAccepted
-    if (!okName || !okEmail || !okPhone || !okPw || !okCountry || !okVerify || !okTerms) return
+    if (!okName || !okEmail || !okPhone || !okPw || !okCountry || !okTerms) return
     try {
       sessionStorage.setItem(
         VERIFY_CTX_KEY,
         JSON.stringify({
           email: email.trim(),
           name: name.trim(),
-          verifyEmail,
-          verifyPhone,
           plan: initialPlan ?? undefined,
         }),
       )
     } catch {
       /* ignore */
+    }
+    setSending(true)
+    try {
+      await sendVerificationEmail({
+        email: email.trim(),
+        name: name.trim(),
+        plan: initialPlan ?? 'basic',
+      })
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn('send-verification (dev, nema API):', err)
+      } else {
+        window.alert(t('auth.verifyEmailSendError'))
+        return
+      }
+    } finally {
+      setSending(false)
     }
     navigate('/verify')
     onClose()
@@ -139,7 +151,6 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
   const pwErr =
     submitted &&
     (mode === 'register' ? !isValidRegisterPassword(password) : password.trim().length === 0)
-  const verifyErr = submitted && mode === 'register' && !verifyEmail && !verifyPhone
   const termsErr = submitted && mode === 'register' && !termsAccepted
 
   return (
@@ -286,26 +297,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         )}
 
         {mode === 'register' && (
-          <fieldset className="ra-verify">
-            <legend>{t('auth.verifyHeading')}</legend>
-            <label className="ra-verify__row">
-              <input
-                type="checkbox"
-                checked={verifyEmail}
-                onChange={(e) => setVerifyEmail(e.target.checked)}
-              />
-              <span>{t('auth.verifyEmail')}</span>
-            </label>
-            <label className="ra-verify__row">
-              <input
-                type="checkbox"
-                checked={verifyPhone}
-                onChange={(e) => setVerifyPhone(e.target.checked)}
-              />
-              <span>{t('auth.verifyPhone')}</span>
-            </label>
-            {verifyErr && <span className="ra-fld__err">{t('auth.verifyError')}</span>}
-          </fieldset>
+          <p className="ra-auth__verify-note">{t('auth.verifyEmailOnly')}</p>
         )}
 
         {mode === 'register' && (
@@ -334,8 +326,12 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
           </div>
         )}
 
-        <button type="submit" className="ra-btn ra-btn--primary ra-btn--block">
-          {mode === 'login' ? t('auth.submitLogin') : t('auth.submitRegister')}
+        <button type="submit" className="ra-btn ra-btn--primary ra-btn--block" disabled={sending}>
+          {sending
+            ? t('auth.sendingVerification')
+            : mode === 'login'
+              ? t('auth.submitLogin')
+              : t('auth.submitRegister')}
         </button>
 
         <p className="ra-auth__switch">

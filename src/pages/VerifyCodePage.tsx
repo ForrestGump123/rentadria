@@ -1,9 +1,9 @@
-import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Footer } from '../components/Footer'
+import { verifyEmailToken } from '../lib/verifyEmailToken'
 import { isSubscriptionPlan } from '../types/plan'
 import {
   addOneYearIso,
@@ -17,10 +17,50 @@ const STORAGE_KEY = 'rentadria_verify_ctx'
 export function VerifyCodePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [code, setCode] = useState('')
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token')
+
   const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(!!token)
+  const [tokenErr, setTokenErr] = useState<string | null>(null)
 
   useEffect(() => {
+    if (token) {
+      let cancelled = false
+      setLoading(true)
+      setTokenErr(null)
+      void verifyEmailToken(token)
+        .then((data) => {
+          if (cancelled) return
+          const plan = isSubscriptionPlan(data.plan) ? data.plan : 'basic'
+          const profile: OwnerProfile = {
+            userId: data.email,
+            email: data.email,
+            displayName: data.name.trim() || data.email.split('@')[0],
+            plan,
+            registeredAt: new Date().toISOString(),
+            validUntil: addOneYearIso(),
+          }
+          saveOwnerProfile(profile)
+          seedOwnerListingsIfEmpty(profile)
+          try {
+            sessionStorage.removeItem(STORAGE_KEY)
+          } catch {
+            /* ignore */
+          }
+          navigate('/owner', { replace: true })
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setTokenErr(t('verify.tokenError'))
+            setLoading(false)
+          }
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY)
       if (!raw) {
@@ -32,35 +72,41 @@ export function VerifyCodePage() {
     } catch {
       navigate('/', { replace: true })
     }
-  }, [navigate])
+    return undefined
+  }, [token, navigate, t])
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const ctx = JSON.parse(raw) as { email?: string; name?: string; plan?: string }
-        const email = (ctx.email ?? '').trim().toLowerCase()
-        if (email) {
-          const plan = isSubscriptionPlan(ctx.plan) ? ctx.plan : 'basic'
-          const displayName = (ctx.name ?? '').trim() || email.split('@')[0]
-          const profile: OwnerProfile = {
-            userId: email,
-            email,
-            displayName,
-            plan,
-            registeredAt: new Date().toISOString(),
-            validUntil: addOneYearIso(),
-          }
-          saveOwnerProfile(profile)
-          seedOwnerListingsIfEmpty(profile)
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    sessionStorage.removeItem(STORAGE_KEY)
-    navigate('/owner', { replace: true })
+  if (token && loading) {
+    return (
+      <div className="ra-app ra-verify-page">
+        <Helmet>
+          <title>{t('verify.title')} · RentAdria</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+        <main className="ra-main ra-verify-main">
+          <p>{t('verify.verifying')}</p>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (token && tokenErr) {
+    return (
+      <div className="ra-app ra-verify-page">
+        <Helmet>
+          <title>{t('verify.title')} · RentAdria</title>
+          <meta name="robots" content="noindex" />
+        </Helmet>
+        <main className="ra-main ra-verify-main">
+          <h1>{t('verify.title')}</h1>
+          <p className="ra-verify-hint ra-verify-hint--err">{tokenErr}</p>
+          <p className="ra-verify-back">
+            <Link to="/">{t('verify.back')}</Link>
+          </p>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -71,23 +117,8 @@ export function VerifyCodePage() {
       </Helmet>
       <main className="ra-main ra-verify-main">
         <h1>{t('verify.title')}</h1>
-        <p className="ra-verify-hint">{t('verify.hint', { email: email || '—' })}</p>
-        <form className="ra-verify-form" onSubmit={submit}>
-          <label className="ra-fld">
-            <span>{t('verify.codeLabel')}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              placeholder={t('verify.placeholder')}
-            />
-          </label>
-          <button type="submit" className="ra-btn ra-btn--primary ra-btn--block">
-            {t('verify.submit')}
-          </button>
-        </form>
+        <p className="ra-verify-hint">{t('verify.checkEmailInstruction', { email: email || '—' })}</p>
+        <p className="ra-verify-hint">{t('verify.checkEmailSpam')}</p>
         <p className="ra-verify-back">
           <Link to="/">{t('verify.back')}</Link>
         </p>

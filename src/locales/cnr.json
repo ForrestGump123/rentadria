@@ -36,10 +36,9 @@
     "promoCodeLabel": "Promo kod",
     "promoCodePlaceholder": "Opciono",
     "promoCodeHint": "Ako imate promo kod, unesite ga ovdje.",
-    "verifyHeading": "Verifikacija putem",
-    "verifyEmail": "Email",
-    "verifyPhone": "Telefon (WhatsApp)",
-    "verifyError": "Odaberite bar jedan način verifikacije.",
+    "verifyEmailOnly": "Verifikacija računa vrši se isključivo putem emaila — poslaćemo vam link za potvrdu na adresu koju unesete.",
+    "verifyEmailSendError": "Nismo mogli poslati email za potvrdu. Pokušajte ponovo kasnije ili kontaktirajte podršku.",
+    "sendingVerification": "Šaljemo email…",
     "submitLogin": "Prijavi se",
     "submitRegister": "Nastavi",
     "switchToRegister": "Nemaš nalog? Registruj se",
@@ -56,11 +55,11 @@
     "ogDescription": "Pronađite smještaj, automobile i motocikle duž Jadrana. Oglasi od vlasnika — jasne cijene."
   },
   "verify": {
-    "title": "Unesite verifikacioni kod",
-    "hint": "Poslali smo kod na {{email}}. Unesite ga ispod (demo — bilo koji kod nastavlja).",
-    "codeLabel": "Kod",
-    "placeholder": "npr. 123456",
-    "submit": "Potvrdi",
+    "title": "Potvrdite email",
+    "checkEmailInstruction": "Poslali smo link za potvrdu na {{email}}. Kliknite na link u emailu (važi 48 sati).",
+    "checkEmailSpam": "Ako ne vidite poruku, provjerite folder Spam / Nevažno.",
+    "verifying": "Potvrđujemo vaš link…",
+    "tokenError": "Link je nevažeći ili je istekao. Registrujte se ponovo.",
     "back": "Nazad na početnu"
   },
   "cookie": {

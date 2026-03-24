@@ -36,10 +36,9 @@
     "promoCodeLabel": "Promo code",
     "promoCodePlaceholder": "Optional",
     "promoCodeHint": "If you have a promo code, enter it here.",
-    "verifyHeading": "Verification via",
-    "verifyEmail": "Email",
-    "verifyPhone": "Phone (WhatsApp)",
-    "verifyError": "Choose at least one verification method.",
+    "verifyEmailOnly": "Account verification is by email only — we will send a confirmation link to the address you enter.",
+    "verifyEmailSendError": "We could not send the confirmation email. Please try again later.",
+    "sendingVerification": "Sending email…",
     "submitLogin": "Log in",
     "submitRegister": "Continue",
     "switchToRegister": "Need an account? Sign up",
@@ -56,11 +55,11 @@
     "ogDescription": "Find accommodation, cars and motorcycles across the Adriatic. Listings from owners — clear pricing."
   },
   "verify": {
-    "title": "Enter verification code",
-    "hint": "We sent a code to {{email}}. Enter it below (demo — any code continues).",
-    "codeLabel": "Code",
-    "placeholder": "e.g. 123456",
-    "submit": "Confirm",
+    "title": "Confirm your email",
+    "checkEmailInstruction": "We sent a confirmation link to {{email}}. Click the link in the email (valid for 48 hours).",
+    "checkEmailSpam": "If you do not see the message, check Spam / Junk.",
+    "verifying": "Confirming your link…",
+    "tokenError": "This link is invalid or has expired. Please register again.",
     "back": "Back to home"
   },
   "cookie": {

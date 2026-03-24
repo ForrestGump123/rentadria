@@ -1048,6 +1048,17 @@
   font-size: 1.25rem;
 }
 
+.ra-auth__verify-note {
+  font-size: 0.84rem;
+  color: var(--ra-muted);
+  line-height: 1.45;
+  margin: 0 0 0.75rem;
+}
+
+.ra-verify-hint--err {
+  color: #f87171;
+}
+
 .ra-auth__subtitle {
   margin: 0 0 1rem;
   text-align: center;
