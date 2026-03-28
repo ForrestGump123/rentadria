@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { listingDisplayId } from './lib/listingDisplayId'
-import { publishFacebookPagePhoto, publishInstagramFeed } from './lib/publishMetaSocial'
-import { renderSocialTemplate, type SocialCardCategory } from './lib/renderSocialTemplate'
-import { getSupabaseAdmin } from './lib/supabaseAdmin'
+import { listingDisplayId } from './lib/listingDisplayId.js'
+import { publishFacebookPagePhoto, publishInstagramFeed } from './lib/publishMetaSocial.js'
+import { renderSocialTemplate, type SocialCardCategory } from './lib/renderSocialTemplate.js'
+import { getSupabaseAdmin } from './lib/supabaseAdmin.js'
 
 function authorizeCron(req: VercelRequest): boolean {
   if (process.env.VERCEL === '1' && String(req.headers['x-vercel-cron'] ?? '') === '1') {

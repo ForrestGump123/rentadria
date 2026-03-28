@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { sendSafe500, send429 } from './lib/apiSafe'
-import { clientIp, rateLimit } from './lib/rateLimitIp'
-import { sendTransactionalEmail } from './lib/sendBrevoMail'
+import { sendSafe500, send429 } from './lib/apiSafe.js'
+import { clientIp, rateLimit } from './lib/rateLimitIp.js'
+import { sendTransactionalEmail } from './lib/sendBrevoMail.js'
 
 function escapeHtml(s: string): string {
   return s

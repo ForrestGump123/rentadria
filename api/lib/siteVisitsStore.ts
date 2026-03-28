@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
-import { belgradeYmd } from './belgradeDate'
+import { belgradeYmd } from './belgradeDate.js'
 
 export type DayBucket = {
   visitorIds: Record<string, true>
