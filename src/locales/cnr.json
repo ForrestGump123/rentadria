@@ -136,7 +136,9 @@
     "login": "Prijava",
     "register": "Registracija",
     "ownerDashboard": "Panel vlasnika",
-    "logout": "Odjavi se"
+    "logout": "Odjavi se",
+    "adminPanel": "Admin panel",
+    "adminLogout": "Odjavi admina"
   },
   "owner": {
     "pageTitle": "Panel vlasnika",

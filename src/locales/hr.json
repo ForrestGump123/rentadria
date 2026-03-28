@@ -43,7 +43,9 @@
     "login": "Prijava",
     "register": "Registracija",
     "ownerDashboard": "Sučelje vlasnika",
-    "logout": "Odjava"
+    "logout": "Odjava",
+    "adminPanel": "Admin panel",
+    "adminLogout": "Odjavi admina"
   },
   "hero": {
     "accommodation": {

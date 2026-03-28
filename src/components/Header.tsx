@@ -8,6 +8,7 @@ import { useCurrency } from '../context/CurrencyContext'
 import { LANGUAGES, type LanguageCode } from '../languages'
 import { AuthModal } from './AuthModal'
 import { Logo } from './Logo'
+import { isAdminSession, setAdminSession } from '../utils/adminSession'
 import { clearOwnerSession } from '../utils/ownerSession'
 import { isLoggedIn } from '../utils/storage'
 
@@ -76,6 +77,7 @@ export function Header({
   const [langOpen, setLangOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [logged, setLogged] = useState(() => isLoggedIn())
+  const [adminLogged, setAdminLogged] = useState(() => isAdminSession())
   const currentLang =
     (LANGUAGES.find((l) => l.code === (i18n.language || 'en').split('-')[0])?.code ?? 'en') as LanguageCode
   const current = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0]
@@ -104,6 +106,12 @@ export function Header({
     return () => window.removeEventListener('rentadria-auth', onAuth)
   }, [])
 
+  useEffect(() => {
+    const onAdmin = () => setAdminLogged(isAdminSession())
+    window.addEventListener('rentadria-admin-auth', onAdmin)
+    return () => window.removeEventListener('rentadria-admin-auth', onAdmin)
+  }, [])
+
   const closeAuth = () => {
     setAuthOpen(false)
     setModalPlan(null)
@@ -130,7 +138,25 @@ export function Header({
           </nav>
 
           <div className="ra-header__actions">
-            {logged ? (
+            {adminLogged && (
+              <>
+                <Link to="/admin" className="ra-link-btn">
+                  {t('nav.adminPanel')}
+                </Link>
+                <button
+                  type="button"
+                  className="ra-link-btn"
+                  onClick={() => {
+                    setAdminSession(false)
+                    setAdminLogged(false)
+                    navigate('/', { replace: true })
+                  }}
+                >
+                  {t('nav.adminLogout')}
+                </button>
+              </>
+            )}
+            {logged && (
               <>
                 <Link to="/owner" className="ra-link-btn">
                   {t('nav.ownerDashboard')}
@@ -147,7 +173,8 @@ export function Header({
                   {t('nav.logout')}
                 </button>
               </>
-            ) : (
+            )}
+            {!adminLogged && !logged && (
               <>
                 <button
                   type="button"

@@ -16,6 +16,11 @@ export function setAdminSession(v: boolean): void {
   } catch {
     /* ignore */
   }
+  try {
+    window.dispatchEvent(new CustomEvent('rentadria-admin-auth'))
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Demo default; override with VITE_ADMIN_PASSWORD in `.env` for production */

@@ -136,7 +136,9 @@
     "login": "Log in",
     "register": "Sign up",
     "ownerDashboard": "Dashboard",
-    "logout": "Log out"
+    "logout": "Log out",
+    "adminPanel": "Admin panel",
+    "adminLogout": "Sign out (admin)"
   },
   "owner": {
     "pageTitle": "Owner dashboard",

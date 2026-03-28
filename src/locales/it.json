@@ -43,7 +43,9 @@
     "login": "Accedi",
     "register": "Registrati",
     "ownerDashboard": "Area proprietario",
-    "logout": "Esci"
+    "logout": "Esci",
+    "adminPanel": "Pannello admin",
+    "adminLogout": "Esci (admin)"
   },
   "hero": {
     "accommodation": {

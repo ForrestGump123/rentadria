@@ -43,7 +43,9 @@
     "login": "Iniciar sesión",
     "register": "Registrarse",
     "ownerDashboard": "Panel del propietario",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "adminPanel": "Panel de administración",
+    "adminLogout": "Cerrar sesión (admin)"
   },
   "hero": {
     "accommodation": {

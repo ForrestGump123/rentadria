@@ -43,7 +43,9 @@
     "login": "Hyrje",
     "register": "Regjistrim",
     "ownerDashboard": "Paneli i pronarit",
-    "logout": "Dilni"
+    "logout": "Dilni",
+    "adminPanel": "Paneli admin",
+    "adminLogout": "Dilni admin"
   },
   "hero": {
     "accommodation": {
