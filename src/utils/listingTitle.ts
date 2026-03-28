@@ -1,8 +1,10 @@
 import type { TFunction } from 'i18next'
 import type { Listing } from '../types'
+import { isAccommodationDraftListingId } from './accommodationDraft'
 
 /** Localized listing headline (grid, detail, modals, similar). */
 export function listingTitle(listing: Listing, t: TFunction): string {
+  if (isAccommodationDraftListingId(listing.id)) return listing.title
   const names = t(`listingTitles.${listing.category}`, { returnObjects: true })
   if (!Array.isArray(names) || names.length === 0) return listing.title
   const slot = listing.titleSlot % names.length

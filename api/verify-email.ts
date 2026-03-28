@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { send429 } from './lib/apiSafe'
+import { clientIp, rateLimit } from './lib/rateLimitIp'
 import { verifyVerifyToken } from './lib/verifyJwt'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -8,6 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  const ip = clientIp(req)
+  if (!rateLimit(`verify:${ip}`, 40, 60_000)) {
+    send429(res)
     return
   }
 

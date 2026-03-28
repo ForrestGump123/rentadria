@@ -1,52 +1,94 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
-import { isAdminSession, setAdminSession, verifyAdminPassword } from '../utils/adminSession'
+import { isAdminSession, setAdminSession, verifyAdminLogin } from '../utils/adminSession'
 import {
   countListings,
   countOwnerAccounts,
   countReportRows,
   countReviewBuckets,
 } from '../utils/adminStats'
+import { AdminListingsPage } from './admin/AdminListingsPage'
+import { AdminOwnerMessagesPage } from './admin/AdminOwnerMessagesPage'
+import { AdminPlaceholderPage } from './admin/AdminPlaceholderPage'
+import { AdminVisitsPage } from './admin/AdminVisitsPage'
 
 type NavItem = {
   id: string
   labelKey: string
-  disabled?: boolean
-  to?: string
+  to: string
 }
 
 const NAV: NavItem[] = [
   { id: 'overview', labelKey: 'admin.nav.overview', to: '/admin' },
-  { id: 'visits', labelKey: 'admin.nav.visits', disabled: true },
-  { id: 'listings', labelKey: 'admin.nav.listings', disabled: true },
-  { id: 'owners', labelKey: 'admin.nav.owners', disabled: true },
-  { id: 'inquiries', labelKey: 'admin.nav.inquiries', disabled: true },
-  { id: 'reports', labelKey: 'admin.nav.reports', disabled: true },
-  { id: 'reviews', labelKey: 'admin.nav.reviews', disabled: true },
-  { id: 'users', labelKey: 'admin.nav.users', disabled: true },
-  { id: 'images', labelKey: 'admin.nav.images', disabled: true },
-  { id: 'staff', labelKey: 'admin.nav.staff', disabled: true },
-  { id: 'ownerMessages', labelKey: 'admin.nav.ownerMessages', disabled: true },
-  { id: 'promo', labelKey: 'admin.nav.promo', disabled: true },
-  { id: 'expiring', labelKey: 'admin.nav.expiring', disabled: true },
-  { id: 'paused', labelKey: 'admin.nav.paused', disabled: true },
-  { id: 'banners', labelKey: 'admin.nav.banners', disabled: true },
+  { id: 'visits', labelKey: 'admin.nav.visits', to: '/admin/visits' },
+  { id: 'listings', labelKey: 'admin.nav.listings', to: '/admin/listings' },
+  { id: 'owners', labelKey: 'admin.nav.owners', to: '/admin/owners' },
+  { id: 'inquiries', labelKey: 'admin.nav.inquiries', to: '/admin/inquiries' },
+  { id: 'reports', labelKey: 'admin.nav.reports', to: '/admin/reports' },
+  { id: 'reviews', labelKey: 'admin.nav.reviews', to: '/admin/reviews' },
+  { id: 'users', labelKey: 'admin.nav.users', to: '/admin/users' },
+  { id: 'images', labelKey: 'admin.nav.images', to: '/admin/images' },
+  { id: 'staff', labelKey: 'admin.nav.staff', to: '/admin/staff' },
+  { id: 'ownerMessages', labelKey: 'admin.nav.ownerMessages', to: '/admin/messages' },
+  { id: 'promo', labelKey: 'admin.nav.promo', to: '/admin/promo' },
+  { id: 'expiring', labelKey: 'admin.nav.expiring', to: '/admin/expiring' },
+  { id: 'paused', labelKey: 'admin.nav.paused', to: '/admin/paused' },
+  { id: 'banners', labelKey: 'admin.nav.banners', to: '/admin/banners' },
   { id: 'pricing', labelKey: 'admin.nav.pricing', to: '/pricing' },
   { id: 'terms', labelKey: 'admin.nav.terms', to: '/terms' },
   { id: 'privacy', labelKey: 'admin.nav.privacy', to: '/privacy' },
   { id: 'faq', labelKey: 'admin.nav.faq', to: '/faq' },
-  { id: 'import', labelKey: 'admin.nav.import', disabled: true },
+  { id: 'import', labelKey: 'admin.nav.import', to: '/admin/import' },
 ]
+
+const NAV_ICONS: Record<string, string> = {
+  overview: '📊',
+  visits: '🇲🇪',
+  listings: '📋',
+  owners: '👥',
+  inquiries: '💬',
+  reports: '⚠️',
+  reviews: '⭐',
+  users: '🧑',
+  images: '🖼️',
+  staff: '👔',
+  ownerMessages: '✉️',
+  promo: '🏷️',
+  expiring: '⏳',
+  paused: '⏸️',
+  banners: '🎯',
+  pricing: '💶',
+  terms: '📜',
+  privacy: '🔒',
+  faq: '❓',
+  import: '📥',
+}
+
+const ADMIN_PLACEHOLDER_IDS = [
+  'owners',
+  'inquiries',
+  'reports',
+  'reviews',
+  'users',
+  'images',
+  'staff',
+  'promo',
+  'expiring',
+  'paused',
+  'banners',
+  'import',
+] as const
 
 export function AdminDashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [authed, setAuthed] = useState(() => isAdminSession())
+  const [adminEmail, setAdminEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
 
@@ -62,11 +104,12 @@ export function AdminDashboardPage() {
 
   const login = (e: FormEvent) => {
     e.preventDefault()
-    if (verifyAdminPassword(password)) {
+    if (verifyAdminLogin(adminEmail, password)) {
       setAdminSession(true)
       setAuthed(true)
       setError(false)
       setPassword('')
+      setAdminEmail('')
     } else {
       setError(true)
     }
@@ -90,6 +133,19 @@ export function AdminDashboardPage() {
           <form className="ra-admin-gate__panel" onSubmit={login}>
             <h1 className="ra-admin-gate__h">{t('admin.loginTitle')}</h1>
             <p className="ra-admin-gate__hint">{t('admin.loginHint')}</p>
+            <label className="ra-fld">
+              <span>{t('admin.emailLabel')}</span>
+              <input
+                type="email"
+                autoComplete="username"
+                value={adminEmail}
+                onChange={(e) => {
+                  setAdminEmail(e.target.value)
+                  setError(false)
+                }}
+                className={error ? 'ra-admin-gate__input--err' : ''}
+              />
+            </label>
             <label className="ra-fld">
               <span>{t('admin.passwordLabel')}</span>
               <input
@@ -131,41 +187,48 @@ export function AdminDashboardPage() {
           <nav className="ra-admin-nav">
             {NAV.map((item) => {
               const label = t(item.labelKey)
-              if (item.to && !item.disabled) {
-                if (item.id === 'overview') {
-                  return (
-                    <NavLink
-                      key={item.id}
-                      end
-                      to={item.to}
-                      className={({ isActive }) =>
-                        `ra-admin-nav__link ${isActive ? 'is-active' : ''}`
-                      }
-                    >
-                      <span className="ra-admin-nav__ico" aria-hidden>
-                        📊
-                      </span>
-                      {label}
-                    </NavLink>
-                  )
-                }
+              const icon = NAV_ICONS[item.id] ?? '·'
+              const to = item.to
+
+              if (!to.startsWith('/admin')) {
                 return (
-                  <Link key={item.id} to={item.to} className="ra-admin-nav__link ra-admin-nav__link--sub">
+                  <Link key={item.id} to={to} className="ra-admin-nav__link ra-admin-nav__link--sub">
                     {label}
                   </Link>
                 )
               }
+
+              if (item.id === 'overview') {
+                return (
+                  <NavLink
+                    key={item.id}
+                    end
+                    to={to}
+                    className={({ isActive }) =>
+                      `ra-admin-nav__link ${isActive ? 'is-active' : ''}`
+                    }
+                  >
+                    <span className="ra-admin-nav__ico" aria-hidden>
+                      {icon}
+                    </span>
+                    {label}
+                  </NavLink>
+                )
+              }
+
               return (
-                <span
+                <NavLink
                   key={item.id}
-                  className="ra-admin-nav__link ra-admin-nav__link--disabled"
-                  title={t('owner.soon')}
+                  to={to}
+                  className={({ isActive }) =>
+                    `ra-admin-nav__link ${isActive ? 'is-active' : ''}`
+                  }
                 >
                   <span className="ra-admin-nav__ico" aria-hidden>
-                    ·
+                    {icon}
                   </span>
                   {label}
-                </span>
+                </NavLink>
               )
             })}
           </nav>
@@ -175,48 +238,67 @@ export function AdminDashboardPage() {
         </aside>
 
         <main className="ra-admin-main">
-          <header className="ra-admin-head">
-            <h1 className="ra-admin-title">{t('admin.pageTitle')}</h1>
-            <p className="ra-admin-subtitle">{t('admin.subtitle')}</p>
-          </header>
+          <Routes>
+            <Route
+              index
+              element={
+                <>
+                  <header className="ra-admin-head">
+                    <h1 className="ra-admin-title">{t('admin.pageTitle')}</h1>
+                    <p className="ra-admin-subtitle">{t('admin.subtitle')}</p>
+                  </header>
 
-          <div className="ra-admin-cards">
-            <div className="ra-admin-card ra-admin-card--listings">
-              <span className="ra-admin-card__ico" aria-hidden>
-                📄
-              </span>
-              <strong>{stats.listings}</strong>
-              <span>{t('admin.cardListings')}</span>
-            </div>
-            <div className="ra-admin-card ra-admin-card--reviews">
-              <span className="ra-admin-card__ico" aria-hidden>
-                ⭐
-              </span>
-              <strong>{stats.reviews}</strong>
-              <span>{t('admin.cardReviews')}</span>
-            </div>
-            <div className="ra-admin-card ra-admin-card--owners">
-              <span className="ra-admin-card__ico" aria-hidden>
-                👤
-              </span>
-              <strong>{stats.owners}</strong>
-              <span>{t('admin.cardOwners')}</span>
-            </div>
-            <div className="ra-admin-card ra-admin-card--reports">
-              <span className="ra-admin-card__ico" aria-hidden>
-                ⚠️
-              </span>
-              <strong>{stats.reports}</strong>
-              <span>{t('admin.cardReports')}</span>
-            </div>
-          </div>
+                  <div className="ra-admin-cards">
+                    <div className="ra-admin-card ra-admin-card--listings">
+                      <span className="ra-admin-card__ico" aria-hidden>
+                        📄
+                      </span>
+                      <strong>{stats.listings}</strong>
+                      <span>{t('admin.cardListings')}</span>
+                    </div>
+                    <div className="ra-admin-card ra-admin-card--reviews">
+                      <span className="ra-admin-card__ico" aria-hidden>
+                        ⭐
+                      </span>
+                      <strong>{stats.reviews}</strong>
+                      <span>{t('admin.cardReviews')}</span>
+                    </div>
+                    <div className="ra-admin-card ra-admin-card--owners">
+                      <span className="ra-admin-card__ico" aria-hidden>
+                        👤
+                      </span>
+                      <strong>{stats.owners}</strong>
+                      <span>{t('admin.cardOwners')}</span>
+                    </div>
+                    <div className="ra-admin-card ra-admin-card--reports">
+                      <span className="ra-admin-card__ico" aria-hidden>
+                        ⚠️
+                      </span>
+                      <strong>{stats.reports}</strong>
+                      <span>{t('admin.cardReports')}</span>
+                    </div>
+                  </div>
 
-          <section className="ra-admin-activity" aria-labelledby="admin-activity-h">
-            <h2 id="admin-activity-h" className="ra-admin-activity__title">
-              {t('admin.recentTitle')}
-            </h2>
-            <p className="ra-admin-activity__empty">{t('admin.recentEmpty')}</p>
-          </section>
+                  <section className="ra-admin-activity" aria-labelledby="admin-activity-h">
+                    <h2 id="admin-activity-h" className="ra-admin-activity__title">
+                      {t('admin.recentTitle')}
+                    </h2>
+                    <p className="ra-admin-activity__empty">{t('admin.recentEmpty')}</p>
+                  </section>
+                </>
+              }
+            />
+            <Route path="visits" element={<AdminVisitsPage />} />
+            <Route path="listings" element={<AdminListingsPage />} />
+            <Route path="messages" element={<AdminOwnerMessagesPage />} />
+            {ADMIN_PLACEHOLDER_IDS.map((id) => (
+              <Route
+                key={id}
+                path={id}
+                element={<AdminPlaceholderPage titleKey={`admin.nav.${id}`} />}
+              />
+            ))}
+          </Routes>
         </main>
       </div>
 

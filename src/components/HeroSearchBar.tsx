@@ -1,8 +1,22 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SEARCH_COUNTRY_IDS, type SearchCountryId } from '../data/cities/countryIds'
+import { MOTORCYCLE_MAKES } from '../data/motorcycleCatalog'
+import { VEHICLE_MAKES } from '../data/vehicleCatalog'
+import type { ListingCategory } from '../types'
+
+const ACC_PROPERTY_TYPES = [
+  'studio',
+  'room',
+  'apartment',
+  'villa',
+  'house',
+  'hostel',
+  'hotel',
+] as const
 
 type HeroSearchBarProps = {
+  category: ListingCategory
   countryId: SearchCountryId | null
   onCountryId: (id: SearchCountryId | null) => void
   city: string
@@ -10,6 +24,10 @@ type HeroSearchBarProps = {
   cities: string[]
   citiesLoading: boolean
   onSubmit: () => void
+  propertyType: string
+  onPropertyType: (v: string) => void
+  vehicleMake: string
+  onVehicleMake: (v: string) => void
 }
 
 function fold(s: string): string {
@@ -20,6 +38,7 @@ function fold(s: string): string {
 }
 
 export function HeroSearchBar({
+  category,
   countryId,
   onCountryId,
   city,
@@ -27,11 +46,23 @@ export function HeroSearchBar({
   cities,
   citiesLoading,
   onSubmit,
+  propertyType,
+  onPropertyType,
+  vehicleMake,
+  onVehicleMake,
 }: HeroSearchBarProps) {
   const { t } = useTranslation()
   const listId = useId()
+  const makeListId = useId()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  const makeCatalog = category === 'motorcycle' ? MOTORCYCLE_MAKES : VEHICLE_MAKES
+  const makeSuggestions = useMemo(() => {
+    const q = fold(vehicleMake.trim())
+    if (!q) return makeCatalog.slice(0, 80)
+    return makeCatalog.filter((m) => fold(m).includes(q)).slice(0, 80)
+  }, [makeCatalog, vehicleMake])
 
   const filtered = useMemo(() => {
     const q = fold(city.trim())
@@ -72,6 +103,47 @@ export function HeroSearchBar({
           ))}
         </select>
       </label>
+
+      {category === 'accommodation' && (
+        <label className="ra-search__field ra-search__field--facet">
+          <span className="ra-search__facet-label">{t('search.propertyType')}</span>
+          <select
+            className="ra-search__select"
+            value={propertyType}
+            onChange={(e) => onPropertyType(e.target.value)}
+            aria-label={t('search.propertyType')}
+          >
+            <option value="">{t('search.facetAll')}</option>
+            {ACC_PROPERTY_TYPES.map((id) => (
+              <option key={id} value={id}>
+                {t(`owner.listing.pt.${id}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {(category === 'car' || category === 'motorcycle') && (
+        <label className="ra-search__field ra-search__field--grow ra-search__field--facet">
+          <span className="ra-search__facet-label">
+            {category === 'car' ? t('search.carMake') : t('search.motoMake')}
+          </span>
+          <input
+            type="search"
+            name="make"
+            list={makeListId}
+            placeholder={category === 'car' ? t('search.carMakePh') : t('search.motoMakePh')}
+            value={vehicleMake}
+            onChange={(e) => onVehicleMake(e.target.value)}
+            aria-label={category === 'car' ? t('search.carMake') : t('search.motoMake')}
+          />
+          <datalist id={makeListId}>
+            {makeSuggestions.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        </label>
+      )}
 
       <div className="ra-search__field ra-search__field--grow ra-search__combo" ref={wrapRef}>
         <input

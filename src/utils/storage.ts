@@ -1,12 +1,5 @@
-const INQUIRIES = 'rentadria_inquiries'
 const REPORTS = 'rentadria_reports'
 const LOGGED = 'rentadria_logged_in'
-
-export function saveInquiry(payload: Record<string, string>) {
-  const prev = JSON.parse(localStorage.getItem(INQUIRIES) || '[]') as Record<string, string>[]
-  prev.push({ ...payload, at: new Date().toISOString() })
-  localStorage.setItem(INQUIRIES, JSON.stringify(prev))
-}
 
 export function saveReport(payload: Record<string, string>) {
   const prev = JSON.parse(localStorage.getItem(REPORTS) || '[]') as Record<string, string>[]

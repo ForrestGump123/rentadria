@@ -5,8 +5,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Listing, ListingCategory } from '../types'
 import type { SearchCountryId } from '../data/cities/countryIds'
 import { loadCitiesForCountry } from '../data/cities/loadCities'
-import { listingsByCategory } from '../data/listings'
+import { listingsByCategoryMerged } from '../data/listings'
 import { filterListingsByLocation } from '../utils/locationFilter'
+import { filterListingsBySearchFacets } from '../utils/searchFacets'
 import { Header } from '../components/Header'
 import { HeroSlideshow } from '../components/HeroSlideshow'
 import { SideAdsColumn } from '../components/SideAdsColumn'
@@ -14,6 +15,7 @@ import { FeaturedMarquee } from '../components/FeaturedMarquee'
 import { AdGrid } from '../components/AdGrid'
 import { Footer } from '../components/Footer'
 import { listingImageUrl } from '../utils/imageUrl'
+import { mergePromotedFirst, getPromotedListingsForPlacement } from '../utils/ownerAds'
 import type { SubscriptionPlan } from '../types/plan'
 import { isSubscriptionPlan } from '../types/plan'
 
@@ -30,6 +32,7 @@ export function HomePage() {
     return c && CAT.includes(c) ? c : 'accommodation'
   })
   const [page, setPage] = useState(1)
+  const [adsEpoch, setAdsEpoch] = useState(0)
   const [registrationIntent, setRegistrationIntent] = useState<{
     plan: SubscriptionPlan | null
   } | null>(null)
@@ -38,6 +41,10 @@ export function HomePage() {
   const [draftCity, setDraftCity] = useState('')
   const [appliedCountry, setAppliedCountry] = useState<SearchCountryId | null>(null)
   const [appliedCity, setAppliedCity] = useState('')
+  const [draftPropertyType, setDraftPropertyType] = useState('')
+  const [appliedPropertyType, setAppliedPropertyType] = useState('')
+  const [draftVehicleMake, setDraftVehicleMake] = useState('')
+  const [appliedVehicleMake, setAppliedVehicleMake] = useState('')
 
   const [citiesDraft, setCitiesDraft] = useState<string[]>([])
   const [citiesDraftLoading, setCitiesDraftLoading] = useState(false)
@@ -96,33 +103,66 @@ export function HomePage() {
     }
   }, [appliedCountry])
 
-  const baseList = useMemo(() => listingsByCategory(category), [category])
+  const baseList = useMemo(() => listingsByCategoryMerged(category), [category])
 
   const citiesReady = !appliedCountry || !citiesAppliedLoading
 
-  const gridItems = useMemo(
-    () =>
-      filterListingsByLocation(
-        baseList,
-        appliedCountry,
-        appliedCity || null,
-        citiesApplied.length ? citiesApplied : null,
-        citiesReady,
-      ),
-    [baseList, appliedCountry, appliedCity, citiesApplied, citiesReady],
+  const gridItems = useMemo(() => {
+    const locFiltered = filterListingsByLocation(
+      baseList,
+      appliedCountry,
+      appliedCity || null,
+      citiesApplied.length ? citiesApplied : null,
+      citiesReady,
+    )
+    return filterListingsBySearchFacets(
+      locFiltered,
+      category,
+      category === 'accommodation' ? appliedPropertyType : '',
+      category === 'car' || category === 'motorcycle' ? appliedVehicleMake : '',
+    )
+  }, [
+    baseList,
+    appliedCountry,
+    appliedCity,
+    citiesApplied,
+    citiesReady,
+    category,
+    appliedPropertyType,
+    appliedVehicleMake,
+  ])
+
+  const promoSlides = useMemo(
+    () => getPromotedListingsForPlacement(category, 'slideshow'),
+    [category, adsEpoch],
+  )
+  const promoFeatured = useMemo(
+    () => getPromotedListingsForPlacement(category, 'featured'),
+    [category, adsEpoch],
+  )
+  const promoSide = useMemo(
+    () => getPromotedListingsForPlacement(category, 'sideSlideshow'),
+    [category, adsEpoch],
   )
 
-  const slides = useMemo(() => gridItems.slice(0, 8), [gridItems])
+  const slides = useMemo(
+    () => mergePromotedFirst(promoSlides, gridItems, 8),
+    [gridItems, promoSlides],
+  )
 
   const featured = useMemo(() => {
     const list = gridItems
     const feat = list.filter((l) => l.featured)
     const rest = list.filter((l) => !l.featured)
-    return [...feat, ...rest].slice(0, 24)
-  }, [gridItems])
+    const ordered = [...feat, ...rest]
+    return mergePromotedFirst(promoFeatured, ordered, 24)
+  }, [gridItems, promoFeatured])
 
-  const sideLeft = useMemo(() => gridItems, [gridItems])
-  const sideRight = useMemo(() => [...gridItems].reverse(), [gridItems])
+  const sideLeft = useMemo(() => mergePromotedFirst(promoSide, gridItems), [gridItems, promoSide])
+  const sideRight = useMemo(
+    () => mergePromotedFirst(promoSide, [...gridItems].reverse()),
+    [gridItems, promoSide],
+  )
 
   const ogImage = useMemo(() => {
     const first = slides[0]?.image
@@ -160,6 +200,26 @@ export function HomePage() {
   }, [category])
 
   useEffect(() => {
+    const bump = () => setAdsEpoch((e) => e + 1)
+    window.addEventListener('rentadria-owner-ads-updated', bump)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'rentadria_owner_ad_bookings_v1') bump()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('rentadria-owner-ads-updated', bump)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+
+  useEffect(() => {
+    setDraftPropertyType('')
+    setAppliedPropertyType('')
+    setDraftVehicleMake('')
+    setAppliedVehicleMake('')
+  }, [category])
+
+  useEffect(() => {
     const max = Math.max(1, Math.ceil(gridItems.length / 20))
     if (page > max) setPage(max)
   }, [gridItems.length, page])
@@ -186,8 +246,10 @@ export function HomePage() {
   const onSearchSubmit = useCallback(() => {
     setAppliedCountry(draftCountry)
     setAppliedCity(draftCity.trim())
+    setAppliedPropertyType(draftPropertyType.trim())
+    setAppliedVehicleMake(draftVehicleMake.trim())
     setPage(1)
-  }, [draftCountry, draftCity])
+  }, [draftCountry, draftCity, draftPropertyType, draftVehicleMake])
 
   return (
     <div className="ra-app">
@@ -224,6 +286,10 @@ export function HomePage() {
               cities={citiesDraft}
               citiesLoading={citiesDraftLoading}
               onSearchSubmit={onSearchSubmit}
+              searchPropertyType={draftPropertyType}
+              onSearchPropertyType={setDraftPropertyType}
+              searchVehicleMake={draftVehicleMake}
+              onSearchVehicleMake={setDraftVehicleMake}
             />
           </div>
           <SideAdsColumn side="right" items={sideRight} onOpenListing={openListing} />

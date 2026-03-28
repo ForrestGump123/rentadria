@@ -20,6 +20,10 @@ type HeroSlideshowProps = {
   cities: string[]
   citiesLoading: boolean
   onSearchSubmit: () => void
+  searchPropertyType: string
+  onSearchPropertyType: (v: string) => void
+  searchVehicleMake: string
+  onSearchVehicleMake: (v: string) => void
 }
 
 const FLOAT_ICON: Record<ListingCategory, string> = {
@@ -40,6 +44,10 @@ export function HeroSlideshow({
   cities,
   citiesLoading,
   onSearchSubmit,
+  searchPropertyType,
+  onSearchPropertyType,
+  searchVehicleMake,
+  onSearchVehicleMake,
 }: HeroSlideshowProps) {
   const { t } = useTranslation()
   const { formatPriceLabel } = useCurrency()
@@ -78,6 +86,7 @@ export function HeroSlideshow({
             </h1>
             <p className="ra-hero__subtitle">{t(`${h}.subtitle`)}</p>
             <HeroSearchBar
+              category={category}
               countryId={searchCountryId}
               onCountryId={onSearchCountryId}
               city={searchCity}
@@ -85,6 +94,10 @@ export function HeroSlideshow({
               cities={cities}
               citiesLoading={citiesLoading}
               onSubmit={onSearchSubmit}
+              propertyType={searchPropertyType}
+              onPropertyType={onSearchPropertyType}
+              vehicleMake={searchVehicleMake}
+              onVehicleMake={onSearchVehicleMake}
             />
             <p className="ra-hero__no-slides">{t('search.noResults')}</p>
           </div>
@@ -119,6 +132,7 @@ export function HeroSlideshow({
           <p className="ra-hero__subtitle">{t(`${h}.subtitle`)}</p>
 
           <HeroSearchBar
+            category={category}
             countryId={searchCountryId}
             onCountryId={onSearchCountryId}
             city={searchCity}
@@ -126,6 +140,10 @@ export function HeroSlideshow({
             cities={cities}
             citiesLoading={citiesLoading}
             onSubmit={onSearchSubmit}
+            propertyType={searchPropertyType}
+            onPropertyType={onSearchPropertyType}
+            vehicleMake={searchVehicleMake}
+            onVehicleMake={onSearchVehicleMake}
           />
 
           <div className="ra-stats">

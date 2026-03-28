@@ -5,6 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { buildListingDetail } from '../data/listingDetail'
 import { getListingById, getSimilarListings, LISTING_IMAGE_FALLBACK } from '../data/listings'
+import {
+  buildAccommodationDraftDetail,
+  isAccommodationDraftListingId,
+  loadAccommodationDraftForPublicListingPage,
+  pickDraftLangString,
+} from '../utils/accommodationDraft'
 import { MailAtIcon } from '../components/icons/MailAtIcon'
 import { ContactMessengerIcons } from '../components/listing/ContactMessengerIcons'
 import { Header } from '../components/Header'
@@ -55,12 +61,21 @@ export function ListingPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const listing = id ? getListingById(id) : undefined
-  const displayTitle = useMemo(
-    () => (listing ? listingTitleT(listing, t) : ''),
-    [listing, t, i18n.language],
-  )
+  const displayTitle = useMemo(() => {
+    if (!listing) return ''
+    if (isAccommodationDraftListingId(listing.id)) {
+      const draft = loadAccommodationDraftForPublicListingPage(listing.id)
+      if (draft) return pickDraftLangString(draft.titles, i18n.language)
+    }
+    return listingTitleT(listing, t)
+  }, [listing, t, i18n.language])
   const detail = useMemo(() => {
     if (!listing) return null
+    if (isAccommodationDraftListingId(listing.id)) {
+      const draft = loadAccommodationDraftForPublicListingPage(listing.id)
+      if (!draft) return null
+      return buildAccommodationDraftDetail(draft, t, i18n.language, listing.id)
+    }
     const d = buildListingDetail(listing)
     if (listing.category === 'accommodation') return d
     const title = listingTitleT(listing, t)
@@ -101,7 +116,7 @@ export function ListingPage() {
 
   const share = useCallback(async () => {
     const url = window.location.href
-    const title = listing ? listingTitleT(listing, t) : 'RentAdria'
+    const title = displayTitle || 'RentAdria'
     try {
       if (navigator.share) {
         await navigator.share({ title, url })
@@ -117,7 +132,7 @@ export function ListingPage() {
         /* ignore */
       }
     }
-  }, [listing, t])
+  }, [displayTitle, t])
 
   const downloadPdf = useCallback(async () => {
     if (!pdfRootRef.current || !listing) return
@@ -162,9 +177,15 @@ export function ListingPage() {
     <div className="ra-app">
       <Helmet>
         <title>{`${displayTitle} · RentAdria`}</title>
-        <meta name="description" content={t('listingPage.meta')} />
+        <meta
+          name="description"
+          content={(detail.descriptionIsPlain ? detail.description : t(detail.description)).slice(0, 180)}
+        />
         <meta property="og:title" content={`${displayTitle} · RentAdria`} />
-        <meta property="og:description" content={t('listingPage.meta')} />
+        <meta
+          property="og:description"
+          content={(detail.descriptionIsPlain ? detail.description : t(detail.description)).slice(0, 180)}
+        />
         <meta property="og:image" content={gallery[0] ?? listing.image} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="website" />
@@ -307,40 +328,103 @@ export function ListingPage() {
             </aside>
           </div>
 
-          <div className="ra-detail-tabs">
+          <div className="ra-detail-tabs ra-detail-tabs--pills">
             <button
               type="button"
-              className={`ra-tab ${tab === 'desc' ? 'ra-tab--on' : ''}`}
+              className={`ra-tab-pill ${tab === 'desc' ? 'ra-tab-pill--on' : ''}`}
               onClick={() => setTab('desc')}
             >
               {t('detail.tabs.desc')}
             </button>
             <button
               type="button"
-              className={`ra-tab ${tab === 'chars' ? 'ra-tab--on' : ''}`}
+              className={`ra-tab-pill ${tab === 'chars' ? 'ra-tab-pill--on' : ''}`}
               onClick={() => setTab('chars')}
             >
               {t('detail.tabs.chars')}
             </button>
             <button
               type="button"
-              className={`ra-tab ${tab === 'prices' ? 'ra-tab--on' : ''}`}
+              className={`ra-tab-pill ${tab === 'prices' ? 'ra-tab-pill--on' : ''}`}
               onClick={() => setTab('prices')}
             >
-              {t('detail.tabs.prices')}
+              {listing.category === 'accommodation'
+                ? t('detail.tabs.prices')
+                : t('detail.tabs.pricesVehicle')}
             </button>
           </div>
 
-          <div className="ra-detail-tabpanel">
-            {tab === 'desc' && <p className="ra-detail-copy">{t(detail.description)}</p>}
-            {tab === 'chars' && (
-              <ul className="ra-detail-ul">
-                {detail.characteristics.map((line) => (
-                  <li key={line}>{t(line)}</li>
-                ))}
-              </ul>
+          <div className="ra-detail-tabpanel ra-detail-tabpanel--card">
+            {tab === 'desc' && (
+              <p className="ra-detail-copy ra-detail-copy--pre">
+                {detail.descriptionIsPlain ? detail.description : t(detail.description)}
+              </p>
             )}
-            {tab === 'prices' && <p className="ra-detail-copy">{t(detail.pricesAndPayment)}</p>}
+            {tab === 'chars' &&
+              (detail.characteristicGroups && detail.characteristicGroups.length > 0 ? (
+                <div className="ra-detail-feat-panel">
+                  <div className="ra-detail-feat-grid">
+                    {detail.characteristicGroups.map((g) => (
+                      <div key={g.title} className="ra-detail-feat-col">
+                        <h4 className="ra-detail-feat-col__h">{g.title}</h4>
+                        <ul className="ra-detail-feat-chips">
+                          {g.items.map((item) => (
+                            <li key={item} className="ra-detail-feat-chip">
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <ul className="ra-detail-ul">
+                  {detail.characteristics.map((line) => (
+                    <li key={line}>{detail.characteristicsArePlain ? line : t(line)}</li>
+                  ))}
+                </ul>
+              ))}
+            {tab === 'prices' &&
+              (detail.pricePanel ? (
+                <div className="ra-detail-price-panel">
+                  {detail.pricePanel.paymentSummary ? (
+                    <div className="ra-detail-price-block">
+                      <span className="ra-detail-price-k">{t('detail.prices.paymentHeading')}</span>
+                      <p className="ra-detail-price-v">{detail.pricePanel.paymentSummary}</p>
+                    </div>
+                  ) : null}
+                  {detail.pricePanel.mainPriceDisplay ? (
+                    <div className="ra-detail-price-block ra-detail-price-block--hero">
+                      <span className="ra-detail-price-k">{t('detail.prices.mainPriceHeading')}</span>
+                      <p className="ra-detail-price-hero">
+                        {detail.pricePanel.mainPriceDisplay}
+                        <span className="ra-detail-price-hero-suffix">{detail.pricePanel.mainPriceSuffix}</span>
+                      </p>
+                    </div>
+                  ) : null}
+                  {detail.pricePanel.seasonal.length > 0 ? (
+                    <div className="ra-detail-price-season">
+                      {detail.pricePanel.seasonal.map((s) => (
+                        <div key={s.label} className="ra-detail-price-season-cell">
+                          <span className="ra-detail-price-k">{s.label}</span>
+                          <span className="ra-detail-price-v">{s.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {detail.pricePanel.availableFrom ? (
+                    <div className="ra-detail-price-block">
+                      <span className="ra-detail-price-k">{t('detail.prices.availableFrom')}</span>
+                      <p className="ra-detail-price-v">{detail.pricePanel.availableFrom}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="ra-detail-copy ra-detail-copy--pre">
+                  {detail.pricesArePlain ? detail.pricesAndPayment : t(detail.pricesAndPayment)}
+                </p>
+              ))}
           </div>
 
           <div className="ra-detail-pricebar">
@@ -354,36 +438,51 @@ export function ListingPage() {
             </button>
           </div>
 
-          {showContact && (
-            <section className="ra-owner-card">
-              <div className="ra-owner-head">
-                <h3>{t('detail.owner.title')}</h3>
-                <button type="button" className="ra-btn ra-btn--owner" onClick={() => setInquiryOpen(true)}>
-                  {t('detail.owner.cta')}
-                </button>
-              </div>
-              <p className="ra-owner-name">{detail.owner.displayName}</p>
-              <p className="ra-owner-mail">
-                <span className="ra-owner-mail__ico" aria-hidden>
-                  <MailAtIcon />
-                </span>
-                <a href={`mailto:${detail.owner.email}`}>{detail.owner.email}</a>
-              </p>
-              {detail.owner.phones.map((p, i) => (
-                <div key={p.e164} className="ra-owner-phone-row">
-                  <ContactMessengerIcons
-                    phoneDigits={p.e164.replace(/\D/g, '')}
-                    telegramUsername={detail.owner.telegram}
-                    withTelegram={i === 0}
-                    prefillMessage={t('detail.contact.messagePrefill', { title: displayTitle })}
-                  />
-                  <a className="ra-owner-tel" href={`tel:${p.e164}`}>
-                    {p.display}
-                  </a>
+          {showContact &&
+            detail.publicContacts.map((ownerContact, oci) => (
+              <section key={`${ownerContact.displayName}-${oci}`} className="ra-owner-card">
+                <div className="ra-owner-head">
+                  <h3>{t('detail.owner.title')}</h3>
+                  <button type="button" className="ra-btn ra-btn--owner" onClick={() => setInquiryOpen(true)}>
+                    {t('detail.owner.cta')}
+                  </button>
                 </div>
-              ))}
-            </section>
-          )}
+                <div className="ra-owner-name-row">
+                  {ownerContact.avatarUrl ? (
+                    <img
+                      className="ra-owner-avatar"
+                      src={ownerContact.avatarUrl}
+                      alt=""
+                      width={48}
+                      height={48}
+                    />
+                  ) : null}
+                  <p className="ra-owner-name">{ownerContact.displayName}</p>
+                </div>
+                {detail.contactVisibility !== 'phone' && ownerContact.email ? (
+                  <p className="ra-owner-mail">
+                    <span className="ra-owner-mail__ico" aria-hidden>
+                      <MailAtIcon />
+                    </span>
+                    <a href={`mailto:${ownerContact.email}`}>{ownerContact.email}</a>
+                  </p>
+                ) : null}
+                {detail.contactVisibility !== 'email' &&
+                  ownerContact.phones.map((p, i) => (
+                    <div key={p.e164} className="ra-owner-phone-row">
+                      <ContactMessengerIcons
+                        phoneDigits={p.e164.replace(/\D/g, '')}
+                        telegramUsername={ownerContact.telegram}
+                        withTelegram={i === 0}
+                        prefillMessage={t('detail.contact.messagePrefill', { title: displayTitle })}
+                      />
+                      <a className="ra-owner-tel" href={`tel:${p.e164}`}>
+                        {p.display}
+                      </a>
+                    </div>
+                  ))}
+              </section>
+            ))}
 
           <div className="ra-detail-map-block">
             <ListingMap lat={detail.mapLat} lng={detail.mapLng} />
@@ -391,14 +490,29 @@ export function ListingPage() {
 
           <div className="ra-detail-pdf-snapshot" aria-hidden>
             <h2 className="ra-detail-pdf-h">{t('detail.owner.title')}</h2>
-            <p className="ra-detail-pdf-name">{detail.owner.displayName}</p>
-            <p>
-              <a href={`mailto:${detail.owner.email}`}>{detail.owner.email}</a>
-            </p>
-            {detail.owner.phones.map((p) => (
-              <p key={p.e164}>
-                <a href={`tel:${p.e164}`}>{p.display}</a>
-              </p>
+            {detail.publicContacts.map((ownerContact, oci) => (
+              <div key={`pdf-${oci}`} className="ra-detail-pdf-owner">
+                {ownerContact.avatarUrl ? (
+                  <img
+                    className="ra-detail-pdf-avatar"
+                    src={ownerContact.avatarUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                  />
+                ) : null}
+                <p className="ra-detail-pdf-name">{ownerContact.displayName}</p>
+                {ownerContact.email ? (
+                  <p>
+                    <a href={`mailto:${ownerContact.email}`}>{ownerContact.email}</a>
+                  </p>
+                ) : null}
+                {ownerContact.phones.map((p) => (
+                  <p key={p.e164}>
+                    <a href={`tel:${p.e164}`}>{p.display}</a>
+                  </p>
+                ))}
+              </div>
             ))}
             <h2 className="ra-detail-pdf-h">{t('detail.map.title')}</h2>
             <p>{listing.location}</p>

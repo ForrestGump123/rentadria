@@ -27,5 +27,11 @@ export function verifyAdminPassword(pw: string): boolean {
   return pw === pass
 }
 
-/** Admin login email (Auth modal + server-side check in production) */
+/** Admin login email (Auth modal + admin gate) */
 export const ADMIN_LOGIN_EMAIL = 'info@rentadria.com'
+
+/** Email + password (both must match). */
+export function verifyAdminLogin(email: string, pw: string): boolean {
+  const em = email.trim().toLowerCase()
+  return em === ADMIN_LOGIN_EMAIL.toLowerCase() && verifyAdminPassword(pw)
+}

@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Navigate, NavLink, useNavigate } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { getPricingPlans } from '../content/pricingPlans'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
@@ -12,32 +13,77 @@ const AccommodationListingModal = lazy(() =>
   import('../components/owner/AccommodationListingModal').then((m) => ({ default: m.AccommodationListingModal })),
 )
 import {
+  activateOwnerSubscription,
   clearOwnerSession,
   deleteOwnerListing,
   displayFirstName,
   formatDateDots,
+  getEffectiveUnlockedCategories,
   getOwnerListings,
   getOwnerProfile,
-  getUnlockedCategories,
+  saveBasicCategoryChoice,
   type OwnerListingRow,
 } from '../utils/ownerSession'
+import { ACCOMMODATION_DRAFT_LISTING_ID, hasAccommodationDraft } from '../utils/accommodationDraft'
+import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
+import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
+import { OwnerSettingsPage } from './owner/OwnerSettingsPage'
+import { OwnerInquiriesPage } from './owner/OwnerInquiriesPage'
+import { OwnerMessagesPage } from './owner/OwnerMessagesPage'
+import { OwnerAdsPage } from './owner/OwnerAdsPage'
+import { OwnerForumPage } from './owner/OwnerForumPage'
+import { OwnerCodePage } from './owner/OwnerCodePage'
 
 const CAT_ORDER: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
 
 export function OwnerDashboardPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const [profile] = useState(() => getOwnerProfile())
+  const location = useLocation()
+  const [sessionEpoch, setSessionEpoch] = useState(0)
   const [listVersion, setListVersion] = useState(0)
-  const [activeCat, setActiveCat] = useState<ListingCategory>(() => {
-    const p = getOwnerProfile()
-    const unlocked: ListingCategory[] = p ? getUnlockedCategories(p.plan) : ['accommodation']
-    return unlocked[0] ?? 'accommodation'
-  })
+  const [activeCat, setActiveCat] = useState<ListingCategory>('accommodation')
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false)
   const [accommodationModalOpen, setAccommodationModalOpen] = useState(false)
+  const [listingModalCategory, setListingModalCategory] = useState<'accommodation' | 'car' | 'motorcycle'>(
+    'accommodation',
+  )
+  const [acmodalEditingRowId, setAcmodalEditingRowId] = useState<string | null>(null)
+  const [inquiryEpoch, setInquiryEpoch] = useState(0)
+  const [inquiryUnread, setInquiryUnread] = useState(0)
+
+  useEffect(() => {
+    const onAuth = () => setSessionEpoch((e) => e + 1)
+    window.addEventListener('rentadria-auth', onAuth)
+    return () => window.removeEventListener('rentadria-auth', onAuth)
+  }, [])
+
+  useEffect(() => {
+    const onInv = () => setInquiryEpoch((e) => e + 1)
+    window.addEventListener('rentadria-inquiries-updated', onInv)
+    return () => window.removeEventListener('rentadria-inquiries-updated', onInv)
+  }, [])
+
+  const profile = useMemo(
+    () => (isLoggedIn() ? getOwnerProfile() : null),
+    [sessionEpoch],
+  )
+
+  useEffect(() => {
+    const syncUnread = () => {
+      if (profile) setInquiryUnread(getInquiryUnreadCount(profile.userId))
+    }
+    syncUnread()
+    window.addEventListener('rentadria-inquiry-dashboard-notify', syncUnread)
+    window.addEventListener('rentadria-inquiry-unread-changed', syncUnread)
+    return () => {
+      window.removeEventListener('rentadria-inquiry-dashboard-notify', syncUnread)
+      window.removeEventListener('rentadria-inquiry-unread-changed', syncUnread)
+    }
+  }, [profile])
 
   const reload = useCallback(() => setListVersion((v) => v + 1), [])
+  const refreshProfile = useCallback(() => setSessionEpoch((e) => e + 1), [])
 
   const listings = useMemo(() => {
     if (!profile) return []
@@ -45,9 +91,18 @@ export function OwnerDashboardPage() {
   }, [profile, listVersion])
 
   const unlocked = useMemo(
-    () => (profile ? getUnlockedCategories(profile.plan) : []),
+    () => (profile ? getEffectiveUnlockedCategories(profile) : []),
     [profile],
   )
+
+  const pricingPlans = useMemo(() => getPricingPlans(i18n.language), [i18n.language])
+
+  useEffect(() => {
+    if (!unlocked.length) return
+    if (!unlocked.includes(activeCat)) {
+      setActiveCat(unlocked[0]!)
+    }
+  }, [unlocked, activeCat])
 
   const filtered = useMemo(
     () => listings.filter((l) => l.category === activeCat),
@@ -57,8 +112,9 @@ export function OwnerDashboardPage() {
   const stats = useMemo(() => {
     const views = filtered.reduce((s, x) => s + x.viewsMonth, 0)
     const contacts = filtered.reduce((s, x) => s + x.contactClicksMonth, 0)
-    return { views, contacts, inquiries: 0 }
-  }, [filtered])
+    const inquiries = profile ? countInquiriesThisMonth(profile.userId) : 0
+    return { views, contacts, inquiries }
+  }, [filtered, profile, inquiryEpoch])
 
   const onDelete = useCallback(
     (row: OwnerListingRow) => {
@@ -80,8 +136,19 @@ export function OwnerDashboardPage() {
   }
 
   const firstName = displayFirstName(profile.displayName)
-  const planLabel = t(`pricing.planNames.${profile.plan}`)
-  const planSummary = t(`owner.planSummary.${profile.plan}`)
+  const subscriptionReady = profile.subscriptionActive === true && profile.plan != null
+  const pathSegments = location.pathname.split('/').filter(Boolean)
+  if (!subscriptionReady && pathSegments.length > 1) {
+    return <Navigate to="/owner" replace />
+  }
+  const needsBasicCategory =
+    subscriptionReady &&
+    profile.plan === 'basic' &&
+    (profile.basicCategoryChoice === undefined ||
+      profile.basicCategoryChoice === null)
+
+  const planLabel = profile.plan ? t(`pricing.planNames.${profile.plan}`) : '—'
+  const planSummary = profile.plan ? t(`owner.planSummary.${profile.plan}`) : ''
 
   return (
     <div className="ra-app ra-owner-with-chrome">
@@ -101,48 +168,74 @@ export function OwnerDashboardPage() {
             </span>
             {t('owner.nav.overview')}
           </NavLink>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/inquiries"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               💬
             </span>
             {t('owner.nav.inquiries')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+            {inquiryUnread > 0 && (
+              <span className="ra-owner-nav__badge" aria-label={String(inquiryUnread)}>
+                {inquiryUnread > 99 ? '99+' : inquiryUnread}
+              </span>
+            )}
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/messages"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               ✉️
             </span>
             {t('owner.nav.messages')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/ads"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               📣
             </span>
             {t('owner.nav.ads')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/forum"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               💭
             </span>
             {t('owner.nav.forum')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/code"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               🏷️
             </span>
             {t('owner.nav.enterCode')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/settings"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               ⚙️
             </span>
             {t('owner.nav.settings')}
-          </span>
-          <span className="ra-owner-nav__link ra-owner-nav__link--disabled" title={t('owner.soon')}>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+            to="/owner/profile"
+          >
             <span className="ra-owner-nav__ico" aria-hidden>
               👤
             </span>
             {t('owner.nav.editProfile')}
-          </span>
+          </NavLink>
         </nav>
         <button type="button" className="ra-owner-sidebar__logout" onClick={onLogout}>
           {t('nav.logout')}
@@ -150,156 +243,311 @@ export function OwnerDashboardPage() {
       </aside>
 
       <main className="ra-owner-main">
-        <header className="ra-owner-head">
-          <div>
-            <h1 className="ra-owner-welcome">{t('owner.welcome', { name: firstName })}</h1>
-            <p className="ra-owner-lead">{t('owner.lead')}</p>
-            <p className="ra-owner-plan">
-              <span className="ra-owner-plan__badge">{planLabel}</span>
-              <span className="ra-owner-plan__summary">{planSummary}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            className="ra-btn ra-btn--primary"
-            onClick={() => {
-              if (unlocked.length === 1) {
-                const only = unlocked[0]
-                if (only === 'accommodation') setAccommodationModalOpen(true)
-                else window.alert(t('owner.soon'))
-              } else {
-                setCategoryPickerOpen(true)
-              }
-            }}
-          >
-            {t('owner.newListing')}
-          </button>
-        </header>
-
-        <div className="ra-owner-banner" role="status">
-          {t('owner.datesBanner', {
-            registered: formatDateDots(profile.registeredAt),
-            validUntil: formatDateDots(profile.validUntil),
-          })}
-        </div>
-
-        <div className="ra-owner-tabs" role="tablist" aria-label={t('owner.categoriesAria')}>
-          {CAT_ORDER.filter((c) => unlocked.includes(c)).map((c) => {
-            const active = activeCat === c
-            return (
-              <button
-                key={c}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`ra-owner-tab ${active ? 'ra-owner-tab--active' : ''}`}
-                onClick={() => setActiveCat(c)}
-              >
-                <span className="ra-owner-tab__ico" aria-hidden>
-                  {c === 'accommodation' ? '🏠' : c === 'car' ? '🚗' : '🏍️'}
-                </span>
-                {t(`nav.${c}`)}
-                <span className="ra-owner-tab__check" aria-hidden>
-                  ✓
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        <section className="ra-owner-stats" aria-labelledby="owner-stats-h">
-          <h2 id="owner-stats-h" className="ra-owner-stats__title">
-            {t('owner.statsTitle')}
-          </h2>
-          <div className="ra-owner-stats__grid">
-            <div className="ra-owner-stat ra-owner-stat--views">
-              <strong>{stats.views}</strong>
-              <span>{t('owner.statsViews')}</span>
+        {!subscriptionReady ? (
+          <>
+            <header className="ra-owner-head">
+              <div>
+                <h1 className="ra-owner-welcome">{t('owner.welcome', { name: firstName })}</h1>
+                <p className="ra-owner-lead">{t('owner.onboarding.lead')}</p>
+              </div>
+            </header>
+            <div className="ra-owner-banner" role="status">
+              {t('owner.onboarding.registeredLine', {
+                registered: formatDateDots(profile.registeredAt),
+              })}
             </div>
-            <div className="ra-owner-stat ra-owner-stat--contacts">
-              <strong>{stats.contacts}</strong>
-              <span>{t('owner.statsContacts')}</span>
-            </div>
-            <div className="ra-owner-stat ra-owner-stat--inquiries">
-              <strong>{stats.inquiries}</strong>
-              <span>{t('owner.statsInquiries')}</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="ra-owner-table-section" aria-labelledby="owner-table-h">
-          <div className="ra-owner-table-head">
-            <h2 id="owner-table-h" className="ra-owner-table-section__title">
-              {t('owner.tableTitle', { category: t(`nav.${activeCat}`) })}
+            <h2 className="ra-owner-stats__title" style={{ marginTop: 0 }}>
+              {t('owner.onboarding.plansTitle')}
             </h2>
-          </div>
-
-          <div className="ra-owner-table-wrap">
-            <table className="ra-owner-table">
-              <thead>
-                <tr>
-                  <th>{t('owner.colTitle')}</th>
-                  <th>{t('owner.colViews')}</th>
-                  <th>{t('owner.colContacts')}</th>
-                  <th>{t('owner.colDates')}</th>
-                  <th>{t('owner.colFeatured')}</th>
-                  <th>{t('owner.colNote')}</th>
-                  <th>{t('owner.colActions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="ra-owner-table__empty">
-                      {t('owner.emptyCategory')}
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.title}</td>
-                      <td>{row.viewsMonth}</td>
-                      <td>{row.contactClicksMonth}</td>
-                      <td>
-                        {row.receivedAt} / {row.expiresAt}
-                      </td>
-                      <td>{row.featuredUntil ?? '—'}</td>
-                      <td>{row.internalNote ?? '—'}</td>
-                      <td className="ra-owner-table__actions">
-                        {row.publicListingId ? (
+            <p className="ra-owner-onboarding-note">{t('owner.onboarding.demoNote')}</p>
+            <div className="ra-pricing-grid ra-owner-onboarding-plans">
+              {pricingPlans.map((p) => (
+                <article
+                  key={p.id}
+                  className={`ra-pricing-card ${p.popular ? 'ra-pricing-card--popular' : ''}`}
+                >
+                  <div className="ra-pricing-card__head">
+                    <div className="ra-pricing-card__title-row">
+                      <h3 className="ra-pricing-card__name">{p.name}</h3>
+                      {p.popular && <span className="ra-pricing-card__badge">{t('pricing.badgePopular')}</span>}
+                    </div>
+                    <p className="ra-pricing-card__tagline">{p.tagline}</p>
+                    <p className="ra-pricing-card__price">
+                      <span className="ra-pricing-card__euro">{p.price} €</span>
+                      <span className="ra-pricing-card__period">{t('pricing.perYear')}</span>
+                    </p>
+                  </div>
+                  <ul className="ra-pricing-card__list">
+                    {p.features.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className="ra-btn ra-btn--primary ra-pricing-card__cta"
+                    onClick={() => {
+                      activateOwnerSubscription(profile, p.id)
+                      refreshProfile()
+                    }}
+                  >
+                    {t('pricing.selectPlan')}
+                  </button>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : needsBasicCategory ? (
+          <>
+            <header className="ra-owner-head">
+              <div>
+                <h1 className="ra-owner-welcome">{t('owner.welcome', { name: firstName })}</h1>
+                <p className="ra-owner-lead">{t('owner.lead')}</p>
+                <p className="ra-owner-plan">
+                  <span className="ra-owner-plan__badge">{planLabel}</span>
+                  <span className="ra-owner-plan__summary">{planSummary}</span>
+                </p>
+              </div>
+            </header>
+            <div className="ra-owner-banner" role="status">
+              {t('owner.datesBanner', {
+                registered: formatDateDots(profile.registeredAt),
+                validUntil: formatDateDots(profile.validUntil),
+              })}
+            </div>
+            <div className="ra-owner-basic-pick">
+              <div className="ra-owner-basic-pick__callout" role="alert">
+                {t('owner.basicPick.callout')}
+              </div>
+              <h2 className="ra-owner-basic-pick__title">{t('owner.basicPick.title')}</h2>
+              <div className="ra-owner-catpick__grid">
+                {CAT_ORDER.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="ra-owner-catpick__card"
+                    onClick={() => {
+                      saveBasicCategoryChoice(profile, c)
+                      refreshProfile()
+                    }}
+                  >
+                    <span className="ra-owner-catpick__ico" aria-hidden>
+                      {c === 'accommodation' ? '🏠' : c === 'car' ? '🚗' : '🏍️'}
+                    </span>
+                    <span className="ra-owner-catpick__label">{t(`nav.${c}`)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <Routes>
+              <Route
+                index
+                element={
+                  <>
+                    <header className="ra-owner-head">
+                      <div>
+                        <h1 className="ra-owner-welcome">{t('owner.welcome', { name: firstName })}</h1>
+                        <p className="ra-owner-lead">{t('owner.lead')}</p>
+                        <p className="ra-owner-plan">
+                          <span className="ra-owner-plan__badge">{planLabel}</span>
+                          <span className="ra-owner-plan__summary">{planSummary}</span>
+                        </p>
+                      </div>
+                      <div className="ra-owner-head__btns">
+                        {hasAccommodationDraft() && (
                           <button
                             type="button"
-                            className="ra-btn ra-btn--ghost ra-btn--sm"
-                            onClick={() => navigate(`/listing/${row.publicListingId}`)}
+                            className="ra-btn ra-btn--ghost"
+                            onClick={() => navigate(`/listing/${ACCOMMODATION_DRAFT_LISTING_ID}`)}
                           >
-                            {t('owner.actionView')}
+                            {t('owner.previewDraft')}
                           </button>
-                        ) : (
-                          <span className="ra-owner-table__muted">—</span>
                         )}
                         <button
                           type="button"
-                          className="ra-btn ra-btn--primary ra-btn--sm"
-                          disabled
-                          title={t('owner.soon')}
+                          className="ra-btn ra-btn--primary"
+                          onClick={() => setCategoryPickerOpen(true)}
                         >
-                          {t('owner.actionEdit')}
+                          {t('owner.newListing')}
                         </button>
-                        <button
-                          type="button"
-                          className="ra-btn ra-btn--danger ra-btn--sm"
-                          onClick={() => onDelete(row)}
-                        >
-                          {t('owner.actionDelete')}
-                        </button>
-                      </td>
+                      </div>
+                    </header>
+
+                    <div className="ra-owner-banner" role="status">
+              {t('owner.datesBanner', {
+                registered: formatDateDots(profile.registeredAt),
+                validUntil: formatDateDots(profile.validUntil),
+              })}
+            </div>
+
+            <div className="ra-owner-tabs" role="tablist" aria-label={t('owner.categoriesAria')}>
+              {CAT_ORDER.filter((c) => unlocked.includes(c)).map((c) => {
+                const active = activeCat === c
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={`ra-owner-tab ${active ? 'ra-owner-tab--active' : ''}`}
+                    onClick={() => setActiveCat(c)}
+                  >
+                    <span className="ra-owner-tab__ico" aria-hidden>
+                      {c === 'accommodation' ? '🏠' : c === 'car' ? '🚗' : '🏍️'}
+                    </span>
+                    {t(`nav.${c}`)}
+                    <span className="ra-owner-tab__check" aria-hidden>
+                      ✓
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <section className="ra-owner-stats" aria-labelledby="owner-stats-h">
+              <h2 id="owner-stats-h" className="ra-owner-stats__title">
+                {t('owner.statsTitle')}
+              </h2>
+              <div className="ra-owner-stats__grid">
+                <div className="ra-owner-stat ra-owner-stat--views">
+                  <strong>{stats.views}</strong>
+                  <span>{t('owner.statsViews')}</span>
+                </div>
+                <div className="ra-owner-stat ra-owner-stat--contacts">
+                  <strong>{stats.contacts}</strong>
+                  <span>{t('owner.statsContacts')}</span>
+                </div>
+                <div className="ra-owner-stat ra-owner-stat--inquiries">
+                  <strong>{stats.inquiries}</strong>
+                  <span>{t('owner.statsInquiries')}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="ra-owner-table-section" aria-labelledby="owner-table-h">
+              <div className="ra-owner-table-head">
+                <h2 id="owner-table-h" className="ra-owner-table-section__title">
+                  {t('owner.tableTitle', { category: t(`nav.${activeCat}`) })}
+                </h2>
+              </div>
+
+              <div className="ra-owner-table-wrap">
+                <table className="ra-owner-table">
+                  <thead>
+                    <tr>
+                      <th>{t('owner.colTitle')}</th>
+                      <th>{t('owner.colViews')}</th>
+                      <th>{t('owner.colContacts')}</th>
+                      <th>{t('owner.colDates')}</th>
+                      <th>{t('owner.colFeatured')}</th>
+                      <th>{t('owner.colNote')}</th>
+                      <th>{t('owner.colActions')}</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="ra-owner-table__empty">
+                          {t('owner.emptyCategory')}
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.title}</td>
+                          <td>{row.viewsMonth}</td>
+                          <td>{row.contactClicksMonth}</td>
+                          <td>
+                            {row.receivedAt} / {row.expiresAt}
+                          </td>
+                          <td>{row.featuredUntil ?? '—'}</td>
+                          <td>{row.internalNote ?? '—'}</td>
+                          <td className="ra-owner-table__actions">
+                            {row.publicListingId ? (
+                              <button
+                                type="button"
+                                className="ra-btn ra-btn--ghost ra-btn--sm"
+                                onClick={() => navigate(`/listing/${row.publicListingId}`)}
+                              >
+                                {t('owner.actionView')}
+                              </button>
+                            ) : (
+                              <span className="ra-owner-table__muted">—</span>
+                            )}
+                            <button
+                              type="button"
+                              className="ra-btn ra-btn--primary ra-btn--sm"
+                              disabled={
+                                row.category !== 'accommodation' &&
+                                row.category !== 'car' &&
+                                row.category !== 'motorcycle'
+                              }
+                              title={
+                                row.category !== 'accommodation' &&
+                                row.category !== 'car' &&
+                                row.category !== 'motorcycle'
+                                  ? t('owner.soon')
+                                  : undefined
+                              }
+                              onClick={() => {
+                                if (
+                                  row.category !== 'accommodation' &&
+                                  row.category !== 'car' &&
+                                  row.category !== 'motorcycle'
+                                )
+                                  return
+                                setListingModalCategory(
+                                  row.category === 'car'
+                                    ? 'car'
+                                    : row.category === 'motorcycle'
+                                      ? 'motorcycle'
+                                      : 'accommodation',
+                                )
+                                setAcmodalEditingRowId(row.id)
+                                setAccommodationModalOpen(true)
+                              }}
+                            >
+                              {t('owner.actionEdit')}
+                            </button>
+                            <button
+                              type="button"
+                              className="ra-btn ra-btn--danger ra-btn--sm"
+                              onClick={() => onDelete(row)}
+                            >
+                              {t('owner.actionDelete')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+                  </>
+                }
+              />
+              <Route path="inquiries" element={<OwnerInquiriesPage ownerUserId={profile.userId} />} />
+              <Route
+                path="messages"
+                element={<OwnerMessagesPage ownerUserId={profile.userId} ownerEmail={profile.email} />}
+              />
+              <Route path="ads" element={<OwnerAdsPage profile={profile} />} />
+              <Route path="forum" element={<OwnerForumPage profile={profile} />} />
+              <Route path="code" element={<OwnerCodePage profile={profile} />} />
+              <Route
+                path="settings"
+                element={<OwnerSettingsPage profile={profile} refreshProfile={refreshProfile} />}
+              />
+              <Route
+                path="profile"
+                element={<OwnerEditProfilePage profile={profile} refreshProfile={refreshProfile} />}
+              />
+            </Routes>
+          </>
+        )}
 
         <p className="ra-owner-privacy">{t('owner.privacyNote')}</p>
       </main>
@@ -308,16 +556,28 @@ export function OwnerDashboardPage() {
       <Footer />
 
       <CategoryPickerModal
-        open={categoryPickerOpen}
+        open={
+          categoryPickerOpen &&
+          subscriptionReady &&
+          !needsBasicCategory &&
+          profile.plan != null
+        }
         onClose={() => setCategoryPickerOpen(false)}
         unlocked={unlocked}
         onPick={(c) => {
-          if (c === 'accommodation') setAccommodationModalOpen(true)
-          else window.alert(t('owner.soon'))
+          setListingModalCategory(
+            c === 'car' ? 'car' : c === 'motorcycle' ? 'motorcycle' : 'accommodation',
+          )
+          setAcmodalEditingRowId(null)
+          setAccommodationModalOpen(true)
         }}
       />
 
-      {profile && accommodationModalOpen && (
+      {profile &&
+        accommodationModalOpen &&
+        subscriptionReady &&
+        !needsBasicCategory &&
+        profile.plan != null && (
         <Suspense
           fallback={
             <div className="ra-modal" style={{ zIndex: 130 }} role="status" aria-live="polite">
@@ -329,8 +589,14 @@ export function OwnerDashboardPage() {
         >
           <AccommodationListingModal
             open
-            onClose={() => setAccommodationModalOpen(false)}
+            formCategory={listingModalCategory}
+            onClose={() => {
+              setAccommodationModalOpen(false)
+              setAcmodalEditingRowId(null)
+            }}
             profile={profile}
+            onSaved={reload}
+            editingOwnerRowId={acmodalEditingRowId}
           />
         </Suspense>
       )}

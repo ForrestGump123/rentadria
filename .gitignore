@@ -15,6 +15,17 @@ dist-ssr
 .env.*
 !.env.example
 
+# Lokalni tajni fajlovi (ne commitovati)
+*supabase*API*.txt
+*instagram*token*.txt
+*Instagram*Business*.txt
+secrets/
+*.pem
+*.p12
+
+# Lokalni brojač posjeta (api/track-visit) — na Vercelu se ne persistira u fajl
+api/data/site-visits.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,5 +1,17 @@
 import type { Listing, ListingCategory } from '../types'
+import { getAllOwnerListingRows } from '../utils/ownerSession'
 import { dedupeListings, isDuplicateListing, listingFingerprint } from '../utils/listingFingerprint'
+import {
+  ACCOMMODATION_DRAFT_LISTING_ID,
+  ACCOMMODATION_DRAFT_LS_KEY,
+  CAR_DRAFT_LS_KEY,
+  MOTO_DRAFT_LS_KEY,
+  listingFromAccommodationDraft,
+  loadAccommodationDraft,
+  OWNER_ACCOMMODATION_DRAFT_ID_PREFIX,
+  OWNER_CAR_DRAFT_ID_PREFIX,
+  OWNER_MOTO_DRAFT_ID_PREFIX,
+} from '../utils/accommodationDraft'
 
 export { isDuplicateListing, listingFingerprint }
 
@@ -162,6 +174,26 @@ const builtListings: Listing[] = raw.map((r) => {
 export const allListings: Listing[] = dedupeListings(builtListings)
 
 export function getListingById(id: string): Listing | undefined {
+  if (id === ACCOMMODATION_DRAFT_LISTING_ID) {
+    const d = loadAccommodationDraft()
+    return d ? listingFromAccommodationDraft(d, id) : undefined
+  }
+  if (id.startsWith(OWNER_ACCOMMODATION_DRAFT_ID_PREFIX)) {
+    const rowId = id.slice(OWNER_ACCOMMODATION_DRAFT_ID_PREFIX.length)
+    const d =
+      loadAccommodationDraft(`${ACCOMMODATION_DRAFT_LS_KEY}::${rowId}`) ?? loadAccommodationDraft()
+    return d ? listingFromAccommodationDraft(d, id) : undefined
+  }
+  if (id.startsWith(OWNER_CAR_DRAFT_ID_PREFIX)) {
+    const rowId = id.slice(OWNER_CAR_DRAFT_ID_PREFIX.length)
+    const d = loadAccommodationDraft(`${CAR_DRAFT_LS_KEY}::${rowId}`)
+    return d ? listingFromAccommodationDraft(d, id) : undefined
+  }
+  if (id.startsWith(OWNER_MOTO_DRAFT_ID_PREFIX)) {
+    const rowId = id.slice(OWNER_MOTO_DRAFT_ID_PREFIX.length)
+    const d = loadAccommodationDraft(`${MOTO_DRAFT_LS_KEY}::${rowId}`)
+    return d ? listingFromAccommodationDraft(d, id) : undefined
+  }
   return allListings.find((l) => l.id === id)
 }
 
@@ -176,6 +208,25 @@ export function listingsByCategory(category: ListingCategory): Listing[] {
   return allListings
     .filter((l) => l.category === category)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+}
+
+/** Demo oglasi + javni oglasi iz nacrta vlasnika (localStorage). */
+export function listingsByCategoryMerged(category: ListingCategory): Listing[] {
+  const base = listingsByCategory(category)
+  const rows = getAllOwnerListingRows().filter((r) => r.category === category && r.publicListingId)
+  const seen = new Set(base.map((x) => x.id))
+  const extra: Listing[] = []
+  for (const r of rows) {
+    const pid = r.publicListingId!
+    const l = getListingById(pid)
+    if (l && l.category === category && !seen.has(l.id)) {
+      extra.push(l)
+      seen.add(l.id)
+    }
+  }
+  return [...base, ...extra].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
 }
 
 export function featuredForCategory(category: ListingCategory): Listing[] {

@@ -4,13 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Footer } from '../components/Footer'
 import { verifyEmailToken } from '../lib/verifyEmailToken'
-import { isSubscriptionPlan } from '../types/plan'
-import {
-  addOneYearIso,
-  saveOwnerProfile,
-  seedOwnerListingsIfEmpty,
-  type OwnerProfile,
-} from '../utils/ownerSession'
+import { saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 
 const STORAGE_KEY = 'rentadria_verify_ctx'
 
@@ -32,17 +26,16 @@ export function VerifyCodePage() {
       void verifyEmailToken(token)
         .then((data) => {
           if (cancelled) return
-          const plan = isSubscriptionPlan(data.plan) ? data.plan : 'basic'
           const profile: OwnerProfile = {
             userId: data.email,
             email: data.email,
             displayName: data.name.trim() || data.email.split('@')[0],
-            plan,
+            plan: null,
+            subscriptionActive: false,
             registeredAt: new Date().toISOString(),
-            validUntil: addOneYearIso(),
+            validUntil: '',
           }
           saveOwnerProfile(profile)
-          seedOwnerListingsIfEmpty(profile)
           try {
             sessionStorage.removeItem(STORAGE_KEY)
           } catch {

@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { sendSafe500, send429 } from './lib/apiSafe'
+import { clientIp, rateLimit } from './lib/rateLimitIp'
 import { signVerifyToken } from './lib/verifyJwt'
 import { sendTransactionalEmail } from './lib/sendBrevoMail'
 
@@ -25,6 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  const ip = clientIp(req)
   try {
     const raw = req.body
     const body =
@@ -52,6 +55,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
+    if (
+      !rateLimit(`reg:email:${email}`, 4, 86_400_000) ||
+      !rateLimit(`reg:ip:${ip}`, 8, 3_600_000)
+    ) {
+      send429(res)
+      return
+    }
+
     const token = await signVerifyToken({ email, name, plan })
     const base = siteBase(req)
     const verifyUrl = `${base}/verify?token=${encodeURIComponent(token)}`
@@ -74,9 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ ok: true })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'unknown'
-    console.error('send-verification', msg)
-    res.status(500).json({ error: msg })
+    sendSafe500(res, e, 'send-verification')
   }
 }
 

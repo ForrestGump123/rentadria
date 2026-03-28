@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../types'
 import type { SubscriptionPlan } from '../types/plan'
@@ -67,6 +67,7 @@ export function Header({
   registrationIntent,
   onConsumedRegistrationIntent,
 }: HeaderProps) {
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const { currency, setCurrency } = useCurrency()
   const [authOpen, setAuthOpen] = useState(false)
@@ -140,6 +141,7 @@ export function Header({
                   onClick={() => {
                     clearOwnerSession()
                     setLogged(false)
+                    navigate('/', { replace: true })
                   }}
                 >
                   {t('nav.logout')}

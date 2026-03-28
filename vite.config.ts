@@ -13,4 +13,20 @@ function productionBase(): string {
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'build' ? productionBase() : '/',
+  server: {
+    proxy: {
+      '/api/lt': {
+        target: 'https://libretranslate.de',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/lt/, ''),
+        secure: true,
+      },
+      '/api/lt2': {
+        target: 'https://translate.argosopentech.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/lt2/, ''),
+        secure: true,
+      },
+    },
+  },
 }))

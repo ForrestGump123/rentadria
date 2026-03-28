@@ -2,8 +2,16 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Logo } from '../Logo'
+import { sendOwnerInquiryEmail } from '../../lib/sendOwnerInquiryEmail'
 import { openMailto } from '../../utils/mailto'
-import { saveInquiry } from '../../utils/storage'
+import { getInquiryNotificationPrefs } from '../../utils/inquiryNotificationPrefs'
+import {
+  appendVisitorInquiry,
+  bumpInquiryUnread,
+  dispatchInquiriesUpdated,
+  getListingInquiryNotifyEmail,
+  resolveOwnerUserIdForListing,
+} from '../../utils/visitorInquiries'
 
 type InquiryModalProps = {
   open: boolean
@@ -38,9 +46,53 @@ export function InquiryModal({ open, onClose, listingTitle, listingId }: Inquiry
       '',
       message,
     ].join('\n')
-    saveInquiry({ listingId, first, last, email, phone, period, guests, message })
-    openMailto('info@rentadria.com', `Inquiry: ${listingTitle}`, body)
-    onClose()
+    const ownerUserId = resolveOwnerUserIdForListing(listingId)
+    const notifyTo = getListingInquiryNotifyEmail(listingId) ?? 'info@rentadria.com'
+
+    void (async () => {
+      if (ownerUserId) {
+        appendVisitorInquiry(ownerUserId, {
+          listingId,
+          listingTitle,
+          first,
+          last,
+          email,
+          phone,
+          period,
+          guests,
+          message,
+        })
+        const prefs = getInquiryNotificationPrefs(ownerUserId)
+        const shouldEmail = prefs.receiveEnabled && prefs.emailChannel
+        const shouldDashboard = prefs.receiveEnabled && prefs.dashboardChannel
+
+        if (shouldEmail) {
+          try {
+            await sendOwnerInquiryEmail({
+              toEmail: notifyTo,
+              listingTitle,
+              listingId,
+              guestFirst: first,
+              guestLast: last,
+              guestEmail: email,
+              guestPhone: phone,
+              period,
+              guests,
+              message,
+            })
+          } catch {
+            openMailto(notifyTo, `Inquiry: ${listingTitle}`, body)
+          }
+        }
+        if (shouldDashboard) {
+          bumpInquiryUnread(ownerUserId)
+        }
+      } else {
+        openMailto(notifyTo, `Inquiry: ${listingTitle}`, body)
+      }
+      dispatchInquiriesUpdated()
+      onClose()
+    })()
   }
 
   return (

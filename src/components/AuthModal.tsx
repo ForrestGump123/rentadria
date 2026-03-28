@@ -6,16 +6,11 @@ import { Logo } from './Logo'
 import { MailAtIcon } from './icons/MailAtIcon'
 import { isRegistrationCountry, REGISTRATION_COUNTRIES } from '../registrationCountries'
 import { isValidRegisterPassword } from '../utils/passwordValidation'
+import { sha256Hex } from '../utils/passwordHash'
 import { isValidRegisterPhone } from '../utils/phoneValidation'
 import type { SubscriptionPlan } from '../types/plan'
-import type { OwnerProfile } from '../utils/ownerSession'
-import {
-  addOneYearIso,
-  getOwnerProfile,
-  saveOwnerProfile,
-  seedOwnerListingsIfEmpty,
-} from '../utils/ownerSession'
-import { setAdminSession, verifyAdminPassword, ADMIN_LOGIN_EMAIL } from '../utils/adminSession'
+import { getOwnerProfile, saveOwnerProfile } from '../utils/ownerSession'
+import { setAdminSession, verifyAdminLogin } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import { setLoggedIn } from '../utils/storage'
 
@@ -49,10 +44,12 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
+  const [loginErr, setLoginErr] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     setSubmitted(false)
+    setLoginErr(null)
     setEmail('')
     setPassword('')
     setShowPassword(false)
@@ -69,10 +66,11 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
   const loginSubmit = (e: FormEvent) => {
     e.preventDefault()
     setSubmitted(true)
+    setLoginErr(null)
     if (!isValidEmail(email) || !password.trim()) return
     const em = email.trim().toLowerCase()
 
-    if (em === ADMIN_LOGIN_EMAIL.toLowerCase() && verifyAdminPassword(password)) {
+    if (verifyAdminLogin(email, password)) {
       setAdminSession(true)
       setLoggedIn(false)
       onClose()
@@ -80,26 +78,33 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
       return
     }
 
-    const existing = getOwnerProfile()
-    if (existing && existing.email === em) {
+    void (async () => {
+      const existing = getOwnerProfile()
+      if (!existing) {
+        setLoginErr(t('auth.loginNotRegistered'))
+        return
+      }
+      const existingEmail = existing.email.trim().toLowerCase()
+      if (existingEmail !== em) {
+        setLoginErr(t('auth.loginWrongEmail'))
+        return
+      }
+      if (existing.passwordHash) {
+        const h = await sha256Hex(password)
+        if (h !== existing.passwordHash) {
+          setLoginErr(t('auth.loginPasswordWrong'))
+          return
+        }
+      } else {
+        saveOwnerProfile({
+          ...existing,
+          passwordHash: await sha256Hex(password),
+        })
+      }
       setLoggedIn(true)
       onClose()
       navigate('/owner', { replace: true })
-      return
-    }
-    const profile: OwnerProfile = {
-      userId: em,
-      email: em,
-      displayName: em.split('@')[0],
-      plan: 'basic',
-      registeredAt: new Date().toISOString(),
-      validUntil: addOneYearIso(),
-    }
-    saveOwnerProfile(profile)
-    seedOwnerListingsIfEmpty(profile)
-    setLoggedIn(true)
-    onClose()
-    navigate('/owner', { replace: true })
+    })()
   }
 
   const registerSubmit = async (e: FormEvent) => {
@@ -281,6 +286,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
               {mode === 'register' ? t('auth.passwordError') : t('auth.passwordRequired')}
             </span>
           )}
+          {mode === 'login' && loginErr && <span className="ra-fld__err">{loginErr}</span>}
         </label>
 
         {mode === 'register' && (

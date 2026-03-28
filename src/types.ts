@@ -14,4 +14,8 @@ export interface Listing {
   featured?: boolean
   /** Admin verified in person */
   verified?: boolean
+  /** Smještaj: `propertyType` iz nacrta vlasnika (pretraga) */
+  ownerPropertyType?: string
+  /** Auto / moto: marka iz nacrta vlasnika (pretraga) */
+  ownerVehicleMake?: string
 }
