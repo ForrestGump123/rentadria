@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { sendSafe500, send429 } from './lib/apiSafe.js'
-import { clientIp, rateLimit } from './lib/rateLimitIp.js'
-import { signVerifyToken } from './lib/verifyJwt.js'
-import { sendTransactionalEmail } from './lib/sendBrevoMail.js'
+import { sendSafe500, send429 } from '../server/lib/apiSafe.js'
+import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { signVerifyToken } from '../server/lib/verifyJwt.js'
+import { sendTransactionalEmail } from '../server/lib/sendBrevoMail.js'
 
 function siteBase(req: VercelRequest): string {
   const explicit = process.env.SITE_URL?.trim()

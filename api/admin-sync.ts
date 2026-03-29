@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { send429 } from './lib/apiSafe.js'
-import { clientIp, rateLimit } from './lib/rateLimitIp.js'
+import { send429 } from '../server/lib/apiSafe.js'
+import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 
 type SyncBody = {
   scope?: 'owner' | 'site'

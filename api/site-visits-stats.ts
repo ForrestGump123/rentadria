@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { sendSafe500, send429 } from './lib/apiSafe.js'
-import { clientIp, rateLimit } from './lib/rateLimitIp.js'
+import { sendSafe500, send429 } from '../server/lib/apiSafe.js'
+import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import {
   enumerateLastNDaysBelgrade,
   enumerateLastNMonthsBelgrade,
-} from './lib/belgradeDate.js'
+} from '../server/lib/belgradeDate.js'
 import {
   dayBreakdown,
   dayTotal,
@@ -14,7 +14,7 @@ import {
   yearBreakdown,
   yearTotal,
   yearsInData,
-} from './lib/siteVisitsStore.js'
+} from '../server/lib/siteVisitsStore.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {

@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { sendSafe500 } from './lib/apiSafe.js'
-import { geoFromRequest } from './lib/geoFromRequest.js'
-import { rateLimitIp, clientIp } from './lib/rateLimitIp.js'
-import { recordVisit } from './lib/siteVisitsStore.js'
+import { sendSafe500 } from '../server/lib/apiSafe.js'
+import { geoFromRequest } from '../server/lib/geoFromRequest.js'
+import { rateLimitIp, clientIp } from '../server/lib/rateLimitIp.js'
+import { recordVisit } from '../server/lib/siteVisitsStore.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 

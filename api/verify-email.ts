@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { send429 } from './lib/apiSafe.js'
-import { clientIp, rateLimit } from './lib/rateLimitIp.js'
-import { verifyVerifyToken } from './lib/verifyJwt.js'
+import { send429 } from '../server/lib/apiSafe.js'
+import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { verifyVerifyToken } from '../server/lib/verifyJwt.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {

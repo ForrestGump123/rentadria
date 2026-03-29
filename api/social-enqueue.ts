@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { sendSafe500, send429 } from './lib/apiSafe.js'
-import { getSupabaseAdmin } from './lib/supabaseAdmin.js'
-import { clientIp, rateLimit } from './lib/rateLimitIp.js'
+import { sendSafe500, send429 } from '../server/lib/apiSafe.js'
+import { getSupabaseAdmin } from '../server/lib/supabaseAdmin.js'
+import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 
 function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
