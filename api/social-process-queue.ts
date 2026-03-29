@@ -107,18 +107,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
     const imageUrl = pub.publicUrl
 
+    const listingUrl = `${siteUrl}/listing/${encodeURIComponent(listingPublicId)}`
+    const titleFromSite = (payload.title || 'Oglas').trim()
+    const titleLine = `${titleFromSite} #${displayId}`
+    const phoneLine = payload.phone?.trim() || '—'
+
+    /** Univerzalni caption (Instagram + Facebook); podaci po oglasu iz payloada reda. */
     let caption = [
-      `${payload.title || 'Oglas'} #${displayId}`,
-      payload.location || '',
-      payload.priceLabel || '',
-      payload.phone ? `📞 ${payload.phone}` : '',
+      `🌊 ${titleLine} 🏠`,
       '',
-      `${siteUrl}/listing/${encodeURIComponent(listingPublicId)}`,
+      'Tražite savršen boravak ili prevoz na Jadranu i Mediteranu? Povežite se direktno sa vlasnikom i uštedite na provizijama.',
       '',
-      '#RentAdria',
-    ]
-      .filter(Boolean)
-      .join('\n')
+      `🔗 Detaljnije na: ${listingUrl}`,
+      `📞 Kontaktirajte vlasnika direktno: ${phoneLine}`,
+      '',
+      '#RentAdria #Travel #Montenegro #BalkanTravel #Accommodation #RentACar #MotoRent #NoCommission',
+    ].join('\n')
     if (caption.length > 2100) caption = caption.slice(0, 2100)
 
     const warnings: string[] = []
