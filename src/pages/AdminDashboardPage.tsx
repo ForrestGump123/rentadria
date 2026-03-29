@@ -16,14 +16,20 @@ import { getUnreadThreadCountForAdmin } from '../utils/ownerAdminMessages'
 import { getAdminReviewUnreadCount } from '../utils/reviewStorage'
 import { getAdminReportsUnreadCount } from '../utils/storage'
 import { getAdminVisitorInquiryUnreadCount } from '../utils/visitorInquiries'
+import { AdminBannersPage } from './admin/AdminBannersPage'
 import { AdminDeletedOwnersPage } from './admin/AdminDeletedOwnersPage'
+import { AdminEngagementPage } from './admin/AdminEngagementPage'
+import { AdminExpiringPage } from './admin/AdminExpiringPage'
 import { AdminImagesPage } from './admin/AdminImagesPage'
 import { AdminImportPage } from './admin/AdminImportPage'
 import { AdminInquiriesPage } from './admin/AdminInquiriesPage'
+import { AdminLegalEditorPage } from './admin/AdminLegalEditorPage'
 import { AdminListingsPage } from './admin/AdminListingsPage'
 import { AdminOwnersPage } from './admin/AdminOwnersPage'
 import { AdminOwnerMessagesPage } from './admin/AdminOwnerMessagesPage'
+import { AdminPausedPage } from './admin/AdminPausedPage'
 import { AdminPlaceholderPage } from './admin/AdminPlaceholderPage'
+import { AdminPricingPage } from './admin/AdminPricingPage'
 import { AdminPromoPage } from './admin/AdminPromoPage'
 import { AdminReportsPage } from './admin/AdminReportsPage'
 import { AdminReviewsPage } from './admin/AdminReviewsPage'
@@ -39,6 +45,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { id: 'overview', labelKey: 'admin.nav.overview', to: '/admin' },
   { id: 'visits', labelKey: 'admin.nav.visits', to: '/admin/visits' },
+  { id: 'engagement', labelKey: 'admin.nav.engagement', to: '/admin/engagement' },
   { id: 'listings', labelKey: 'admin.nav.listings', to: '/admin/listings' },
   { id: 'owners', labelKey: 'admin.nav.owners', to: '/admin/owners' },
   { id: 'deletedOwners', labelKey: 'admin.nav.deletedOwners', to: '/admin/deleted-owners' },
@@ -53,16 +60,17 @@ const NAV: NavItem[] = [
   { id: 'expiring', labelKey: 'admin.nav.expiring', to: '/admin/expiring' },
   { id: 'paused', labelKey: 'admin.nav.paused', to: '/admin/paused' },
   { id: 'banners', labelKey: 'admin.nav.banners', to: '/admin/banners' },
-  { id: 'pricing', labelKey: 'admin.nav.pricing', to: '/pricing' },
-  { id: 'terms', labelKey: 'admin.nav.terms', to: '/terms' },
-  { id: 'privacy', labelKey: 'admin.nav.privacy', to: '/privacy' },
-  { id: 'faq', labelKey: 'admin.nav.faq', to: '/faq' },
+  { id: 'pricing', labelKey: 'admin.nav.pricing', to: '/admin/pricing' },
+  { id: 'terms', labelKey: 'admin.nav.terms', to: '/admin/legal/terms' },
+  { id: 'privacy', labelKey: 'admin.nav.privacy', to: '/admin/legal/privacy' },
+  { id: 'faq', labelKey: 'admin.nav.faq', to: '/admin/legal/faq' },
   { id: 'import', labelKey: 'admin.nav.import', to: '/admin/import' },
 ]
 
 const NAV_ICONS: Record<string, string> = {
   overview: '📊',
   visits: '🇲🇪',
+  engagement: '📈',
   listings: '📋',
   owners: '👥',
   deletedOwners: '🗑️',
@@ -84,7 +92,7 @@ const NAV_ICONS: Record<string, string> = {
   import: '📥',
 }
 
-const ADMIN_PLACEHOLDER_IDS = ['users', 'expiring', 'paused', 'banners'] as const
+const ADMIN_PLACEHOLDER_IDS = ['users'] as const
 
 export function AdminDashboardPage() {
   const { t } = useTranslation()
@@ -328,6 +336,7 @@ export function AdminDashboardPage() {
               }
             />
             <Route path="visits" element={<AdminVisitsPage />} />
+            <Route path="engagement" element={<AdminEngagementPage />} />
             <Route path="listings" element={<AdminListingsPage />} />
             <Route path="owners" element={<AdminOwnersPage />} />
             <Route path="deleted-owners" element={<AdminDeletedOwnersPage />} />
@@ -339,6 +348,11 @@ export function AdminDashboardPage() {
             <Route path="images" element={<AdminImagesPage />} />
             <Route path="staff" element={<AdminStaffPage />} />
             <Route path="promo" element={<AdminPromoPage />} />
+            <Route path="expiring" element={<AdminExpiringPage />} />
+            <Route path="paused" element={<AdminPausedPage />} />
+            <Route path="banners" element={<AdminBannersPage />} />
+            <Route path="pricing" element={<AdminPricingPage />} />
+            <Route path="legal/:page" element={<AdminLegalEditorPage />} />
             {ADMIN_PLACEHOLDER_IDS.map((id) => (
               <Route
                 key={id}

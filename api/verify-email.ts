@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { send429 } from '../server/lib/apiSafe.js'
+import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { verifyVerifyToken } from '../server/lib/verifyJwt.js'
 
@@ -20,14 +21,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const raw = req.body
-    const body =
-      raw && typeof raw === 'object' && !Array.isArray(raw)
-        ? (raw as Record<string, unknown>)
-        : typeof raw === 'string'
-          ? (JSON.parse(raw) as Record<string, unknown>)
-          : {}
-    const token = String(body?.token ?? '').trim()
+    const body = parseRequestJsonRecord(req)
+    const token = String(body.token ?? '').trim()
     if (!token) {
       res.status(400).json({ error: 'missing_token' })
       return
@@ -44,7 +39,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plan,
     })
   } catch (e) {
+    const name = e && typeof e === 'object' && 'code' in e ? String((e as { code?: string }).code) : ''
     const msg = e instanceof Error ? e.message : 'invalid_token'
-    res.status(400).json({ error: msg })
+    let code = 'invalid_token'
+    if (name === 'ERR_JWT_EXPIRED' || /expired/i.test(msg)) {
+      code = 'token_expired'
+    } else if (/JWT_SECRET|jwt/i.test(msg) && process.env.VERCEL_ENV === 'production') {
+      code = 'server_misconfigured'
+    }
+    res.status(400).json({ error: code })
   }
 }

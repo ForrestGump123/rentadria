@@ -13,6 +13,7 @@ import {
 import { setLoggedIn } from './storage'
 import { setListingInquiryNotifyEmail } from './visitorInquiries'
 import { setOwnerAvatarPublic } from './ownerAvatarPublic'
+import { recordAdminContactClick } from './adminEngagementStore'
 import {
   clearAdminOwnerMeta,
   extraCategoryFlags,
@@ -661,6 +662,28 @@ export function incrementContactClickForListing(listingId: string): void {
     arr[i] = { ...r, contactClicksMonth: (r.contactClicksMonth ?? 0) + 1 }
     m[uid] = arr
     saveListingsMap(m)
+    recordAdminContactClick(uid)
+    try {
+      window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+}
+
+/** Svaki prikaz stranice oglasa — povećava mjesečni broj pregleda za taj oglas. */
+export function incrementListingViewForListing(listingId: string): void {
+  const m = loadListingsMap()
+  for (const uid of Object.keys(m)) {
+    const arr = m[uid]
+    if (!arr) continue
+    const i = arr.findIndex((r) => r.publicListingId === listingId)
+    if (i < 0) continue
+    const r = arr[i]!
+    arr[i] = { ...r, viewsMonth: (r.viewsMonth ?? 0) + 1 }
+    m[uid] = arr
+    saveListingsMap(m)
     try {
       window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
     } catch {
@@ -726,8 +749,8 @@ export function seedOwnerListingsIfEmpty(profile: OwnerProfile) {
       userId: profile.userId,
       category: 'accommodation',
       title: 'Jednosoban stan',
-      viewsMonth: 3463,
-      contactClicksMonth: 4,
+      viewsMonth: 0,
+      contactClicksMonth: 0,
       receivedAt: recvStr,
       expiresAt: expires,
       featuredUntil: null,

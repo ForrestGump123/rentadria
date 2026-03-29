@@ -1,4 +1,5 @@
 import type { SubscriptionPlan } from '../types/plan'
+import { loadPricingOverride } from '../utils/pricingOverrides'
 
 export type PricingPlanDef = {
   id: SubscriptionPlan
@@ -251,7 +252,7 @@ export const PRICING_PLANS_ES: PricingPlanDef[] = [
 
 const BALKAN_LOCALES = new Set(['cnr', 'sr', 'hr', 'bs'])
 
-function resolvePricingLocale(language: string): 'cnr' | 'en' | 'sq' | 'it' | 'es' {
+export function resolvePricingLocale(language: string): 'cnr' | 'en' | 'sq' | 'it' | 'es' {
   const base = (language.split('-')[0] ?? 'en').toLowerCase()
   if (BALKAN_LOCALES.has(base)) return 'cnr'
   if (base === 'sq') return 'sq'
@@ -261,7 +262,10 @@ function resolvePricingLocale(language: string): 'cnr' | 'en' | 'sq' | 'it' | 'e
 }
 
 export function getPricingPlans(language: string): PricingPlanDef[] {
-  switch (resolvePricingLocale(language)) {
+  const loc = resolvePricingLocale(language)
+  const over = loadPricingOverride(loc)
+  if (over && over.length > 0) return over
+  switch (loc) {
     case 'cnr':
       return PRICING_PLANS_CNR
     case 'sq':

@@ -4,7 +4,11 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from './Logo'
 import { MailAtIcon } from './icons/MailAtIcon'
-import { isRegistrationCountry, REGISTRATION_COUNTRIES } from '../registrationCountries'
+import {
+  isRegistrationCountry,
+  REGISTRATION_COUNTRIES,
+  type RegistrationCountryCode,
+} from '../registrationCountries'
 import { isValidRegisterPassword } from '../utils/passwordValidation'
 import { sha256Hex } from '../utils/passwordHash'
 import { isValidRegisterPhone } from '../utils/phoneValidation'
@@ -14,6 +18,11 @@ import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
 import { findOwnerProfileByEmail, saveOwnerProfile } from '../utils/ownerSession'
 import { ADMIN_LOGIN_EMAIL, setAdminSession, verifyAdminLogin } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
+import {
+  clearPendingRegistrationForEmail,
+  registrationCodeToCountryId,
+  stashPendingRegistration,
+} from '../utils/pendingRegistration'
 import { setLoggedIn } from '../utils/storage'
 
 const VERIFY_CTX_KEY = 'rentadria_verify_ctx'
@@ -144,6 +153,15 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     }
     setSending(true)
     try {
+      const em = email.trim().toLowerCase()
+      const passwordHash = await sha256Hex(password)
+      stashPendingRegistration({
+        email: em,
+        passwordHash,
+        phone: phone.trim(),
+        countryId: registrationCodeToCountryId(country as RegistrationCountryCode),
+        name: name.trim(),
+      })
       await sendVerificationEmail({
         email: email.trim(),
         name: name.trim(),
@@ -153,6 +171,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
       if (import.meta.env.DEV) {
         console.warn('send-verification (dev, nema API):', err)
       } else {
+        clearPendingRegistrationForEmail(email.trim().toLowerCase())
         window.alert(t('auth.verifyEmailSendError'))
         return
       }

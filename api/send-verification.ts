@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { sendSafe500, send429 } from '../server/lib/apiSafe.js'
+import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { signVerifyToken } from '../server/lib/verifyJwt.js'
 import { sendTransactionalEmail } from '../server/lib/sendBrevoMail.js'
@@ -29,13 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = clientIp(req)
   try {
-    const raw = req.body
-    const body =
-      raw && typeof raw === 'object' && !Array.isArray(raw)
-        ? (raw as Record<string, unknown>)
-        : typeof raw === 'string'
-          ? (JSON.parse(raw) as Record<string, unknown>)
-          : {}
+    const body = parseRequestJsonRecord(req)
     const email = String(body?.email ?? '')
       .trim()
       .toLowerCase()

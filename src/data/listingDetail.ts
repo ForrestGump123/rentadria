@@ -1,11 +1,12 @@
 import type { Listing } from '../types'
 import type { ListingDetailExtra } from '../types/listingDetail'
 
+/** Placeholder gallery extras (no external hotlinking to Unsplash — avoids NS_BINDING_ABORTED / ORB in some browsers). */
 const EXTRA_IMAGES = [
-  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&q=80&auto=format&fit=crop',
+  'https://placehold.co/1200x780/0a101e/26c6da/png?text=RentAdria',
+  'https://placehold.co/1200x780/0f1729/38bdf8/png?text=RentAdria',
+  'https://placehold.co/1200x780/0c1220/22d3ee/png?text=RentAdria',
+  'https://placehold.co/1200x780/111827/67e8f9/png?text=RentAdria',
 ] as const
 
 function hashId(id: string): number {

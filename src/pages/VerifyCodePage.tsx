@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Footer } from '../components/Footer'
 import { verifyEmailToken } from '../lib/verifyEmailToken'
+import { takePendingRegistration } from '../utils/pendingRegistration'
 import { saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 
 const STORAGE_KEY = 'rentadria_verify_ctx'
@@ -26,6 +27,7 @@ export function VerifyCodePage() {
       void verifyEmailToken(token)
         .then((data) => {
           if (cancelled) return
+          const pending = takePendingRegistration(data.email)
           const profile: OwnerProfile = {
             userId: data.email,
             email: data.email,
@@ -34,6 +36,9 @@ export function VerifyCodePage() {
             subscriptionActive: false,
             registeredAt: new Date().toISOString(),
             validUntil: '',
+            phone: pending?.phone,
+            countryId: pending?.countryId,
+            passwordHash: pending?.passwordHash,
           }
           saveOwnerProfile(profile)
           try {
@@ -43,9 +48,20 @@ export function VerifyCodePage() {
           }
           navigate('/owner', { replace: true })
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (!cancelled) {
-            setTokenErr(t('verify.tokenError'))
+            const code = err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code) : ''
+            const msg = err instanceof Error ? err.message : ''
+            const key =
+              code === 'token_expired' || msg === 'token_expired'
+                ? 'verify.tokenExpired'
+                : code === 'server_misconfigured' ||
+                    msg === 'server_misconfigured' ||
+                    code === 'bad_response' ||
+                    msg === 'bad_response'
+                  ? 'verify.serverError'
+                  : 'verify.tokenError'
+            setTokenErr(t(key))
             setLoading(false)
           }
         })

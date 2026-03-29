@@ -28,7 +28,7 @@ import {
   saveReviewsForListing,
   type StoredReview,
 } from '../utils/reviewStorage'
-import { incrementContactClickForListing } from '../utils/ownerSession'
+import { incrementContactClickForListing, incrementListingViewForListing } from '../utils/ownerSession'
 import { listingTitle as listingTitleT } from '../utils/listingTitle'
 import { downloadElementAsPdf } from '../utils/pdfListing'
 import { isLoggedIn, setLoggedIn } from '../utils/storage'
@@ -117,6 +117,18 @@ export function ListingPage() {
   useEffect(() => {
     document.documentElement.lang = i18n.language.split('-')[0]
   }, [i18n.language])
+
+  useEffect(() => {
+    if (!listing?.id) return
+    try {
+      const key = `ra_listing_view_once:${listing.id}`
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+      incrementListingViewForListing(listing.id)
+    } catch {
+      incrementListingViewForListing(listing.id)
+    }
+  }, [listing?.id])
 
   useEffect(() => {
     if (!id) return

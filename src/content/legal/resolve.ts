@@ -1,4 +1,5 @@
 import type { FaqItem, LegalSection } from './types'
+import { loadFaqOverride, loadPrivacyOverride, loadTermsOverride } from '../../utils/legalOverrides'
 import { FAQ_ITEMS_CNR } from './faq.cnr'
 import { FAQ_ITEMS_EN } from './faq.en'
 import { FAQ_ITEMS_ES } from './faq.es'
@@ -19,7 +20,7 @@ const BALKAN_LOCALES = new Set(['cnr', 'sr', 'hr', 'bs'])
 
 type LegalContentKey = 'cnr' | 'en' | 'sq' | 'it' | 'es'
 
-function resolveLegalContentKey(language: string): LegalContentKey {
+export function resolveLegalContentKey(language: string): LegalContentKey {
   const base = (language.split('-')[0] ?? 'en').toLowerCase()
   if (BALKAN_LOCALES.has(base)) return 'cnr'
   if (base === 'sq') return 'sq'
@@ -28,8 +29,8 @@ function resolveLegalContentKey(language: string): LegalContentKey {
   return 'en'
 }
 
-export function getTermsSections(language: string): LegalSection[] {
-  switch (resolveLegalContentKey(language)) {
+export function getBuiltInTerms(k: LegalContentKey): LegalSection[] {
+  switch (k) {
     case 'cnr':
       return TERMS_SECTIONS_CNR
     case 'sq':
@@ -43,8 +44,8 @@ export function getTermsSections(language: string): LegalSection[] {
   }
 }
 
-export function getPrivacySections(language: string): LegalSection[] {
-  switch (resolveLegalContentKey(language)) {
+export function getBuiltInPrivacy(k: LegalContentKey): LegalSection[] {
+  switch (k) {
     case 'cnr':
       return PRIVACY_SECTIONS_CNR
     case 'sq':
@@ -58,8 +59,8 @@ export function getPrivacySections(language: string): LegalSection[] {
   }
 }
 
-export function getFaqItems(language: string): FaqItem[] {
-  switch (resolveLegalContentKey(language)) {
+export function getBuiltInFaq(k: LegalContentKey): FaqItem[] {
+  switch (k) {
     case 'cnr':
       return FAQ_ITEMS_CNR
     case 'sq':
@@ -71,4 +72,25 @@ export function getFaqItems(language: string): FaqItem[] {
     default:
       return FAQ_ITEMS_EN
   }
+}
+
+export function getTermsSections(language: string): LegalSection[] {
+  const k = resolveLegalContentKey(language)
+  const o = loadTermsOverride(k)
+  if (o && o.length > 0) return o
+  return getBuiltInTerms(k)
+}
+
+export function getPrivacySections(language: string): LegalSection[] {
+  const k = resolveLegalContentKey(language)
+  const o = loadPrivacyOverride(k)
+  if (o && o.length > 0) return o
+  return getBuiltInPrivacy(k)
+}
+
+export function getFaqItems(language: string): FaqItem[] {
+  const k = resolveLegalContentKey(language)
+  const o = loadFaqOverride(k)
+  if (o && o.length > 0) return o
+  return getBuiltInFaq(k)
 }

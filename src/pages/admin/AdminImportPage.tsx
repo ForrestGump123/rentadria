@@ -154,6 +154,7 @@ export function AdminImportPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.import.heading')}</h1>
         <p className="ra-admin-subtitle">{t('admin.import.lead')}</p>
+        <p className="ra-admin-owners__hint ra-admin-import__supabase">{t('admin.import.supabaseNote')}</p>
       </header>
 
       <section className="ra-admin-import__block" aria-labelledby="admin-import-uni-h">

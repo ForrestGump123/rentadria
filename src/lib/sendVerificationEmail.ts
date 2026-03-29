@@ -7,6 +7,7 @@ export async function sendVerificationEmail(payload: {
   const res = await fetch('/api/send-verification', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify(payload),
   })
   if (!res.ok) {
