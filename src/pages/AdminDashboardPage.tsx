@@ -24,6 +24,7 @@ import { AdminListingsPage } from './admin/AdminListingsPage'
 import { AdminOwnersPage } from './admin/AdminOwnersPage'
 import { AdminOwnerMessagesPage } from './admin/AdminOwnerMessagesPage'
 import { AdminPlaceholderPage } from './admin/AdminPlaceholderPage'
+import { AdminPromoPage } from './admin/AdminPromoPage'
 import { AdminReportsPage } from './admin/AdminReportsPage'
 import { AdminReviewsPage } from './admin/AdminReviewsPage'
 import { AdminStaffPage } from './admin/AdminStaffPage'
@@ -83,7 +84,7 @@ const NAV_ICONS: Record<string, string> = {
   import: '📥',
 }
 
-const ADMIN_PLACEHOLDER_IDS = ['users', 'promo', 'expiring', 'paused', 'banners'] as const
+const ADMIN_PLACEHOLDER_IDS = ['users', 'expiring', 'paused', 'banners'] as const
 
 export function AdminDashboardPage() {
   const { t } = useTranslation()
@@ -337,6 +338,7 @@ export function AdminDashboardPage() {
             <Route path="reviews" element={<AdminReviewsPage />} />
             <Route path="images" element={<AdminImagesPage />} />
             <Route path="staff" element={<AdminStaffPage />} />
+            <Route path="promo" element={<AdminPromoPage />} />
             {ADMIN_PLACEHOLDER_IDS.map((id) => (
               <Route
                 key={id}

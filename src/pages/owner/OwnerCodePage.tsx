@@ -30,10 +30,27 @@ export function OwnerCodePage({ profile }: Props) {
   const saved = useMemo(() => getSavedPromoCode(profile.userId), [profile.userId, epoch])
 
   const onSave = () => {
-    const r = savePromoCode(profile.userId, draft)
+    const r = savePromoCode(profile.userId, draft, profile)
     if (!r.ok) {
-      if (r.reason === 'empty') window.alert(t('owner.codePage.errEmpty'))
-      if (r.reason === 'too_long') window.alert(t('owner.codePage.errTooLong'))
+      const errKey =
+        r.reason === 'empty'
+          ? 'owner.codePage.errEmpty'
+          : r.reason === 'too_long'
+            ? 'owner.codePage.errTooLong'
+            : r.reason === 'unknown'
+              ? 'owner.codePage.errUnknown'
+              : r.reason === 'restricted'
+                ? 'owner.codePage.errRestricted'
+                : r.reason === 'expired'
+                  ? 'owner.codePage.errExpired'
+                  : r.reason === 'max_uses'
+                    ? 'owner.codePage.errMaxUses'
+                    : r.reason === 'country'
+                      ? 'owner.codePage.errCountry'
+                      : r.reason === 'max_per_country'
+                        ? 'owner.codePage.errMaxPerCountry'
+                        : 'owner.codePage.errCategory'
+      window.alert(t(errKey))
       return
     }
     setDraft('')

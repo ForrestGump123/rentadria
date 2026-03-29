@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../types'
 import type { SubscriptionPlan } from '../types/plan'
@@ -78,6 +78,8 @@ export function Header({
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [logged, setLogged] = useState(() => isLoggedIn())
   const [adminLogged, setAdminLogged] = useState(() => isAdminSession())
+  const [navOpen, setNavOpen] = useState(false)
+  const location = useLocation()
   const currentLang =
     (LANGUAGES.find((l) => l.code === (i18n.language || 'en').split('-')[0])?.code ?? 'en') as LanguageCode
   const current = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0]
@@ -112,6 +114,10 @@ export function Header({
     return () => window.removeEventListener('rentadria-admin-auth', onAdmin)
   }, [])
 
+  useEffect(() => {
+    setNavOpen(false)
+  }, [location.pathname, location.search])
+
   const closeAuth = () => {
     setAuthOpen(false)
     setModalPlan(null)
@@ -119,17 +125,37 @@ export function Header({
 
   return (
     <>
-      <header className="ra-header">
+      <header className={`ra-header ${navOpen ? 'ra-header--nav-open' : ''}`}>
         <div className="ra-header__inner">
           <Logo variant="header" />
 
-          <nav className="ra-nav" aria-label="Categories">
+          <button
+            type="button"
+            className="ra-header__burger"
+            aria-expanded={navOpen}
+            aria-controls="ra-main-cat-nav"
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <span className="ra-header__burger-line" aria-hidden />
+            <span className="ra-header__burger-line" aria-hidden />
+            <span className="ra-header__burger-line" aria-hidden />
+            <span className="ra-sr-only">{navOpen ? t('nav.burgerClose') : t('nav.burgerOpen')}</span>
+          </button>
+
+          <nav
+            id="ra-main-cat-nav"
+            className={`ra-nav ${navOpen ? 'is-open' : ''}`}
+            aria-label={t('nav.categoriesAria')}
+          >
             {cats.map((c) => (
               <button
                 key={c.id}
                 type="button"
                 className={`ra-nav__btn ${category === c.id ? 'ra-nav__btn--active' : ''}`}
-                onClick={() => onCategory(c.id)}
+                onClick={() => {
+                  onCategory(c.id)
+                  setNavOpen(false)
+                }}
               >
                 <span className="ra-nav__icon">{c.icon}</span>
                 <span>{t(`nav.${c.id}`)}</span>

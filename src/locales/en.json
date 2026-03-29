@@ -140,7 +140,10 @@
     "ownerDashboard": "Dashboard",
     "logout": "Log out",
     "adminPanel": "Admin panel",
-    "adminLogout": "Sign out (admin)"
+    "adminLogout": "Sign out (admin)",
+    "categoriesAria": "Listing categories",
+    "burgerOpen": "Open category menu",
+    "burgerClose": "Close category menu"
   },
   "owner": {
     "pageTitle": "Owner dashboard",
@@ -343,7 +346,14 @@
       "placeholder": "RA-XXXX-XXXX",
       "save": "Save code",
       "errEmpty": "Enter a code.",
-      "errTooLong": "Code is too long (max. 64 characters after normalization)."
+      "errTooLong": "Code is too long (max. 64 characters after normalization).",
+      "errUnknown": "This code is not recognized.",
+      "errRestricted": "This code is reserved for another account.",
+      "errExpired": "This code has expired.",
+      "errMaxUses": "This code has reached its maximum number of uses.",
+      "errCountry": "This code does not apply in your country.",
+      "errMaxPerCountry": "This code has reached the maximum uses for your country.",
+      "errCategory": "This code does not apply to your categories (plan)."
     },
     "listing": {
       "loading": "Loading form…",
@@ -854,6 +864,59 @@
       "privacy": "Privacy",
       "faq": "FAQ",
       "import": "Universal import"
+    },
+    "promo": {
+      "pageTitle": "Promo codes",
+      "formTitle": "New promotional code",
+      "fldType": "Type",
+      "typeDiscount": "Discount %",
+      "typeFreeMonth": "Free one month",
+      "typeFreeYear": "Free one year",
+      "typeFreeForever": "Free forever",
+      "fldDiscount": "Discount %",
+      "fldValidUntil": "Valid until",
+      "fldMaxUses": "Max uses",
+      "fldNote": "Note",
+      "notePh": "Optional note",
+      "countriesHint": "Countries (empty = all)",
+      "fldMaxPerCountry": "Max uses per country (optional)",
+      "categoriesLabel": "Categories",
+      "onlyMember": "Only for an existing member",
+      "memberSearchPh": "Search by name, email or phone",
+      "memberPlaceholder": "— Select member —",
+      "btnGenerate": "Generate code",
+      "btnHideManual": "Hide manual entry",
+      "btnManual": "Add your own code",
+      "manualCode": "Your code",
+      "btnAddManual": "Add code",
+      "colCode": "Code",
+      "colType": "Type",
+      "colBenefit": "Benefit",
+      "colValidity": "Validity",
+      "colUsed": "Used",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "empty": "No promotional codes yet.",
+      "errDuplicate": "That code already exists. Generate a new one or pick another.",
+      "errManualEmpty": "Enter a code.",
+      "confirmDelete": "Delete this promotional code?",
+      "benefitFreeMonth": "1 month free",
+      "benefitFreeYear": "1 year free",
+      "benefitFreeForever": "Forever free",
+      "noExpiry": "No date limit",
+      "maxUsesLine": "Max uses {{n}}",
+      "delete": "Delete",
+      "typeShort": {
+        "discount_percent": "Discount %",
+        "free_month": "Free month",
+        "free_year": "Free year",
+        "free_forever": "Free forever"
+      },
+      "status": {
+        "active": "Active",
+        "expired": "Expired",
+        "exhausted": "Used up"
+      }
     },
     "ownerMessages": {
       "title": "Owner messages",

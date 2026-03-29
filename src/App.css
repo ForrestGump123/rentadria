@@ -111,6 +111,30 @@ body {
   opacity: 0.9;
 }
 
+.ra-header__burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--ra-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ra-text);
+  cursor: pointer;
+}
+
+.ra-header__burger-line {
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
 .ra-header__actions {
   display: flex;
   align-items: center;
@@ -5675,6 +5699,130 @@ button.ra-owner-settings__plan-btn--current {
   max-width: 56ch;
 }
 
+.ra-admin-promo {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ra-admin-promo__form {
+  padding: 1rem 1.1rem;
+  border-radius: var(--ra-radius-sm);
+  border: 1px solid var(--ra-border);
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ra-admin-promo__h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ra-admin-promo__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.ra-admin-promo__row--wrap .ra-fld {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.ra-admin-promo__grow {
+  flex: 2 1 220px;
+  min-width: 180px;
+}
+
+.ra-admin-promo__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ra-admin-promo__label {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ra-muted);
+}
+
+.ra-admin-promo__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.ra-admin-promo__chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.ra-admin-promo__inline-num {
+  max-width: 280px;
+}
+
+.ra-admin-promo__member-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.ra-admin-promo__member-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  max-width: 420px;
+}
+
+.ra-admin-promo__search,
+.ra-admin-promo__select-owner {
+  width: 100%;
+}
+
+.ra-admin-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ra-admin-promo__manual {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--ra-border);
+}
+
+.ra-admin-promo__cell-sm {
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.ra-admin-promo__status {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.ra-admin-promo__status--ok {
+  color: #4ade80;
+}
+
+.ra-admin-promo__status--bad {
+  color: #fbbf24;
+}
+
 .ra-admin-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -5799,6 +5947,9 @@ button.ra-owner-settings__plan-btn--current {
   .ra-admin-sidebar {
     border-right: none;
     border-bottom: 1px solid var(--ra-border);
+    max-height: min(50vh, 22rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ra-admin-cards {
@@ -6433,5 +6584,345 @@ button.ra-owner-settings__plan-btn--current {
 
   .ra-admin-owners__actions-row {
     flex-wrap: wrap;
+  }
+}
+
+/* ————————————————————————————————————————————————————————————
+   Mobilni uređaji (≤768px): cijeli sajt — header, početna, oglas,
+   vlasnik/admin paneli, modali, tabele
+   ———————————————————————————————————————————————————————————— */
+@media (max-width: 768px) {
+  .ra-header__inner {
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0.55rem max(0.65rem, env(safe-area-inset-right)) 0.55rem
+      max(0.65rem, env(safe-area-inset-left));
+    padding-top: max(0.55rem, env(safe-area-inset-top));
+  }
+
+  .ra-main {
+    padding: 0.65rem max(0.6rem, env(safe-area-inset-left)) 2rem
+      max(0.6rem, env(safe-area-inset-right));
+  }
+
+  /* Kategorije: hamburger + padajući meni umjesto horizontalnog skrola */
+  .ra-header__burger {
+    display: inline-flex;
+    order: 2;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .ra-logo {
+    order: 1;
+  }
+
+  .ra-nav {
+    order: 4;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    padding: 0.55rem 0 0;
+    margin-top: 0.35rem;
+    border-top: 1px solid var(--ra-border);
+    overflow: visible;
+  }
+
+  .ra-nav.is-open {
+    display: flex;
+  }
+
+  .ra-nav__btn {
+    flex: 0 0 auto;
+    font-size: 0.88rem;
+    padding: 0.5rem 0.65rem;
+    justify-content: flex-start;
+  }
+
+  .ra-header__actions {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .ra-lang__menu,
+  .ra-currency__menu {
+    left: 0;
+    right: auto;
+    max-width: min(100vw - 1rem, 280px);
+  }
+
+  /* Hero + pretraga */
+  .ra-hero__content {
+    padding: max(0.65rem, env(safe-area-inset-top)) 0.65rem 0.85rem;
+  }
+
+  .ra-hero__title {
+    max-width: 100%;
+    font-size: clamp(1.25rem, 6vw, 1.85rem);
+  }
+
+  .ra-hero__subtitle {
+    max-width: 100%;
+    font-size: 0.88rem;
+  }
+
+  .ra-search {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 14px;
+    padding: 0.55rem;
+    gap: 0.45rem;
+  }
+
+  .ra-search__field,
+  .ra-search__field--grow {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ra-search__btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .ra-search__select {
+    width: 100%;
+  }
+
+  /* Listing stranica */
+  .ra-detail-main {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .ra-detail-title {
+    font-size: clamp(1.2rem, 5.5vw, 1.65rem);
+    line-height: 1.2;
+  }
+
+  .ra-detail-meta {
+    gap: 0.35rem 0.65rem;
+    font-size: 0.82rem;
+  }
+
+  .ra-detail-actions {
+    gap: 0.35rem;
+  }
+
+  .ra-chip {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  /* Bento: jedna kolona, minijature ispod */
+  .ra-detail-bento--pair,
+  .ra-detail-bento--bento {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+    min-height: 200px;
+  }
+
+  .ra-detail-bento--pair .ra-detail-hero-img,
+  .ra-detail-bento--bento .ra-detail-hero-img {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 200px;
+    max-height: min(48vh, 360px);
+  }
+
+  .ra-detail-bento--pair .ra-detail-thumb--t1 {
+    grid-column: 1;
+    grid-row: 2;
+    max-height: 160px;
+  }
+
+  .ra-detail-bento--bento .ra-detail-thumb--t1 {
+    grid-column: 1;
+    grid-row: 2;
+    max-height: 140px;
+  }
+
+  .ra-detail-bento--bento .ra-detail-thumb--t2 {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: 140px;
+  }
+
+  .ra-detail-pricebar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .ra-detail-pricebar .ra-btn--primary {
+    width: 100%;
+    text-align: center;
+  }
+
+  .ra-detail-tabpanel--card {
+    padding: 0.9rem 0.85rem;
+  }
+
+  .ra-detail-feat-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .ra-map-cv {
+    height: min(220px, 50vh);
+  }
+
+  .ra-bc {
+    font-size: 0.78rem;
+  }
+
+  /* Vlasnički panel: sidebar → vodoravni skrol linkova */
+  .ra-owner-app {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-owner-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--ra-border);
+    padding: 0.5rem max(0.5rem, env(safe-area-inset-left)) 0.55rem
+      max(0.5rem, env(safe-area-inset-right));
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    background: rgba(5, 10, 22, 0.98);
+    flex-shrink: 0;
+  }
+
+  .ra-owner-nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.3rem;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+  }
+
+  .ra-owner-nav__link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .ra-owner-sidebar__logout {
+    margin-top: 0.45rem;
+    width: 100%;
+  }
+
+  .ra-owner-main {
+    padding: 0.85rem max(0.6rem, env(safe-area-inset-left)) 2rem
+      max(0.6rem, env(safe-area-inset-right));
+    max-width: none;
+  }
+
+  /* Tabele: skrol umjesto širenja stranice */
+  .ra-owner-table-wrap,
+  .ra-admin-listings__table-wrap {
+    margin-left: max(-0.6rem, calc(-1 * env(safe-area-inset-left)));
+    margin-right: max(-0.6rem, calc(-1 * env(safe-area-inset-right)));
+    padding-left: max(0.6rem, env(safe-area-inset-left));
+    padding-right: max(0.6rem, env(safe-area-inset-right));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ra-owner-table,
+  .ra-admin-listings__table {
+    font-size: 0.8rem;
+  }
+
+  .ra-owner-table th,
+  .ra-owner-table td,
+  .ra-admin-listings__table thead th,
+  .ra-admin-listings__table tbody td {
+    padding: 0.45rem 0.4rem;
+  }
+
+  /* Admin glavni sadržaj */
+  .ra-admin-main {
+    padding-left: max(0.6rem, env(safe-area-inset-left));
+    padding-right: max(0.6rem, env(safe-area-inset-right));
+  }
+
+  /* Modali: više mjesta za prste, pun visinski na malom ekranu */
+  .ra-modal {
+    padding: max(0.35rem, env(safe-area-inset-top)) max(0.35rem, env(safe-area-inset-right))
+      max(0.35rem, env(safe-area-inset-bottom)) max(0.35rem, env(safe-area-inset-left));
+    align-items: stretch;
+  }
+
+  .ra-modal__panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(96dvh, 100%);
+    border-radius: 12px;
+  }
+
+  .ra-modal--owner-listing {
+    padding: 0;
+    overflow-y: hidden;
+  }
+
+  .ra-modal--owner-listing .ra-modal__panel.ra-owner-listing {
+    max-width: 100%;
+    width: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .ra-owner-listing__tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.5rem;
+  }
+
+  .ra-owner-listing__tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Pravne stranice */
+  .ra-legal-main {
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .ra-listing-header {
+    padding-left: max(0.65rem, env(safe-area-inset-left));
+    padding-right: max(0.65rem, env(safe-area-inset-right));
+  }
+
+  .ra-footer {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .ra-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
   }
 }
