@@ -5,6 +5,7 @@ import {
   getThread,
   lastMessagePreview,
   listAllThreadsForAdmin,
+  markThreadSeenByAdmin,
   type OwnerAdminThread,
 } from '../../utils/ownerAdminMessages'
 import { formatDateDots } from '../../utils/ownerSession'
@@ -83,6 +84,7 @@ export function AdminOwnerMessagesPage() {
                       onClick={() => {
                         setOpenThreadId(th.id)
                         setReplyDraft('')
+                        markThreadSeenByAdmin(th.id)
                       }}
                     >
                       {th.subject}

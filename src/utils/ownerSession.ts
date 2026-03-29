@@ -1,3 +1,5 @@
+import type { SearchCountryId } from '../data/cities/countryIds'
+import { SEARCH_COUNTRY_IDS } from '../data/cities/countryIds'
 import type { ListingCategory } from '../types'
 import type { SubscriptionPlan } from '../types/plan'
 import { isSubscriptionPlan } from '../types/plan'
@@ -11,9 +13,24 @@ import {
 import { setLoggedIn } from './storage'
 import { setListingInquiryNotifyEmail } from './visitorInquiries'
 import { setOwnerAvatarPublic } from './ownerAvatarPublic'
+import {
+  clearAdminOwnerMeta,
+  extraCategoryFlags,
+  extraListingsForCategory,
+  getAdminOwnerMeta,
+  setAdminOwnerMeta,
+} from './adminOwnerMeta'
+import {
+  getDeletedOwner,
+  isOwnerDeleted,
+  pushDeletedOwner,
+  removeDeletedOwner,
+  type DeletedOwnerRecord,
+} from './deletedOwnersStore'
 
 const PROFILE_KEY = 'rentadria_owner_profile'
 const LISTINGS_KEY = 'rentadria_owner_listings_by_user'
+const PROFILES_MAP_KEY = 'rentadria_owner_profiles_by_user'
 
 export type OwnerProfile = {
   userId: string
@@ -39,6 +56,8 @@ export type OwnerProfile = {
   avatarDataUrl?: string | null
   /** SHA-256 hex trenutne lozinke; ako postoji, prijava zahtijeva ispravnu lozinku. */
   passwordHash?: string
+  /** Država vlasnika (admin filter / prikaz). */
+  countryId?: SearchCountryId
 }
 
 export type OwnerListingRow = {
@@ -64,12 +83,20 @@ export function getUnlockedCategories(plan: SubscriptionPlan): ListingCategory[]
 /** Categories the owner may use (after payment + Basic category choice when applicable). */
 export function getEffectiveUnlockedCategories(profile: OwnerProfile): ListingCategory[] {
   if (!profile.subscriptionActive || profile.plan == null) return []
+  let base: ListingCategory[]
   if (profile.plan === 'basic') {
     const cat = profile.basicCategoryChoice
-    if (cat === 'accommodation' || cat === 'car' || cat === 'motorcycle') return [cat]
-    return []
+    if (cat === 'accommodation' || cat === 'car' || cat === 'motorcycle') base = [cat]
+    else base = []
+  } else {
+    base = ['accommodation', 'car', 'motorcycle']
   }
-  return ['accommodation', 'car', 'motorcycle']
+  const ex = extraCategoryFlags(getAdminOwnerMeta(profile.userId))
+  const set = new Set(base)
+  if (ex.accommodation) set.add('accommodation')
+  if (ex.car) set.add('car')
+  if (ex.motorcycle) set.add('motorcycle')
+  return Array.from(set)
 }
 
 export function activateOwnerSubscription(profile: OwnerProfile, plan: SubscriptionPlan): void {
@@ -97,9 +124,19 @@ export function maxListingsPerCategoryForPlan(plan: SubscriptionPlan): number {
   return 999
 }
 
+/** Bazni limit + admin dopune (tab Vlasnici). */
+export function maxListingsForOwnerCategory(
+  userId: string,
+  plan: SubscriptionPlan,
+  category: ListingCategory,
+): number {
+  const base = maxListingsPerCategoryForPlan(plan)
+  return base + extraListingsForCategory(getAdminOwnerMeta(userId), category)
+}
+
 export type UpsertOwnerAccResult =
   | { ok: true; rowId: string }
-  | { ok: false; reason: 'limit' }
+  | { ok: false; reason: 'limit' | 'blocked' }
 
 /**
  * Saves or updates one accommodation row on the owner dashboard and points „Pogledaj“
@@ -114,6 +151,7 @@ export function upsertOwnerAccommodationListingRow(opts: {
   receivedAtYmd: string
   expiresAtYmd: string
 }): UpsertOwnerAccResult {
+  if (getAdminOwnerMeta(opts.userId).blocked) return { ok: false, reason: 'blocked' }
   if (!opts.plan) return { ok: false, reason: 'limit' }
   const m = loadListingsMap()
   const arr = [...(m[opts.userId] ?? [])]
@@ -138,7 +176,7 @@ export function upsertOwnerAccommodationListingRow(opts: {
   }
 
   const accCount = arr.filter((x) => x.category === 'accommodation').length
-  const max = maxListingsPerCategoryForPlan(opts.plan)
+  const max = maxListingsForOwnerCategory(opts.userId, opts.plan, 'accommodation')
   if (accCount >= max) {
     return { ok: false, reason: 'limit' }
   }
@@ -174,6 +212,7 @@ export function upsertOwnerCarListingRow(opts: {
   receivedAtYmd: string
   expiresAtYmd: string
 }): UpsertOwnerAccResult {
+  if (getAdminOwnerMeta(opts.userId).blocked) return { ok: false, reason: 'blocked' }
   if (!opts.plan) return { ok: false, reason: 'limit' }
   const m = loadListingsMap()
   const arr = [...(m[opts.userId] ?? [])]
@@ -198,7 +237,7 @@ export function upsertOwnerCarListingRow(opts: {
   }
 
   const carCount = arr.filter((x) => x.category === 'car').length
-  const max = maxListingsPerCategoryForPlan(opts.plan)
+  const max = maxListingsForOwnerCategory(opts.userId, opts.plan, 'car')
   if (carCount >= max) {
     return { ok: false, reason: 'limit' }
   }
@@ -233,6 +272,7 @@ export function upsertOwnerMotorcycleListingRow(opts: {
   receivedAtYmd: string
   expiresAtYmd: string
 }): UpsertOwnerAccResult {
+  if (getAdminOwnerMeta(opts.userId).blocked) return { ok: false, reason: 'blocked' }
   if (!opts.plan) return { ok: false, reason: 'limit' }
   const m = loadListingsMap()
   const arr = [...(m[opts.userId] ?? [])]
@@ -257,7 +297,7 @@ export function upsertOwnerMotorcycleListingRow(opts: {
   }
 
   const motoCount = arr.filter((x) => x.category === 'motorcycle').length
-  const max = maxListingsPerCategoryForPlan(opts.plan)
+  const max = maxListingsForOwnerCategory(opts.userId, opts.plan, 'motorcycle')
   if (motoCount >= max) {
     return { ok: false, reason: 'limit' }
   }
@@ -287,6 +327,39 @@ export function addOneYearIso(from = new Date()): string {
   return d.toISOString()
 }
 
+/**
+ * Uskladi plan/pretplatu nakon admin dodjele ili starog stanja u localStorage.
+ * Ako postoji plan, pretplata je aktivna; Basic bez kategorije → smještaj.
+ */
+export function normalizeOwnerProfileForSession(p: OwnerProfile): OwnerProfile {
+  let plan: SubscriptionPlan | null = null
+  if (p.plan != null && isSubscriptionPlan(p.plan)) {
+    plan = p.plan
+  }
+  if (plan == null) {
+    return {
+      ...p,
+      plan: null,
+      subscriptionActive: false,
+      basicCategoryChoice: undefined,
+    }
+  }
+  let next: OwnerProfile = {
+    ...p,
+    plan,
+    subscriptionActive: true,
+  }
+  if (plan === 'basic') {
+    const bc = next.basicCategoryChoice
+    if (bc !== 'accommodation' && bc !== 'car' && bc !== 'motorcycle') {
+      next = { ...next, basicCategoryChoice: 'accommodation' }
+    }
+  } else {
+    next = { ...next, basicCategoryChoice: undefined }
+  }
+  return next
+}
+
 export function getOwnerProfile(): OwnerProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
@@ -309,9 +382,7 @@ export function getOwnerProfile(): OwnerProfile | null {
     }
 
     const explicitSubscriptionFlag = typeof p.subscriptionActive === 'boolean'
-    let subscriptionActive = explicitSubscriptionFlag ? p.subscriptionActive! : storedPlan != null
-
-    const effectivePlan = subscriptionActive ? storedPlan : null
+    const subscriptionActive = explicitSubscriptionFlag ? p.subscriptionActive! : storedPlan != null
 
     let basicCategoryChoice: ListingCategory | null | undefined
     if (
@@ -320,15 +391,6 @@ export function getOwnerProfile(): OwnerProfile | null {
       p.basicCategoryChoice === 'motorcycle'
     ) {
       basicCategoryChoice = p.basicCategoryChoice
-    } else {
-      basicCategoryChoice = undefined
-    }
-
-    if (effectivePlan === 'basic') {
-      if (basicCategoryChoice === undefined || basicCategoryChoice === null) {
-        // Legacy Basic (no flag / no choice): previously only accommodation existed
-        basicCategoryChoice = !explicitSubscriptionFlag && subscriptionActive ? 'accommodation' : null
-      }
     } else {
       basicCategoryChoice = undefined
     }
@@ -342,14 +404,22 @@ export function getOwnerProfile(): OwnerProfile | null {
           : undefined
     const passwordHash = typeof p.passwordHash === 'string' ? p.passwordHash : undefined
 
-    return {
+    let countryId: SearchCountryId | undefined
+    if (
+      typeof p.countryId === 'string' &&
+      (SEARCH_COUNTRY_IDS as readonly string[]).includes(p.countryId)
+    ) {
+      countryId = p.countryId as SearchCountryId
+    }
+
+    const draft: OwnerProfile = {
       userId: p.userId,
       email: p.email,
       displayName,
-      plan: effectivePlan,
+      plan: storedPlan,
       subscriptionActive,
       basicCategoryChoice:
-        effectivePlan === 'basic'
+        storedPlan === 'basic'
           ? basicCategoryChoice === undefined
             ? null
             : basicCategoryChoice
@@ -359,20 +429,176 @@ export function getOwnerProfile(): OwnerProfile | null {
       phone,
       avatarDataUrl,
       passwordHash,
+      countryId,
     }
+    return normalizeOwnerProfileForSession(draft)
   } catch {
     return null
   }
 }
 
+function loadOwnerProfilesMap(): Record<string, OwnerProfile> {
+  try {
+    const raw = localStorage.getItem(PROFILES_MAP_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as Record<string, OwnerProfile>
+  } catch {
+    return {}
+  }
+}
+
+function saveOwnerProfilesMap(m: Record<string, OwnerProfile>) {
+  localStorage.setItem(PROFILES_MAP_KEY, JSON.stringify(m))
+}
+
+/** Javni profil po userId (admin + više naloga u istom browseru). */
+export function getOwnerProfileByUserId(userId: string): OwnerProfile | null {
+  const map = loadOwnerProfilesMap()
+  const p = map[userId]
+  if (!p) return null
+  return normalizeOwnerProfileForSession({ ...p })
+}
+
+export function findOwnerProfileByEmail(email: string): OwnerProfile | null {
+  const em = email.trim().toLowerCase()
+  const cur = getOwnerProfile()
+  if (cur && cur.email.trim().toLowerCase() === em) return cur
+  const map = loadOwnerProfilesMap()
+  for (const p of Object.values(map)) {
+    if (p.email.trim().toLowerCase() === em) return normalizeOwnerProfileForSession({ ...p })
+  }
+  return null
+}
+
+function minimalOwnerProfile(userId: string): OwnerProfile {
+  const safe = userId.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 48) || 'owner'
+  return {
+    userId,
+    email: `${safe}@owner.local`,
+    displayName: safe,
+    plan: null,
+    subscriptionActive: false,
+    registeredAt: new Date().toISOString(),
+    validUntil: addOneYearIso(),
+  }
+}
+
+export function getAllOwnerUserIds(): string[] {
+  const m = loadListingsMap()
+  const fromListings = Object.keys(m)
+  const fromProfiles = Object.keys(loadOwnerProfilesMap())
+  return Array.from(new Set([...fromListings, ...fromProfiles]))
+}
+
+export function getAllOwnerProfilesForAdmin(): OwnerProfile[] {
+  return getAllOwnerUserIds().map((id) => getOwnerProfileByUserId(id) ?? minimalOwnerProfile(id))
+}
+
+export function saveOwnerProfileForAdmin(userId: string, p: OwnerProfile): void {
+  const next = normalizeOwnerProfileForSession({ ...p, userId })
+  const map = loadOwnerProfilesMap()
+  map[userId] = next
+  saveOwnerProfilesMap(map)
+  try {
+    const cur = getOwnerProfile()
+    if (cur?.userId === userId) {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next))
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (next.avatarDataUrl && next.avatarDataUrl.length > 0) {
+      setOwnerAvatarPublic(next.userId, next.avatarDataUrl)
+    } else if (next.avatarDataUrl === null || next.avatarDataUrl === '') {
+      setOwnerAvatarPublic(next.userId, null)
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Javni prikaz oglasa: sakrij ako je vlasnik obrisan (soft) ili blokiran. */
+export function isOwnerPublicListingVisible(userId: string): boolean {
+  if (isOwnerDeleted(userId)) return false
+  if (getAdminOwnerMeta(userId).blocked) return false
+  return true
+}
+
+export function softDeleteOwnerUser(userId: string): void {
+  const map = loadOwnerProfilesMap()
+  const raw = map[userId]
+  if (!raw) return
+  const lm = loadListingsMap()
+  const listings = [...(lm[userId] ?? [])]
+  const meta = getAdminOwnerMeta(userId)
+  const rec: DeletedOwnerRecord = {
+    userId,
+    deletedAt: new Date().toISOString(),
+    profile: { ...raw },
+    listings,
+    meta: { ...meta },
+  }
+  pushDeletedOwner(rec)
+  delete lm[userId]
+  saveListingsMap(lm)
+  delete map[userId]
+  saveOwnerProfilesMap(map)
+  clearAdminOwnerMeta(userId)
+  try {
+    const cur = getOwnerProfile()
+    if (cur?.userId === userId) clearOwnerSession()
+  } catch {
+    /* ignore */
+  }
+}
+
+export function restoreDeletedOwner(userId: string): boolean {
+  const rec = getDeletedOwner(userId)
+  if (!rec) return false
+  saveOwnerProfileForAdmin(userId, rec.profile)
+  const lm = loadListingsMap()
+  lm[userId] = rec.listings.map((x) => ({ ...x }))
+  saveListingsMap(lm)
+  setAdminOwnerMeta(userId, rec.meta)
+  removeDeletedOwner(userId)
+  return true
+}
+
+export function permanentlyEraseDeletedOwnerRecord(userId: string): void {
+  removeDeletedOwner(userId)
+}
+
+export function adminDeleteOwnerUser(userId: string): void {
+  const m = loadListingsMap()
+  delete m[userId]
+  saveListingsMap(m)
+  const map = loadOwnerProfilesMap()
+  delete map[userId]
+  saveOwnerProfilesMap(map)
+  try {
+    const cur = getOwnerProfile()
+    if (cur?.userId === userId) {
+      clearOwnerSession()
+    }
+  } catch {
+    /* ignore */
+  }
+  clearAdminOwnerMeta(userId)
+}
+
 export function saveOwnerProfile(p: OwnerProfile): void {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
+  const next = normalizeOwnerProfileForSession(p)
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(next))
+  const map = loadOwnerProfilesMap()
+  map[next.userId] = next
+  saveOwnerProfilesMap(map)
   setLoggedIn(true)
   try {
-    if (p.avatarDataUrl && p.avatarDataUrl.length > 0) {
-      setOwnerAvatarPublic(p.userId, p.avatarDataUrl)
-    } else if (p.avatarDataUrl === null || p.avatarDataUrl === '') {
-      setOwnerAvatarPublic(p.userId, null)
+    if (next.avatarDataUrl && next.avatarDataUrl.length > 0) {
+      setOwnerAvatarPublic(next.userId, next.avatarDataUrl)
+    } else if (next.avatarDataUrl === null || next.avatarDataUrl === '') {
+      setOwnerAvatarPublic(next.userId, null)
     }
   } catch {
     /* ignore */
@@ -413,6 +639,35 @@ function saveListingsMap(m: Record<string, OwnerListingRow[]>) {
 export function getAllOwnerListingRows(): OwnerListingRow[] {
   const m = loadListingsMap()
   return Object.values(m).flat()
+}
+
+/** Ako postoji vlasnički red s ovim javnim ID-jem i vlasnik je blokiran/obrisan, sakrij oglas na sajtu. */
+export function listingSuppressedOnPublicSite(listingId: string): boolean {
+  for (const r of getAllOwnerListingRows()) {
+    if (r.publicListingId === listingId && !isOwnerPublicListingVisible(r.userId)) return true
+  }
+  return false
+}
+
+/** Svaki klik „Prikaži kontakt“ na javnom oglasu (listingId = javni ID oglasa). */
+export function incrementContactClickForListing(listingId: string): void {
+  const m = loadListingsMap()
+  for (const uid of Object.keys(m)) {
+    const arr = m[uid]
+    if (!arr) continue
+    const i = arr.findIndex((r) => r.publicListingId === listingId)
+    if (i < 0) continue
+    const r = arr[i]!
+    arr[i] = { ...r, contactClicksMonth: (r.contactClicksMonth ?? 0) + 1 }
+    m[uid] = arr
+    saveListingsMap(m)
+    try {
+      window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
+    } catch {
+      /* ignore */
+    }
+    return
+  }
 }
 
 export function getOwnerListings(userId: string): OwnerListingRow[] {
@@ -458,6 +713,7 @@ export function formatDateDots(iso: string): string {
 
 export function seedOwnerListingsIfEmpty(profile: OwnerProfile) {
   if (!profile.subscriptionActive || profile.plan == null) return
+  if (getAdminOwnerMeta(profile.userId).blocked) return
   const m = loadListingsMap()
   if (m[profile.userId]?.length) return
 

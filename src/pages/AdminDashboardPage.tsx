@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -12,9 +12,21 @@ import {
   countReportRows,
   countReviewBuckets,
 } from '../utils/adminStats'
+import { getUnreadThreadCountForAdmin } from '../utils/ownerAdminMessages'
+import { getAdminReviewUnreadCount } from '../utils/reviewStorage'
+import { getAdminReportsUnreadCount } from '../utils/storage'
+import { getAdminVisitorInquiryUnreadCount } from '../utils/visitorInquiries'
+import { AdminDeletedOwnersPage } from './admin/AdminDeletedOwnersPage'
+import { AdminImagesPage } from './admin/AdminImagesPage'
+import { AdminImportPage } from './admin/AdminImportPage'
+import { AdminInquiriesPage } from './admin/AdminInquiriesPage'
 import { AdminListingsPage } from './admin/AdminListingsPage'
+import { AdminOwnersPage } from './admin/AdminOwnersPage'
 import { AdminOwnerMessagesPage } from './admin/AdminOwnerMessagesPage'
 import { AdminPlaceholderPage } from './admin/AdminPlaceholderPage'
+import { AdminReportsPage } from './admin/AdminReportsPage'
+import { AdminReviewsPage } from './admin/AdminReviewsPage'
+import { AdminStaffPage } from './admin/AdminStaffPage'
 import { AdminVisitsPage } from './admin/AdminVisitsPage'
 
 type NavItem = {
@@ -28,6 +40,7 @@ const NAV: NavItem[] = [
   { id: 'visits', labelKey: 'admin.nav.visits', to: '/admin/visits' },
   { id: 'listings', labelKey: 'admin.nav.listings', to: '/admin/listings' },
   { id: 'owners', labelKey: 'admin.nav.owners', to: '/admin/owners' },
+  { id: 'deletedOwners', labelKey: 'admin.nav.deletedOwners', to: '/admin/deleted-owners' },
   { id: 'inquiries', labelKey: 'admin.nav.inquiries', to: '/admin/inquiries' },
   { id: 'reports', labelKey: 'admin.nav.reports', to: '/admin/reports' },
   { id: 'reviews', labelKey: 'admin.nav.reviews', to: '/admin/reviews' },
@@ -51,6 +64,7 @@ const NAV_ICONS: Record<string, string> = {
   visits: '🇲🇪',
   listings: '📋',
   owners: '👥',
+  deletedOwners: '🗑️',
   inquiries: '💬',
   reports: '⚠️',
   reviews: '⭐',
@@ -69,20 +83,7 @@ const NAV_ICONS: Record<string, string> = {
   import: '📥',
 }
 
-const ADMIN_PLACEHOLDER_IDS = [
-  'owners',
-  'inquiries',
-  'reports',
-  'reviews',
-  'users',
-  'images',
-  'staff',
-  'promo',
-  'expiring',
-  'paused',
-  'banners',
-  'import',
-] as const
+const ADMIN_PLACEHOLDER_IDS = ['users', 'promo', 'expiring', 'paused', 'banners'] as const
 
 export function AdminDashboardPage() {
   const { t } = useTranslation()
@@ -91,6 +92,36 @@ export function AdminDashboardPage() {
   const [adminEmail, setAdminEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(false)
+  const [badgeInquiries, setBadgeInquiries] = useState(0)
+  const [badgeReports, setBadgeReports] = useState(0)
+  const [badgeReviews, setBadgeReviews] = useState(0)
+  const [badgeMessages, setBadgeMessages] = useState(0)
+
+  useEffect(() => {
+    const sync = () => {
+      setBadgeInquiries(getAdminVisitorInquiryUnreadCount())
+      setBadgeReports(getAdminReportsUnreadCount())
+      setBadgeReviews(getAdminReviewUnreadCount())
+      setBadgeMessages(getUnreadThreadCountForAdmin())
+    }
+    sync()
+    const names = [
+      'rentadria-admin-visitor-inquiries-updated',
+      'rentadria-admin-reports-unread-changed',
+      'rentadria-admin-reviews-unread-changed',
+      'rentadria-admin-messages-unread-changed',
+    ] as const
+    names.forEach((n) => window.addEventListener(n, sync))
+    return () => names.forEach((n) => window.removeEventListener(n, sync))
+  }, [authed])
+
+  const navBadgeCount = (navId: string) => {
+    if (navId === 'inquiries') return badgeInquiries
+    if (navId === 'reports') return badgeReports
+    if (navId === 'reviews') return badgeReviews
+    if (navId === 'ownerMessages') return badgeMessages
+    return 0
+  }
 
   const stats = useMemo(
     () => ({
@@ -216,6 +247,8 @@ export function AdminDashboardPage() {
                 )
               }
 
+              const nb = navBadgeCount(item.id)
+
               return (
                 <NavLink
                   key={item.id}
@@ -228,6 +261,11 @@ export function AdminDashboardPage() {
                     {icon}
                   </span>
                   {label}
+                  {nb > 0 && (
+                    <span className="ra-admin-nav__badge" aria-label={String(nb)}>
+                      {nb > 99 ? '99+' : nb}
+                    </span>
+                  )}
                 </NavLink>
               )
             })}
@@ -290,7 +328,15 @@ export function AdminDashboardPage() {
             />
             <Route path="visits" element={<AdminVisitsPage />} />
             <Route path="listings" element={<AdminListingsPage />} />
+            <Route path="owners" element={<AdminOwnersPage />} />
+            <Route path="deleted-owners" element={<AdminDeletedOwnersPage />} />
+            <Route path="import" element={<AdminImportPage />} />
             <Route path="messages" element={<AdminOwnerMessagesPage />} />
+            <Route path="inquiries" element={<AdminInquiriesPage />} />
+            <Route path="reports" element={<AdminReportsPage />} />
+            <Route path="reviews" element={<AdminReviewsPage />} />
+            <Route path="images" element={<AdminImagesPage />} />
+            <Route path="staff" element={<AdminStaffPage />} />
             {ADMIN_PLACEHOLDER_IDS.map((id) => (
               <Route
                 key={id}

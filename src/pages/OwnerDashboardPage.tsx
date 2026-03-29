@@ -24,7 +24,8 @@ import {
   saveBasicCategoryChoice,
   type OwnerListingRow,
 } from '../utils/ownerSession'
-import { ACCOMMODATION_DRAFT_LISTING_ID, hasAccommodationDraft } from '../utils/accommodationDraft'
+import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
+import { getUnreadThreadCountForOwner } from '../utils/ownerAdminMessages'
 import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
 import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
 import { OwnerSettingsPage } from './owner/OwnerSettingsPage'
@@ -51,6 +52,7 @@ export function OwnerDashboardPage() {
   const [acmodalEditingRowId, setAcmodalEditingRowId] = useState<string | null>(null)
   const [inquiryEpoch, setInquiryEpoch] = useState(0)
   const [inquiryUnread, setInquiryUnread] = useState(0)
+  const [msgUnread, setMsgUnread] = useState(0)
 
   useEffect(() => {
     const onAuth = () => setSessionEpoch((e) => e + 1)
@@ -80,6 +82,15 @@ export function OwnerDashboardPage() {
       window.removeEventListener('rentadria-inquiry-dashboard-notify', syncUnread)
       window.removeEventListener('rentadria-inquiry-unread-changed', syncUnread)
     }
+  }, [profile])
+
+  useEffect(() => {
+    const syncMsg = () => {
+      if (profile) setMsgUnread(getUnreadThreadCountForOwner(profile.userId))
+    }
+    syncMsg()
+    window.addEventListener('rentadria-owner-messages-unread-changed', syncMsg)
+    return () => window.removeEventListener('rentadria-owner-messages-unread-changed', syncMsg)
   }, [profile])
 
   const reload = useCallback(() => setListVersion((v) => v + 1), [])
@@ -137,8 +148,14 @@ export function OwnerDashboardPage() {
 
   const firstName = displayFirstName(profile.displayName)
   const subscriptionReady = profile.subscriptionActive === true && profile.plan != null
+  const blocked = getAdminOwnerMeta(profile.userId).blocked
+  const onMessagesRoute =
+    location.pathname === '/owner/messages' || location.pathname.startsWith('/owner/messages/')
   const pathSegments = location.pathname.split('/').filter(Boolean)
-  if (!subscriptionReady && pathSegments.length > 1) {
+  if (blocked && !onMessagesRoute) {
+    return <Navigate to="/owner/messages" replace />
+  }
+  if (!blocked && !subscriptionReady && pathSegments.length > 1) {
     return <Navigate to="/owner" replace />
   }
   const needsBasicCategory =
@@ -162,80 +179,104 @@ export function OwnerDashboardPage() {
       <div className="ra-owner-app">
       <aside className="ra-owner-sidebar" aria-label={t('owner.sidebarAria')}>
         <nav className="ra-owner-nav">
-          <NavLink end className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`} to="/owner">
-            <span className="ra-owner-nav__ico" aria-hidden>
-              📊
-            </span>
-            {t('owner.nav.overview')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/inquiries"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              💬
-            </span>
-            {t('owner.nav.inquiries')}
-            {inquiryUnread > 0 && (
-              <span className="ra-owner-nav__badge" aria-label={String(inquiryUnread)}>
-                {inquiryUnread > 99 ? '99+' : inquiryUnread}
+          {blocked ? (
+            <NavLink
+              className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+              to="/owner/messages"
+            >
+              <span className="ra-owner-nav__ico" aria-hidden>
+                ✉️
               </span>
-            )}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/messages"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              ✉️
-            </span>
-            {t('owner.nav.messages')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/ads"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              📣
-            </span>
-            {t('owner.nav.ads')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/forum"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              💭
-            </span>
-            {t('owner.nav.forum')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/code"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              🏷️
-            </span>
-            {t('owner.nav.enterCode')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/settings"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              ⚙️
-            </span>
-            {t('owner.nav.settings')}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
-            to="/owner/profile"
-          >
-            <span className="ra-owner-nav__ico" aria-hidden>
-              👤
-            </span>
-            {t('owner.nav.editProfile')}
-          </NavLink>
+              {t('owner.nav.messages')}
+              {msgUnread > 0 && (
+                <span className="ra-owner-nav__badge" aria-label={String(msgUnread)}>
+                  {msgUnread > 99 ? '99+' : msgUnread}
+                </span>
+              )}
+            </NavLink>
+          ) : (
+            <>
+              <NavLink end className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`} to="/owner">
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  📊
+                </span>
+                {t('owner.nav.overview')}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/inquiries"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  💬
+                </span>
+                {t('owner.nav.inquiries')}
+                {inquiryUnread > 0 && (
+                  <span className="ra-owner-nav__badge" aria-label={String(inquiryUnread)}>
+                    {inquiryUnread > 99 ? '99+' : inquiryUnread}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/messages"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  ✉️
+                </span>
+                {t('owner.nav.messages')}
+                {msgUnread > 0 && (
+                  <span className="ra-owner-nav__badge" aria-label={String(msgUnread)}>
+                    {msgUnread > 99 ? '99+' : msgUnread}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/ads"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  📣
+                </span>
+                {t('owner.nav.ads')}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/forum"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  💭
+                </span>
+                {t('owner.nav.forum')}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/code"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  🏷️
+                </span>
+                {t('owner.nav.enterCode')}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/settings"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  ⚙️
+                </span>
+                {t('owner.nav.settings')}
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
+                to="/owner/profile"
+              >
+                <span className="ra-owner-nav__ico" aria-hidden>
+                  👤
+                </span>
+                {t('owner.nav.editProfile')}
+              </NavLink>
+            </>
+          )}
         </nav>
         <button type="button" className="ra-owner-sidebar__logout" onClick={onLogout}>
           {t('nav.logout')}
@@ -243,7 +284,20 @@ export function OwnerDashboardPage() {
       </aside>
 
       <main className="ra-owner-main">
-        {!subscriptionReady ? (
+        {blocked ? (
+          <>
+            <div className="ra-owner-banner ra-owner-banner--blocked" role="alert">
+              {t('owner.blockedLead')}
+            </div>
+            <Routes>
+              <Route
+                path="messages"
+                element={<OwnerMessagesPage ownerUserId={profile.userId} ownerEmail={profile.email} />}
+              />
+              <Route path="*" element={<Navigate to="/owner/messages" replace />} />
+            </Routes>
+          </>
+        ) : !subscriptionReady ? (
           <>
             <header className="ra-owner-head">
               <div>
@@ -356,15 +410,6 @@ export function OwnerDashboardPage() {
                         </p>
                       </div>
                       <div className="ra-owner-head__btns">
-                        {hasAccommodationDraft() && (
-                          <button
-                            type="button"
-                            className="ra-btn ra-btn--ghost"
-                            onClick={() => navigate(`/listing/${ACCOMMODATION_DRAFT_LISTING_ID}`)}
-                          >
-                            {t('owner.previewDraft')}
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="ra-btn ra-btn--primary"
@@ -558,6 +603,7 @@ export function OwnerDashboardPage() {
       <CategoryPickerModal
         open={
           categoryPickerOpen &&
+          !blocked &&
           subscriptionReady &&
           !needsBasicCategory &&
           profile.plan != null
@@ -575,6 +621,7 @@ export function OwnerDashboardPage() {
 
       {profile &&
         accommodationModalOpen &&
+        !blocked &&
         subscriptionReady &&
         !needsBasicCategory &&
         profile.plan != null && (

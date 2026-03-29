@@ -6,6 +6,7 @@ const OWNER_LISTINGS_MAP_KEY = 'rentadria_owner_listings_by_user'
 const NOTIFY_EMAIL_KEY = 'rentadria_listing_inquiry_notify_email_v1'
 const INQUIRIES_BY_OWNER_KEY = 'rentadria_inquiries_by_owner_v1'
 const INQUIRY_UNREAD_KEY = 'rentadria_owner_inquiry_unread_v1'
+const ADMIN_VISITOR_INQ_UNREAD_KEY = 'rentadria_admin_visitor_inquiry_unread_v1'
 
 function getAllOwnerListingRowsFlat(): OwnerListingRow[] {
   try {
@@ -30,6 +31,10 @@ export type VisitorInquiryRecord = {
   period: string
   guests: string
   message: string
+  /** Admin: pauza dopisivanja za ovaj upit */
+  paused?: boolean
+  /** Odgovor vlasnika (admin može uređivati) */
+  ownerReply?: string
 }
 
 function loadNotifyMap(): Record<string, string> {
@@ -94,6 +99,48 @@ export function appendVisitorInquiry(ownerUserId: string, row: Omit<VisitorInqui
   arr.unshift(full)
   m[ownerUserId] = arr
   saveInquiriesMap(m)
+  bumpAdminVisitorInquiryUnread()
+  dispatchInquiriesUpdated()
+}
+
+export function getAllVisitorInquiriesForAdmin(): (VisitorInquiryRecord & { ownerUserId: string })[] {
+  const m = loadInquiriesMap()
+  const out: (VisitorInquiryRecord & { ownerUserId: string })[] = []
+  for (const [ownerUserId, arr] of Object.entries(m)) {
+    for (const r of arr) {
+      out.push({ ...r, ownerUserId })
+    }
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+export function updateVisitorInquiry(
+  ownerUserId: string,
+  inquiryId: string,
+  patch: Partial<Pick<VisitorInquiryRecord, 'message' | 'ownerReply' | 'paused'>>,
+): boolean {
+  const m = loadInquiriesMap()
+  const arr = m[ownerUserId]
+  if (!arr) return false
+  const i = arr.findIndex((x) => x.id === inquiryId)
+  if (i < 0) return false
+  arr[i] = { ...arr[i]!, ...patch }
+  m[ownerUserId] = arr
+  saveInquiriesMap(m)
+  dispatchInquiriesUpdated()
+  return true
+}
+
+export function deleteVisitorInquiry(ownerUserId: string, inquiryId: string): boolean {
+  const m = loadInquiriesMap()
+  const arr = m[ownerUserId]
+  if (!arr) return false
+  const next = arr.filter((x) => x.id !== inquiryId)
+  if (next.length === arr.length) return false
+  m[ownerUserId] = next
+  saveInquiriesMap(m)
+  dispatchInquiriesUpdated()
+  return true
 }
 
 export function getInquiriesForOwner(userId: string): VisitorInquiryRecord[] {
@@ -113,6 +160,33 @@ export function countInquiriesThisMonth(userId: string): number {
 export function dispatchInquiriesUpdated() {
   try {
     window.dispatchEvent(new Event('rentadria-inquiries-updated'))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function bumpAdminVisitorInquiryUnread(): void {
+  try {
+    const n = Math.max(0, Number(localStorage.getItem(ADMIN_VISITOR_INQ_UNREAD_KEY) || '0')) + 1
+    localStorage.setItem(ADMIN_VISITOR_INQ_UNREAD_KEY, String(n))
+    window.dispatchEvent(new Event('rentadria-admin-visitor-inquiries-updated'))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getAdminVisitorInquiryUnreadCount(): number {
+  try {
+    return Math.max(0, Number(localStorage.getItem(ADMIN_VISITOR_INQ_UNREAD_KEY) || '0'))
+  } catch {
+    return 0
+  }
+}
+
+export function clearAdminVisitorInquiryUnread(): void {
+  try {
+    localStorage.removeItem(ADMIN_VISITOR_INQ_UNREAD_KEY)
+    window.dispatchEvent(new Event('rentadria-admin-visitor-inquiries-updated'))
   } catch {
     /* ignore */
   }

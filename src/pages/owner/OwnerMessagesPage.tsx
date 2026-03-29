@@ -10,6 +10,7 @@ import {
   listPrivateNotesForOwner,
   listRemindersForOwner,
   listThreadsForOwner,
+  markThreadSeenByOwner,
   type OwnerAdminThread,
 } from '../../utils/ownerAdminMessages'
 import { formatDateDots } from '../../utils/ownerSession'
@@ -192,6 +193,7 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
                         onClick={() => {
                           setOpenThreadId(th.id)
                           setReplyDraft('')
+                          markThreadSeenByOwner(th.id)
                         }}
                       >
                         {th.subject}

@@ -25,7 +25,7 @@ import {
 import { LISTING_LANG_IDS, LISTING_LANG_LABELS, type ListingLangId } from '../../constants/ownerListingLangs'
 import type { ListingCategory } from '../../types'
 import {
-  maxListingsPerCategoryForPlan,
+  maxListingsForOwnerCategory,
   upsertOwnerAccommodationListingRow,
   upsertOwnerCarListingRow,
   upsertOwnerMotorcycleListingRow,
@@ -892,8 +892,14 @@ export function AccommodationListingModal({
             })
 
     if (!result.ok) {
+      if (result.reason === 'blocked') {
+        window.alert(t('owner.listing.errBlocked'))
+        return
+      }
       const max =
-        profile.plan != null ? maxListingsPerCategoryForPlan(profile.plan) : 0
+        profile.plan != null
+          ? maxListingsForOwnerCategory(profile.userId, profile.plan, formCategory)
+          : 0
       window.alert(t('owner.listing.errListingLimit', { max }))
       return
     }

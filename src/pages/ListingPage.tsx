@@ -21,6 +21,14 @@ import { InquiryModal } from '../components/listing/InquiryModal'
 import { ReportModal } from '../components/listing/ReportModal'
 import { SimilarListingsRow } from '../components/listing/SimilarListingsRow'
 import { listingImageUrl } from '../utils/imageUrl'
+import { getEffectiveGallery } from '../utils/listingGalleryAdmin'
+import {
+  bumpAdminReviewUnread,
+  loadReviewsForListing,
+  saveReviewsForListing,
+  type StoredReview,
+} from '../utils/reviewStorage'
+import { incrementContactClickForListing } from '../utils/ownerSession'
 import { listingTitle as listingTitleT } from '../utils/listingTitle'
 import { downloadElementAsPdf } from '../utils/pdfListing'
 import { isLoggedIn, setLoggedIn } from '../utils/storage'
@@ -88,6 +96,12 @@ export function ListingPage() {
   }, [listing, t, i18n.language])
   const similar = useMemo(() => (listing ? getSimilarListings(listing) : []), [listing])
 
+  const galleryResolved = useMemo(() => {
+    if (!listing || !detail) return []
+    const base = detail.gallery.map(listingImageUrl)
+    return getEffectiveGallery(listing.id, base)
+  }, [listing, detail])
+
   const [tab, setTab] = useState<'desc' | 'chars' | 'prices'>('desc')
   const [showContact, setShowContact] = useState(false)
   const [lightbox, setLightbox] = useState<number | null>(null)
@@ -95,7 +109,7 @@ export function ListingPage() {
   const [reportOpen, setReportOpen] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
-  const [reviews, setReviews] = useState<{ rating: number; text: string; at: string }[]>([])
+  const [reviews, setReviews] = useState<StoredReview[]>([])
 
   const pdfRootRef = useRef<HTMLDivElement>(null)
   const logged = isLoggedIn()
@@ -106,11 +120,13 @@ export function ListingPage() {
 
   useEffect(() => {
     if (!id) return
-    try {
-      const raw = localStorage.getItem(`rentadria_reviews_${id}`)
-      if (raw) setReviews(JSON.parse(raw) as { rating: number; text: string; at: string }[])
-    } catch {
-      /* ignore */
+    const sync = () => setReviews(loadReviewsForListing(id))
+    sync()
+    window.addEventListener('rentadria-reviews-updated', sync)
+    window.addEventListener('rentadria-listing-gallery-admin-changed', sync)
+    return () => {
+      window.removeEventListener('rentadria-reviews-updated', sync)
+      window.removeEventListener('rentadria-listing-gallery-admin-changed', sync)
     }
   }, [id])
 
@@ -141,9 +157,15 @@ export function ListingPage() {
 
   const submitReview = useCallback(() => {
     if (!id || !logged || !reviewText.trim()) return
-    const next = [...reviews, { rating: reviewRating, text: reviewText.trim(), at: new Date().toISOString() }]
+    const rid =
+      typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-r`
+    const next: StoredReview[] = [
+      ...reviews,
+      { id: rid, rating: reviewRating, text: reviewText.trim(), at: new Date().toISOString() },
+    ]
     setReviews(next)
-    localStorage.setItem(`rentadria_reviews_${id}`, JSON.stringify(next))
+    saveReviewsForListing(id, next)
+    bumpAdminReviewUnread()
     setReviewText('')
   }, [id, logged, reviewRating, reviewText, reviews])
 
@@ -165,7 +187,7 @@ export function ListingPage() {
   }
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${detail.mapLat},${detail.mapLng}`
-  const gallery = detail.gallery.map(listingImageUrl)
+  const gallery = galleryResolved
   const bentoMode = gallery.length === 1 ? 'single' : gallery.length === 2 ? 'pair' : 'bento'
   const thumb1 = gallery[1]
   const thumb2 = gallery[2]
@@ -432,7 +454,12 @@ export function ListingPage() {
             <button
               type="button"
               className="ra-btn ra-btn--primary"
-              onClick={() => setShowContact((v) => !v)}
+              onClick={() => {
+                setShowContact((v) => {
+                  if (!v) incrementContactClickForListing(listing.id)
+                  return !v
+                })
+              }}
             >
               {showContact ? t('detail.contact.hide') : t('detail.contact.show')}
             </button>
@@ -530,8 +557,10 @@ export function ListingPage() {
         <section className="ra-reviews">
           <h2>{t('detail.reviews.title')}</h2>
           <p className="ra-reviews-hint">{t('detail.reviews.hint')}</p>
-          {reviews.map((r, i) => (
-            <article key={i} className="ra-review-item">
+          {reviews
+            .filter((r) => !r.hidden && !r.blocked)
+            .map((r) => (
+            <article key={r.id} className="ra-review-item">
               <span>★ {r.rating}</span>
               <p>{r.text}</p>
               <small>{new Date(r.at).toLocaleString()}</small>

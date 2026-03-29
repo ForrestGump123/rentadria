@@ -9,8 +9,10 @@ import { isValidRegisterPassword } from '../utils/passwordValidation'
 import { sha256Hex } from '../utils/passwordHash'
 import { isValidRegisterPhone } from '../utils/phoneValidation'
 import type { SubscriptionPlan } from '../types/plan'
-import { getOwnerProfile, saveOwnerProfile } from '../utils/ownerSession'
-import { setAdminSession, verifyAdminLogin } from '../utils/adminSession'
+import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
+import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
+import { findOwnerProfileByEmail, saveOwnerProfile } from '../utils/ownerSession'
+import { ADMIN_LOGIN_EMAIL, setAdminSession, verifyAdminLogin } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import { setLoggedIn } from '../utils/storage'
 
@@ -70,16 +72,25 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     if (!isValidEmail(email) || !password.trim()) return
     const em = email.trim().toLowerCase()
 
-    if (verifyAdminLogin(email, password)) {
-      setAdminSession(true)
-      setLoggedIn(false)
-      onClose()
-      navigate('/admin', { replace: true })
+    /** Admin nije u Supabase — samo ovaj email + lozinka iz .env (VITE_ADMIN_PASSWORD) ili demo default. */
+    if (em === ADMIN_LOGIN_EMAIL.toLowerCase()) {
+      if (verifyAdminLogin(email, password)) {
+        setAdminSession(true)
+        setLoggedIn(false)
+        onClose()
+        navigate('/admin', { replace: true })
+        return
+      }
+      setLoginErr(t('auth.loginPasswordWrong'))
       return
     }
 
     void (async () => {
-      const existing = getOwnerProfile()
+      if (isEmailInDeletedOwners(em)) {
+        setLoginErr(t('auth.loginAccountDeleted'))
+        return
+      }
+      const existing = findOwnerProfileByEmail(email)
       if (!existing) {
         setLoginErr(t('auth.loginNotRegistered'))
         return
@@ -95,6 +106,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
           setLoginErr(t('auth.loginPasswordWrong'))
           return
         }
+        saveOwnerProfile(existing)
       } else {
         saveOwnerProfile({
           ...existing,
@@ -103,7 +115,8 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
       }
       setLoggedIn(true)
       onClose()
-      navigate('/owner', { replace: true })
+      const blocked = getAdminOwnerMeta(existing.userId).blocked
+      navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
     })()
   }
 

@@ -85,6 +85,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ ok: true })
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('JWT_SECRET')) {
+      res.status(503).json({
+        error: 'jwt_secret_missing',
+        hint: 'Set JWT_SECRET (min 16 characters) in Vercel Project → Settings → Environment Variables, then redeploy.',
+      })
+      return
+    }
+    if (msg.includes('missing_email_config')) {
+      res.status(503).json({
+        error: 'email_config_missing',
+        hint: 'Set BREVO_API_KEY (REST) or BREVO_SMTP_USER + BREVO_SMTP_PASS. Verify sender domain in Brevo.',
+      })
+      return
+    }
     sendSafe500(res, e, 'send-verification')
   }
 }

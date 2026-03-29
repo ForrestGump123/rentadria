@@ -53,6 +53,12 @@ function loadThreads(): OwnerAdminThread[] {
 function saveThreads(rows: OwnerAdminThread[]) {
   localStorage.setItem(THREADS_KEY, JSON.stringify(rows))
   dispatchMessagesUpdated()
+  try {
+    window.dispatchEvent(new Event('rentadria-owner-messages-unread-changed'))
+    window.dispatchEvent(new Event('rentadria-admin-messages-unread-changed'))
+  } catch {
+    /* ignore */
+  }
 }
 
 function loadPrivateNotes(): PrivateOwnerNote[] {
@@ -231,4 +237,86 @@ export function lastMessagePreview(thread: OwnerAdminThread): string {
   if (!last) return '—'
   const t = last.body.replace(/\s+/g, ' ').trim()
   return t.length > 120 ? `${t.slice(0, 117)}…` : t
+}
+
+const THREAD_READ_KEY = 'rentadria_owner_admin_thread_read_v1'
+
+function loadReadMap(): Record<string, { owner?: string; admin?: string }> {
+  try {
+    const raw = localStorage.getItem(THREAD_READ_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as Record<string, { owner?: string; admin?: string }>
+  } catch {
+    return {}
+  }
+}
+
+function saveReadMap(m: Record<string, { owner?: string; admin?: string }>) {
+  localStorage.setItem(THREAD_READ_KEY, JSON.stringify(m))
+}
+
+function lastMsgId(thread: OwnerAdminThread): string | undefined {
+  const m = thread.messages[thread.messages.length - 1]
+  return m?.id
+}
+
+/** Vlasnik je otvorio temu — smatraj pročitanom do zadnje poruke. */
+export function markThreadSeenByOwner(threadId: string): void {
+  const t = getThread(threadId)
+  if (!t) return
+  const last = lastMsgId(t)
+  if (!last) return
+  const m = loadReadMap()
+  m[threadId] = { ...m[threadId], owner: last }
+  saveReadMap(m)
+  try {
+    window.dispatchEvent(new Event('rentadria-owner-messages-unread-changed'))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function markThreadSeenByAdmin(threadId: string): void {
+  const t = getThread(threadId)
+  if (!t) return
+  const last = lastMsgId(t)
+  if (!last) return
+  const m = loadReadMap()
+  m[threadId] = { ...m[threadId], admin: last }
+  saveReadMap(m)
+  try {
+    window.dispatchEvent(new Event('rentadria-admin-messages-unread-changed'))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Nepregledane teme gdje je zadnja poruka od admina. */
+export function getUnreadThreadCountForOwner(ownerUserId: string): number {
+  const threads = listThreadsForOwner(ownerUserId)
+  const read = loadReadMap()
+  let n = 0
+  for (const t of threads) {
+    const last = lastMsgId(t)
+    if (!last) continue
+    const lastMsg = t.messages[t.messages.length - 1]!
+    if (lastMsg.from !== 'admin') continue
+    if (read[t.id]?.owner !== last) n++
+  }
+  return n
+}
+
+/** Nepregledane teme gdje je zadnja poruka od vlasnika. */
+export function getUnreadThreadCountForAdmin(): number {
+  const threads = listAllThreadsForAdmin()
+  const read = loadReadMap()
+  let n = 0
+  for (const t of threads) {
+    const last = lastMsgId(t)
+    if (!last) continue
+    const lastMsg = t.messages[t.messages.length - 1]!
+    if (lastMsg.from !== 'owner') continue
+    if (read[t.id]?.admin !== last) n++
+  }
+  return n
 }

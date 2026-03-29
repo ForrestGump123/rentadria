@@ -1,5 +1,9 @@
 import type { Listing, ListingCategory } from '../types'
-import { getAllOwnerListingRows } from '../utils/ownerSession'
+import {
+  getAllOwnerListingRows,
+  isOwnerPublicListingVisible,
+  listingSuppressedOnPublicSite,
+} from '../utils/ownerSession'
 import { dedupeListings, isDuplicateListing, listingFingerprint } from '../utils/listingFingerprint'
 import {
   ACCOMMODATION_DRAFT_LISTING_ID,
@@ -194,26 +198,35 @@ export function getListingById(id: string): Listing | undefined {
     const d = loadAccommodationDraft(`${MOTO_DRAFT_LS_KEY}::${rowId}`)
     return d ? listingFromAccommodationDraft(d, id) : undefined
   }
-  return allListings.find((l) => l.id === id)
+  const found = allListings.find((l) => l.id === id)
+  if (found && listingSuppressedOnPublicSite(id)) return undefined
+  return found
 }
 
 export function getSimilarListings(listing: Listing, limit = 8): Listing[] {
   return allListings
-    .filter((l) => l.id !== listing.id && l.category === listing.category)
+    .filter(
+      (l) =>
+        l.id !== listing.id &&
+        l.category === listing.category &&
+        !listingSuppressedOnPublicSite(l.id),
+    )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit)
 }
 
 export function listingsByCategory(category: ListingCategory): Listing[] {
   return allListings
-    .filter((l) => l.category === category)
+    .filter((l) => l.category === category && !listingSuppressedOnPublicSite(l.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
 /** Demo oglasi + javni oglasi iz nacrta vlasnika (localStorage). */
 export function listingsByCategoryMerged(category: ListingCategory): Listing[] {
   const base = listingsByCategory(category)
-  const rows = getAllOwnerListingRows().filter((r) => r.category === category && r.publicListingId)
+  const rows = getAllOwnerListingRows().filter(
+    (r) => r.category === category && r.publicListingId && isOwnerPublicListingVisible(r.userId),
+  )
   const seen = new Set(base.map((x) => x.id))
   const extra: Listing[] = []
   for (const r of rows) {
