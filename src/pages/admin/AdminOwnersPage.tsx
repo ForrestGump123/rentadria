@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import type { SearchCountryId } from '../../data/cities/countryIds'
 import { SEARCH_COUNTRY_IDS } from '../../data/cities/countryIds'
-import type { ListingCategory } from '../../types'
 import type { SubscriptionPlan } from '../../types/plan'
 import { isSubscriptionPlan } from '../../types/plan'
 import {
@@ -25,8 +24,6 @@ import {
 import { isAdminSession } from '../../utils/adminSession'
 import { sha256Hex } from '../../utils/passwordHash'
 
-const CATS: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
-
 const COUNTRY_FILTER_ORDER: ('all' | SearchCountryId)[] = [
   'all',
   'me',
@@ -40,10 +37,10 @@ const COUNTRY_FILTER_ORDER: ('all' | SearchCountryId)[] = [
 
 export function AdminOwnersPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
   const [search, setSearch] = useState('')
   const [countryFilter, setCountryFilter] = useState<'all' | SearchCountryId>('all')
-  const [viewProfile, setViewProfile] = useState<OwnerProfile | null>(null)
   const [editProfile, setEditProfile] = useState<OwnerProfile | null>(null)
   const [editMeta, setEditMeta] = useState<AdminOwnerMeta | null>(null)
 
