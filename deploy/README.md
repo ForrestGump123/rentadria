@@ -26,6 +26,12 @@ Ako repo već postoji: `git push`.
 
 ## 3. Vercel
 
+### Grana `gh-pages` i crveni „Error“ na Preview
+
+GitHub Actions (`.github/workflows/deploy-github-pages.yml`) na svaki push na `main` gradi aplikaciju i u **granu `gh-pages` stavlja samo sadržaj `dist/`** (statički sajt za GitHub Pages). Ta grana **nema** `package.json` ni izvorni kod, pa Vercel ne može pokrenuti `npm run build` — zato su Preview deploymenti za `gh-pages` padali za par sekundi.
+
+U `vercel.json` je **`ignoreCommand`**: za granu `gh-pages` build se preskače (exit 0), za `main` i ostale grane build ide normalno. Produkcija na `main` nije problem; crveni su bili samo pokušaji na `gh-pages`.
+
 1. Otvori [vercel.com](https://vercel.com) → **Add New** → **Project** → importuj GitHub repo.
 2. **Framework:** Vite  
    **Build command:** `npm run build`  
