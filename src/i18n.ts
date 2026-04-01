@@ -21,24 +21,63 @@ function withAdminBlock<T extends Record<string, unknown>>(
 
 const adminCnr = (cnr as { admin: unknown }).admin
 const adminEn = (en as { admin: unknown }).admin
+const ownerCnr = (cnr as { owner: Record<string, unknown> }).owner
+
+/** Deep-merge owner namespace: CNR base + locale overrides (sr/hr/bs imaju parcijalan owner.listing). */
+function mergeDeep(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base }
+  for (const k of Object.keys(patch)) {
+    const pv = patch[k]
+    const bv = base[k]
+    if (
+      pv &&
+      typeof pv === 'object' &&
+      !Array.isArray(pv) &&
+      bv &&
+      typeof bv === 'object' &&
+      !Array.isArray(bv)
+    ) {
+      out[k] = mergeDeep(bv as Record<string, unknown>, pv as Record<string, unknown>)
+    } else if (pv !== undefined) {
+      out[k] = pv
+    }
+  }
+  return out
+}
+
+function withOwnerMergedFromCnr<T extends Record<string, unknown>>(loc: T): T & { owner: unknown } {
+  const localOwner = (loc.owner ?? {}) as Record<string, unknown>
+  return {
+    ...loc,
+    owner: mergeDeep(ownerCnr, localOwner),
+  } as T & { owner: unknown }
+}
 
 const storedLng =
   typeof localStorage !== 'undefined' ? localStorage.getItem('i18nextLng') : null
+
+const supportedLngs = ['en', 'cnr', 'sr', 'hr', 'bs', 'sq', 'it', 'es'] as const
 
 void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
     cnr: { translation: cnr },
-    /** Južnoslavenski: cijeli admin panel (crnogorski tekst) dok se ne prevede posebno. */
-    sr: { translation: withAdminBlock(sr as Record<string, unknown>, adminCnr) },
-    hr: { translation: withAdminBlock(hr as Record<string, unknown>, adminCnr) },
-    bs: { translation: withAdminBlock(bs as Record<string, unknown>, adminCnr) },
+    /** Južnoslavenski: admin s CNR-a; owner.listing potpun iz CNR + lokalni override. */
+    sr: { translation: withAdminBlock(withOwnerMergedFromCnr(sr as Record<string, unknown>), adminCnr) },
+    hr: { translation: withAdminBlock(withOwnerMergedFromCnr(hr as Record<string, unknown>), adminCnr) },
+    bs: { translation: withAdminBlock(withOwnerMergedFromCnr(bs as Record<string, unknown>), adminCnr) },
     /** Ostali: engleski admin dok se ne doda pun prijevod u JSON. */
     sq: { translation: withAdminBlock(sq as Record<string, unknown>, adminEn) },
     it: { translation: withAdminBlock(it as Record<string, unknown>, adminEn) },
     es: { translation: withAdminBlock(es as Record<string, unknown>, adminEn) },
   },
-  lng: storedLng && ['en', 'cnr', 'sr', 'hr', 'bs', 'sq', 'it', 'es'].includes(storedLng) ? storedLng : 'en',
+  supportedLngs: [...supportedLngs],
+  load: 'languageOnly',
+  nonExplicitSupportedLngs: true,
+  lng:
+    storedLng && (supportedLngs as readonly string[]).includes(storedLng.split('-')[0] ?? '')
+      ? storedLng.split('-')[0]!
+      : 'en',
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 })

@@ -159,6 +159,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         phone: phone.trim(),
         countryId: registrationCodeToCountryId(country as RegistrationCountryCode),
         name: name.trim(),
+        promoCode: promoCode.trim() || undefined,
       })
       await sendVerificationEmail({
         email: email.trim(),

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { listingPublicNumberFromId } from '../../data/listingDetail'
 import { formatDateDots } from '../../utils/ownerSession'
+import { telHrefFromPhone } from '../../utils/phoneLink'
 import {
   clearInquiryUnread,
   getInquiriesForOwner,
@@ -71,30 +73,42 @@ export function OwnerInquiriesPage({ ownerUserId }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r: VisitorInquiryRecord) => (
-                <tr key={r.id}>
-                  <td>{formatDateDots(r.at)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="ra-owner-inquiries__listing-link"
-                      onClick={() => navigate(`/listing/${encodeURIComponent(r.listingId)}`)}
-                    >
-                      {r.listingTitle}
-                    </button>
-                  </td>
-                  <td>
-                    {r.first} {r.last}
-                  </td>
-                  <td>
-                    <a href={`mailto:${r.email}`}>{r.email}</a>
-                  </td>
-                  <td>{r.phone}</td>
-                  <td>{r.period}</td>
-                  <td>{r.guests}</td>
-                  <td className="ra-owner-table__msg">{r.message}</td>
-                </tr>
-              ))}
+              {rows.map((r: VisitorInquiryRecord) => {
+                const phoneHref = telHrefFromPhone(r.phone)
+                return (
+                  <tr key={r.id}>
+                    <td>{formatDateDots(r.at)}</td>
+                    <td className="ra-owner-table__mono">{listingPublicNumberFromId(r.listingId)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="ra-owner-inquiries__listing-link"
+                        onClick={() => navigate(`/listing/${encodeURIComponent(r.listingId)}`)}
+                      >
+                        {r.listingTitle}
+                      </button>
+                    </td>
+                    <td>
+                      {r.first} {r.last}
+                    </td>
+                    <td>
+                      <a href={`mailto:${r.email}`}>{r.email}</a>
+                    </td>
+                    <td>
+                      {phoneHref ? (
+                        <a href={phoneHref} className="ra-owner-inquiries__phone-link">
+                          {r.phone}
+                        </a>
+                      ) : (
+                        r.phone || '—'
+                      )}
+                    </td>
+                    <td>{r.period}</td>
+                    <td>{r.guests}</td>
+                    <td className="ra-owner-table__msg">{r.message}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -5,7 +5,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Footer } from '../components/Footer'
 import { verifyEmailToken } from '../lib/verifyEmailToken'
 import { takePendingRegistration } from '../utils/pendingRegistration'
-import { saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
+import { savePromoCode } from '../utils/ownerPromoCode'
+import { getOwnerProfile, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 
 const STORAGE_KEY = 'rentadria_verify_ctx'
 
@@ -25,7 +26,7 @@ export function VerifyCodePage() {
       setLoading(true)
       setTokenErr(null)
       void verifyEmailToken(token)
-        .then((data) => {
+        .then(async (data) => {
           if (cancelled) return
           const pending = takePendingRegistration(data.email)
           const profile: OwnerProfile = {
@@ -41,6 +42,13 @@ export function VerifyCodePage() {
             passwordHash: pending?.passwordHash,
           }
           saveOwnerProfile(profile)
+          const p = getOwnerProfile()
+          if (p && pending?.promoCode?.trim()) {
+            const r = await savePromoCode(p.userId, pending.promoCode, p)
+            if (!r.ok && import.meta.env.DEV) {
+              console.warn('[RentAdria] Promo kod pri registraciji nije primijenjen:', r.reason)
+            }
+          }
           try {
             sessionStorage.removeItem(STORAGE_KEY)
           } catch {

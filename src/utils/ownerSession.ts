@@ -328,6 +328,12 @@ export function addOneYearIso(from = new Date()): string {
   return d.toISOString()
 }
 
+export function addMonthsIso(months: number, from = new Date()): string {
+  const d = new Date(from)
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString()
+}
+
 /**
  * Uskladi plan/pretplatu nakon admin dodjele ili starog stanja u localStorage.
  * Ako postoji plan, pretplata je aktivna; Basic bez kategorije → smještaj.

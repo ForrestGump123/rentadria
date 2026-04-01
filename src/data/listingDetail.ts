@@ -15,6 +15,12 @@ function hashId(id: string): number {
   return h
 }
 
+/** Stable public ad number (same formula as demo listings) — use for owner drafts too. */
+export function listingPublicNumberFromId(listingId: string): string {
+  const h = hashId(listingId)
+  return String(800 + (h % 200))
+}
+
 export function buildListingDetail(listing: Listing): ListingDetailExtra {
   const h = hashId(listing.id)
   const baseLat = 42.42 + (h % 100) / 5000
@@ -46,7 +52,7 @@ export function buildListingDetail(listing: Listing): ListingDetailExtra {
 
   return {
     rating: Math.round((4.5 + (h % 6) / 10) * 10) / 10,
-    listingNumber: String(800 + (h % 200)),
+    listingNumber: listingPublicNumberFromId(listing.id),
     viewCount: 700 + (h % 4200),
     updatedAt: new Date(listing.createdAt).toLocaleDateString('en-GB'),
     gallery,

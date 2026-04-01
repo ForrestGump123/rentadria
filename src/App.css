@@ -3991,6 +3991,17 @@ button.ra-owner-settings__plan-btn--current {
   color: var(--ra-muted);
 }
 
+.ra-owner-table__mono {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ra-owner-inquiries__phone-link {
+  color: var(--ra-accent);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
 .ra-owner-inquiries__head {
   display: flex;
   flex-wrap: wrap;
@@ -6293,6 +6304,14 @@ button.ra-owner-settings__plan-btn--current {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+}
+
+.ra-admin-promo__export-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ra-muted, #64748b);
+  max-width: 52rem;
 }
 
 .ra-admin-promo__manual {

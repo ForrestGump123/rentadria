@@ -5,9 +5,10 @@ import { getSavedPromoCode, savePromoCode } from '../../utils/ownerPromoCode'
 
 type Props = {
   profile: OwnerProfile
+  refreshProfile: () => void
 }
 
-export function OwnerCodePage({ profile }: Props) {
+export function OwnerCodePage({ profile, refreshProfile }: Props) {
   const { t } = useTranslation()
   const [epoch, setEpoch] = useState(0)
   const [draft, setDraft] = useState('')
@@ -30,7 +31,8 @@ export function OwnerCodePage({ profile }: Props) {
   const saved = useMemo(() => getSavedPromoCode(profile.userId), [profile.userId, epoch])
 
   const onSave = () => {
-    const r = savePromoCode(profile.userId, draft, profile)
+    void (async () => {
+    const r = await savePromoCode(profile.userId, draft, profile)
     if (!r.ok) {
       const errKey =
         r.reason === 'empty'
@@ -55,6 +57,8 @@ export function OwnerCodePage({ profile }: Props) {
     }
     setDraft('')
     bump()
+    refreshProfile()
+    })()
   }
 
   return (

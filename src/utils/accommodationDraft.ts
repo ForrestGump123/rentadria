@@ -19,6 +19,7 @@ import {
   type MotorcycleListingExtras,
 } from '../constants/motorcycleListingExtras'
 import { LISTING_LANG_IDS, type ListingLangId } from '../constants/ownerListingLangs'
+import { listingPublicNumberFromId } from '../data/listingDetail'
 import i18n from '../i18n'
 import { formatDateDayMonthYear } from './dateDisplay'
 import { getContactAvatarGlobal } from './contactAvatarGlobal'
@@ -852,9 +853,10 @@ function buildMotorcycleDraftDetail(
       ? [{ title: t('owner.listing.motoExtrasTitle'), items: extraLines }]
       : []
 
+  const lid = publicListingId ?? ''
   return {
     rating: 0,
-    listingNumber: '—',
+    listingNumber: listingPublicNumberFromId(lid),
     viewCount: 0,
     updatedAt: new Date().toLocaleDateString('en-GB'),
     gallery,
@@ -982,9 +984,10 @@ function buildCarDraftDetail(
       ? [{ title: t('owner.listing.carExtrasTitle'), items: extraLines }]
       : []
 
+  const lid = publicListingId ?? ''
   return {
     rating: 0,
-    listingNumber: '—',
+    listingNumber: listingPublicNumberFromId(lid),
     viewCount: 0,
     updatedAt: new Date().toLocaleDateString('en-GB'),
     gallery,
@@ -1135,9 +1138,10 @@ export function buildAccommodationDraftDetail(
       ? `${d.city.trim()}, ${countryPart}`
       : d.city.trim() || countryPart || '—'
 
+  const lid = publicListingId ?? ''
   return {
     rating: 0,
-    listingNumber: '—',
+    listingNumber: listingPublicNumberFromId(lid),
     viewCount: 0,
     updatedAt: new Date().toLocaleDateString('en-GB'),
     gallery,

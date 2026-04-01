@@ -7,7 +7,7 @@ import type { ListingCategory } from '../types'
 import type { SearchCountryId } from '../data/cities/countryIds'
 import { SEARCH_COUNTRY_IDS } from '../data/cities/countryIds'
 import type { OwnerProfile } from './ownerSession'
-import { getEffectiveUnlockedCategories } from './ownerSession'
+import { addMonthsIso, addOneYearIso, getEffectiveUnlockedCategories } from './ownerSession'
 
 const KEY = 'rentadria_admin_promo_codes_v1'
 
@@ -102,6 +102,11 @@ export function deleteAdminPromoCode(id: string): void {
   save(load().filter((x) => x.id !== id))
 }
 
+/** Zamijeni cijelu listu (npr. nakon učitavanja sa Supabase). */
+export function replaceAdminPromoCodes(rows: AdminPromoCodeRecord[]): void {
+  save(rows.slice())
+}
+
 /** Jedna uspješna aktivacija (vlasnik sačuva kod) — povećava brojače. */
 export function incrementPromoUses(recordId: string, country: SearchCountryId | undefined): void {
   const list = load()
@@ -134,17 +139,78 @@ export type ValidatePromoResult =
   | { ok: true; record: AdminPromoCodeRecord }
   | { ok: false; reason: PromoValidationFail }
 
-/** Provjera da li vlasnik smije koristiti kod (prije snimanja u profil). */
-export function validateAdminPromoForOwner(
-  rawCode: string,
+function hasActivePaidPlan(profile: OwnerProfile): boolean {
+  return profile.subscriptionActive === true && profile.plan != null
+}
+
+function endOfValidDayIso(isoYmd: string): string {
+  const d = new Date(isoYmd.includes('T') ? isoYmd : `${isoYmd}T12:00:00`)
+  d.setHours(23, 59, 59, 999)
+  return d.toISOString()
+}
+
+function earlierIso(a: string, b: string): string {
+  return new Date(a).getTime() <= new Date(b).getTime() ? a : b
+}
+
+/**
+ * Primjenjuje admin pravila (besplatna godina, itd.) na profil — poziva se nakon validacije koda.
+ */
+export function applyPromoSubscriptionToProfile(
+  profile: OwnerProfile,
+  record: AdminPromoCodeRecord,
+): OwnerProfile {
+  const now = new Date()
+  const cap = record.validUntil ? endOfValidDayIso(record.validUntil) : null
+
+  switch (record.type) {
+    case 'free_forever':
+      return {
+        ...profile,
+        plan: 'pro',
+        subscriptionActive: true,
+        validUntil: '2099-12-31T23:59:59.999Z',
+        basicCategoryChoice: undefined,
+      }
+    case 'free_year': {
+      const yearEnd = addOneYearIso(now)
+      const vu = cap ? earlierIso(yearEnd, cap) : yearEnd
+      return {
+        ...profile,
+        plan: 'pro',
+        subscriptionActive: true,
+        validUntil: vu,
+        basicCategoryChoice: undefined,
+      }
+    }
+    case 'free_month': {
+      const monthEnd = addMonthsIso(1, now)
+      const vu = cap ? earlierIso(monthEnd, cap) : monthEnd
+      return {
+        ...profile,
+        plan: 'pro',
+        subscriptionActive: true,
+        validUntil: vu,
+        basicCategoryChoice: undefined,
+      }
+    }
+    case 'discount_percent':
+    default:
+      return {
+        ...profile,
+        plan: 'pro',
+        subscriptionActive: true,
+        validUntil: cap ?? addOneYearIso(now),
+        basicCategoryChoice: undefined,
+      }
+  }
+}
+
+/** Validacija kada već imamo zapis koda (lokalno ili sa servera). */
+export function validatePromoRecordForOwner(
+  record: AdminPromoCodeRecord,
   profile: OwnerProfile,
 ): ValidatePromoResult {
-  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '')
-  if (!normalized) return { ok: false, reason: 'empty' }
-
-  const record = getAdminPromoByCode(normalized)
-  if (!record) return { ok: false, reason: 'unknown' }
-
   if (record.restrictedUserId && record.restrictedUserId !== profile.userId) {
     return { ok: false, reason: 'restricted' }
   }
@@ -172,13 +238,28 @@ export function validateAdminPromoForOwner(
     if (u >= record.maxUsesPerCountry) return { ok: false, reason: 'max_per_country' }
   }
 
-  if (record.categories.length > 0) {
+  /** Nova registracija: još nema plana — ne tražimo preklapanje kategorija; kod otključuje sve iz admin forme. */
+  if (record.categories.length > 0 && hasActivePaidPlan(profile)) {
     const unlocked = getEffectiveUnlockedCategories(profile)
     const okCat = record.categories.some((c) => unlocked.includes(c))
     if (!okCat) return { ok: false, reason: 'category' }
   }
 
   return { ok: true, record }
+}
+
+/** Provjera da li vlasnik smije koristiti kod (prije snimanja u profil). */
+export function validateAdminPromoForOwner(
+  rawCode: string,
+  profile: OwnerProfile,
+): ValidatePromoResult {
+  const normalized = rawCode.trim().toUpperCase().replace(/\s+/g, '')
+  if (!normalized) return { ok: false, reason: 'empty' }
+
+  const record = getAdminPromoByCode(normalized)
+  if (!record) return { ok: false, reason: 'unknown' }
+
+  return validatePromoRecordForOwner(record, profile)
 }
 
 export const ALL_PROMO_COUNTRIES: SearchCountryId[] = [...SEARCH_COUNTRY_IDS]

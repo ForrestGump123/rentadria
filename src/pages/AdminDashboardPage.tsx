@@ -13,6 +13,7 @@ import {
   countReportRows,
   countReviewBuckets,
 } from '../utils/adminStats'
+import { listDeletedOwners } from '../utils/deletedOwnersStore'
 import { getUnreadThreadCountForAdmin } from '../utils/ownerAdminMessages'
 import { getAdminReviewUnreadCount } from '../utils/reviewStorage'
 import { getAdminReportsUnreadCount } from '../utils/storage'
@@ -106,6 +107,7 @@ export function AdminDashboardPage() {
   const [badgeReports, setBadgeReports] = useState(0)
   const [badgeReviews, setBadgeReviews] = useState(0)
   const [badgeMessages, setBadgeMessages] = useState(0)
+  const [badgeDeletedOwners, setBadgeDeletedOwners] = useState(0)
 
   useEffect(() => {
     const sync = () => {
@@ -113,6 +115,7 @@ export function AdminDashboardPage() {
       setBadgeReports(getAdminReportsUnreadCount())
       setBadgeReviews(getAdminReviewUnreadCount())
       setBadgeMessages(getUnreadThreadCountForAdmin())
+      setBadgeDeletedOwners(listDeletedOwners().length)
     }
     sync()
     const names = [
@@ -120,16 +123,21 @@ export function AdminDashboardPage() {
       'rentadria-admin-reports-unread-changed',
       'rentadria-admin-reviews-unread-changed',
       'rentadria-admin-messages-unread-changed',
+      'rentadria-deleted-owners-updated',
     ] as const
     names.forEach((n) => window.addEventListener(n, sync))
     return () => names.forEach((n) => window.removeEventListener(n, sync))
   }, [authed])
 
   const navBadgeCount = (navId: string) => {
+    if (navId === 'overview') {
+      return badgeInquiries + badgeReports + badgeReviews + badgeMessages + badgeDeletedOwners
+    }
     if (navId === 'inquiries') return badgeInquiries
     if (navId === 'reports') return badgeReports
     if (navId === 'reviews') return badgeReviews
     if (navId === 'ownerMessages') return badgeMessages
+    if (navId === 'deletedOwners') return badgeDeletedOwners
     return 0
   }
 
@@ -243,6 +251,8 @@ export function AdminDashboardPage() {
                 )
               }
 
+              const nb = navBadgeCount(item.id)
+
               if (item.id === 'overview') {
                 return (
                   <NavLink
@@ -257,11 +267,14 @@ export function AdminDashboardPage() {
                       {icon}
                     </span>
                     {label}
+                    {nb > 0 && (
+                      <span className="ra-admin-nav__badge" aria-label={String(nb)}>
+                        {nb > 99 ? '99+' : nb}
+                      </span>
+                    )}
                   </NavLink>
                 )
               }
-
-              const nb = navBadgeCount(item.id)
 
               return (
                 <NavLink

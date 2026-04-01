@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../../types'
 import type { SearchCountryId } from '../../data/cities/countryIds'
 import { SEARCH_COUNTRY_ISO } from '../../data/cities/countryIds'
+import {
+  deleteAdminPromoOnServer,
+  fetchAdminPromoList,
+  upsertAdminPromoToServer,
+} from '../../lib/adminPromoApi'
 import { isAdminSession } from '../../utils/adminSession'
 import {
   addAdminPromoCode,
@@ -11,6 +16,7 @@ import {
   deleteAdminPromoCode,
   generatePromoCodeString,
   listAdminPromoCodes,
+  replaceAdminPromoCodes,
   type AdminPromoCodeRecord,
   type PromoBenefitType,
 } from '../../utils/adminPromoCodes'
@@ -66,6 +72,19 @@ export function AdminPromoPage() {
     const on = () => bump()
     window.addEventListener('rentadria-admin-promo-codes-updated', on)
     return () => window.removeEventListener('rentadria-admin-promo-codes-updated', on)
+  }, [bump])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const remote = await fetchAdminPromoList()
+      if (cancelled || remote === null) return
+      replaceAdminPromoCodes(remote)
+      bump()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [bump])
 
   const rows = useMemo(() => {
@@ -126,9 +145,10 @@ export function AdminPromoPage() {
   const onGenerate = () => {
     const code = generatePromoCodeString()
     try {
-      addAdminPromoCode(buildPayload(code))
+      const full = addAdminPromoCode(buildPayload(code))
       bump()
       setManualCode('')
+      void upsertAdminPromoToServer(full)
     } catch {
       window.alert(t('admin.promo.errDuplicate'))
     }
@@ -141,10 +161,11 @@ export function AdminPromoPage() {
       return
     }
     try {
-      addAdminPromoCode(buildPayload(code))
+      const full = addAdminPromoCode(buildPayload(code))
       bump()
       setManualCode('')
       setShowManual(false)
+      void upsertAdminPromoToServer(full)
     } catch {
       window.alert(t('admin.promo.errDuplicate'))
     }
@@ -154,6 +175,17 @@ export function AdminPromoPage() {
     if (!window.confirm(t('admin.promo.confirmDelete'))) return
     deleteAdminPromoCode(id)
     bump()
+    void deleteAdminPromoOnServer(id)
+  }
+
+  const onExportJsonEnv = async () => {
+    const json = JSON.stringify(listAdminPromoCodes(), null, 2)
+    try {
+      await navigator.clipboard.writeText(json)
+      window.alert(t('admin.promo.exportJsonDone'))
+    } catch {
+      window.prompt(t('admin.promo.exportJsonCopy'), json)
+    }
   }
 
   if (!isAdminSession()) return null
@@ -282,7 +314,11 @@ export function AdminPromoPage() {
           <button type="button" className="ra-btn" onClick={() => setShowManual((v) => !v)}>
             {showManual ? t('admin.promo.btnHideManual') : t('admin.promo.btnManual')}
           </button>
+          <button type="button" className="ra-btn ra-btn--ghost" onClick={() => void onExportJsonEnv()}>
+            {t('admin.promo.exportJson')}
+          </button>
         </div>
+        <p className="ra-admin-promo__export-hint">{t('admin.promo.exportJsonHint')}</p>
 
         {showManual && (
           <div className="ra-admin-promo__manual">

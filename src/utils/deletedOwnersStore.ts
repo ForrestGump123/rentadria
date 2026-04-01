@@ -26,6 +26,11 @@ function load(): DeletedOwnerRecord[] {
 
 function save(rows: DeletedOwnerRecord[]) {
   localStorage.setItem(KEY, JSON.stringify(rows))
+  try {
+    window.dispatchEvent(new CustomEvent('rentadria-deleted-owners-updated'))
+  } catch {
+    /* ignore */
+  }
 }
 
 function purgeOlderThan30Days(): void {

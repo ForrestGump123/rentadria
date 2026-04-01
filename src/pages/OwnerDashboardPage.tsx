@@ -12,6 +12,7 @@ import { CategoryPickerModal } from '../components/owner/CategoryPickerModal'
 const AccommodationListingModal = lazy(() =>
   import('../components/owner/AccommodationListingModal').then((m) => ({ default: m.AccommodationListingModal })),
 )
+import { getSavedPromoCode } from '../utils/ownerPromoCode'
 import {
   activateOwnerSubscription,
   clearOwnerSession,
@@ -127,6 +128,15 @@ export function OwnerDashboardPage() {
     return { views, contacts, inquiries }
   }, [filtered, profile, inquiryEpoch])
 
+  const codeNavBadge = useMemo(() => {
+    if (!profile) return 0
+    const ready = profile.subscriptionActive === true && profile.plan != null
+    if (ready) return 0
+    return getSavedPromoCode(profile.userId) ? 0 : 1
+  }, [profile, sessionEpoch])
+
+  const ownerOverviewBadge = inquiryUnread + msgUnread + codeNavBadge
+
   const onDelete = useCallback(
     (row: OwnerListingRow) => {
       if (!profile) return
@@ -201,6 +211,11 @@ export function OwnerDashboardPage() {
                   📊
                 </span>
                 {t('owner.nav.overview')}
+                {ownerOverviewBadge > 0 && (
+                  <span className="ra-owner-nav__badge" aria-label={String(ownerOverviewBadge)}>
+                    {ownerOverviewBadge > 99 ? '99+' : ownerOverviewBadge}
+                  </span>
+                )}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -256,6 +271,11 @@ export function OwnerDashboardPage() {
                   🏷️
                 </span>
                 {t('owner.nav.enterCode')}
+                {codeNavBadge > 0 && (
+                  <span className="ra-owner-nav__badge" aria-label={String(codeNavBadge)}>
+                    {codeNavBadge}
+                  </span>
+                )}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -584,7 +604,7 @@ export function OwnerDashboardPage() {
               />
               <Route path="ads" element={<OwnerAdsPage profile={profile} />} />
               <Route path="forum" element={<OwnerForumPage profile={profile} />} />
-              <Route path="code" element={<OwnerCodePage profile={profile} />} />
+              <Route path="code" element={<OwnerCodePage profile={profile} refreshProfile={refreshProfile} />} />
               <Route
                 path="settings"
                 element={<OwnerSettingsPage profile={profile} refreshProfile={refreshProfile} />}

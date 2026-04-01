@@ -185,3 +185,10 @@ export async function adminAuthDispatch(input: AdminAuthDispatchInput): Promise<
 export function adminAuthIpFromVercel(req: { headers: Record<string, string | string[] | undefined> }): string {
   return clientIp(req)
 }
+
+/** Provjera HttpOnly admin kolačića (za /api/admin-promo itd.). */
+export async function verifyAdminCookie(cookieHeader: string | undefined): Promise<boolean> {
+  const tok = parseCookie(cookieHeader, ADMIN_COOKIE_NAME)
+  if (!tok) return false
+  return verifyAdminJwt(tok)
+}

@@ -12,6 +12,7 @@ import {
   activateOwnerSubscription,
   clearOwnerSession,
   formatDateDots,
+  softDeleteOwnerUser,
   type OwnerProfile,
 } from '../../utils/ownerSession'
 
@@ -46,6 +47,7 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
 
   const onDeleteAccount = () => {
     if (!window.confirm(t('owner.settingsPage.deleteConfirm'))) return
+    softDeleteOwnerUser(profile.userId)
     clearOwnerSession()
     navigate('/', { replace: true })
   }

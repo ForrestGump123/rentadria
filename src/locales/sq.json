@@ -380,6 +380,30 @@
         "crossBorder": "Tarifë kalimi kufiri",
         "gps": "Navigacion GPS"
       },
+      "motoExtrasTitle": "Karakteristika",
+      "motoExtrasIntro": "Për çdo artikull shëno si të përfshirë. Lëreni çmimin në 0 falas ose shkruani shumën në EUR — në shpallje do të shfaqet i përfshirë ose me çmimin e dhënë.",
+      "motoExtrasUnit": {
+        "eurPerDay": "€/ditë",
+        "eurPerRental": "€/qira"
+      },
+      "motoExtras": {
+        "driverHelmet": "Helmë për drejtuesin",
+        "passengerHelmet": "Helmë për pasagjerin",
+        "padlock": "Dry",
+        "topCase": "Kuti e sipërme",
+        "navigation": "Navigacion",
+        "phoneHolder": "Mbajtëse telefoni",
+        "hotelDelivery": "Dorëzim në hotel",
+        "airportDelivery": "Dorëzim në aeroport",
+        "officeTransfer": "Transfer në zyrë",
+        "dropOff": "Dorëzim në pikë tjetër",
+        "otherCityDelivery": "Dorëzim në qytet tjetër",
+        "byAgreement": "sipas marrëveshjes",
+        "contactOnly": "vetëm kontakt",
+        "minAgeExperience": "Mosha minimale / përvoja"
+      },
+      "motoMinAgePh": "p.sh. 21 vjeç, min. 2 vjet përvojë",
+      "errFieldsMoto": "Plotësoni markën, modelin, vitin, transmisionin dhe çmimin ditor (fushat me *).",
       "errFieldsCar": "Plotësoni markën, modelin, vitin, transmisionin dhe çmimin ditor (fushat me *).",
       "tabBasic": "Të dhëna bazë",
       "tabOwners": "Pronarët",

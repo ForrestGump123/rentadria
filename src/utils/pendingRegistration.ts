@@ -9,6 +9,8 @@ export type PendingRegistration = {
   phone: string
   countryId: SearchCountryId
   name: string
+  /** Promotivni kod s forme za registraciju (opciono). */
+  promoCode?: string
 }
 
 /** Map UI registration locale codes → search facet country ids. */

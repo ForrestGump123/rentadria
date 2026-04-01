@@ -1,9 +1,12 @@
 import type { OwnerProfile } from './ownerSession'
 import {
+  applyPromoSubscriptionToProfile,
   getAdminPromoByCode,
   incrementPromoUses,
-  validateAdminPromoForOwner,
+  validatePromoRecordForOwner,
 } from './adminPromoCodes'
+import { resolvePromoRecord } from './promoResolve'
+import { getEffectiveUnlockedCategories, saveOwnerProfile } from './ownerSession'
 
 const STORAGE_KEY = 'rentadria_owner_promo_code_v1'
 
@@ -57,11 +60,65 @@ export type SavePromoFailReason =
   | 'max_per_country'
   | 'category'
 
-export function savePromoCode(
+function mapRedeemReason(r: string): SavePromoFailReason | null {
+  if (
+    r === 'restricted' ||
+    r === 'expired' ||
+    r === 'max_uses' ||
+    r === 'country' ||
+    r === 'max_per_country' ||
+    r === 'category'
+  ) {
+    return r
+  }
+  return null
+}
+
+/** Na Vercelu + Supabase: povećanje uses i red u rentadria_promo_redemptions. */
+async function redeemPromoOnServer(
+  code: string,
+  profile: OwnerProfile,
+): Promise<{ ok: true } | { ok: false; reason: SavePromoFailReason }> {
+  const unlocked = getEffectiveUnlockedCategories(profile)
+  try {
+    const r = await fetch('/api/promo-redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        userId: profile.userId,
+        countryId: profile.countryId,
+        subscriptionActive: profile.subscriptionActive,
+        plan: profile.plan,
+        unlockedCategories: unlocked,
+      }),
+    })
+    if (r.status === 503) {
+      return { ok: true }
+    }
+    const j = (await r.json()) as {
+      ok?: boolean
+      skipped?: boolean
+      reason?: string
+    }
+    if (j.skipped && j.ok) {
+      return { ok: true }
+    }
+    if (!r.ok || !j.ok) {
+      const mapped = j.reason ? mapRedeemReason(j.reason) : null
+      return { ok: false, reason: mapped ?? 'unknown' }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, reason: 'unknown' }
+  }
+}
+
+export async function savePromoCode(
   userId: string,
   raw: string,
   profile: OwnerProfile,
-): { ok: true } | { ok: false; reason: SavePromoFailReason } {
+): Promise<{ ok: true } | { ok: false; reason: SavePromoFailReason }> {
   const code = normalizePromoCodeInput(raw)
   if (!code) return { ok: false, reason: 'empty' }
   if (code.length > 64) return { ok: false, reason: 'too_long' }
@@ -69,12 +126,20 @@ export function savePromoCode(
   const prev = getSavedPromoCode(userId)
   const isNewCode = prev?.code !== code
 
-  const adminRec = getAdminPromoByCode(code)
-  if (!adminRec) return { ok: false, reason: 'unknown' }
+  const record = await resolvePromoRecord(code)
+  if (!record) return { ok: false, reason: 'unknown' }
+
   if (isNewCode) {
-    const v = validateAdminPromoForOwner(code, profile)
+    const v = validatePromoRecordForOwner(record, profile)
     if (!v.ok) return { ok: false, reason: v.reason }
-    incrementPromoUses(adminRec.id, profile.countryId)
+    if (getAdminPromoByCode(code)) {
+      incrementPromoUses(record.id, profile.countryId)
+    } else {
+      const redeem = await redeemPromoOnServer(code, profile)
+      if (!redeem.ok) return redeem
+    }
+    const upgraded = applyPromoSubscriptionToProfile(profile, record)
+    saveOwnerProfile(upgraded)
   }
 
   const m = load()

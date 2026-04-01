@@ -380,6 +380,30 @@
         "crossBorder": "Tasa salida del país",
         "gps": "Navegación GPS"
       },
+      "motoExtrasTitle": "Características",
+      "motoExtrasIntro": "Para cada opción márcala como incluida. Deja el precio en 0 para gratis o introduce el importe en EUR — en el anuncio se mostrará incluido o al precio indicado.",
+      "motoExtrasUnit": {
+        "eurPerDay": "€/día",
+        "eurPerRental": "€/alquiler"
+      },
+      "motoExtras": {
+        "driverHelmet": "Casco del conductor",
+        "passengerHelmet": "Casco del pasajero",
+        "padlock": "Candado",
+        "topCase": "Maleta superior",
+        "navigation": "Navegación",
+        "phoneHolder": "Soporte para móvil",
+        "hotelDelivery": "Entrega en hotel",
+        "airportDelivery": "Entrega en aeropuerto",
+        "officeTransfer": "Transfer a oficina",
+        "dropOff": "Entrega en otro punto",
+        "otherCityDelivery": "Entrega en otra ciudad",
+        "byAgreement": "según acuerdo",
+        "contactOnly": "solo contacto",
+        "minAgeExperience": "Edad mínima / experiencia"
+      },
+      "motoMinAgePh": "p. ej. 21 años, mín. 2 años de experiencia",
+      "errFieldsMoto": "Introduzca marca, modelo, año, cambio y precio diario (campos *).",
       "errFieldsCar": "Introduzca marca, modelo, año, cambio y precio diario (campos *).",
       "tabBasic": "Datos básicos",
       "tabOwners": "Propietarios",
