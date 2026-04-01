@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import './App.css'
+import { AdminSessionSync } from './components/AdminSessionSync'
 import { CookieBanner } from './components/CookieBanner'
 import { SiteVisitTracker } from './components/SiteVisitTracker'
 import { FaqPage } from './pages/FaqPage'
@@ -15,6 +16,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage'
 export default function App() {
   return (
     <>
+      <AdminSessionSync />
       <SiteVisitTracker />
       <CookieBanner />
       <Routes>

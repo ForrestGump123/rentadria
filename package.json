@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "sync": "node scripts/git-sync.mjs"
+    "sync": "node scripts/git-sync.mjs",
+    "generate:car-studio": "node scripts/generate-car-model-studio-cards.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
@@ -7,8 +7,8 @@ import {
   getBuiltInFaq,
   getBuiltInPrivacy,
   getBuiltInTerms,
-  resolveLegalContentKey,
 } from '../../content/legal/resolve'
+import { LANGUAGES, type LanguageCode } from '../../languages'
 import { isAdminSession } from '../../utils/adminSession'
 import {
   loadFaqOverride,
@@ -20,21 +20,32 @@ import {
 } from '../../utils/legalOverrides'
 
 type Page = 'terms' | 'privacy' | 'faq'
+type LegalLocaleKey = 'cnr' | 'en' | 'sq' | 'it' | 'es'
 
-const LOCALES: { id: 'cnr' | 'en' | 'sq' | 'it' | 'es'; label: string }[] = [
-  { id: 'cnr', label: 'CNR' },
-  { id: 'en', label: 'EN' },
-  { id: 'sq', label: 'SQ' },
-  { id: 'it', label: 'IT' },
-  { id: 'es', label: 'ES' },
-]
+function languageCodeToLegalLocale(code: LanguageCode): LegalLocaleKey {
+  if (code === 'en') return 'en'
+  if (code === 'sq') return 'sq'
+  if (code === 'it') return 'it'
+  if (code === 'es') return 'es'
+  return 'cnr'
+}
+
+function initialUiLang(i18nLanguage: string): LanguageCode {
+  const base = (i18nLanguage || 'en').split('-')[0]?.toLowerCase() ?? 'en'
+  const hit = LANGUAGES.find((l) => l.code === base)
+  return (hit?.code ?? 'en') as LanguageCode
+}
 
 export function AdminLegalEditorPage() {
   const { page } = useParams<{ page: string }>()
   const { t, i18n } = useTranslation()
   const kind: Page = page === 'privacy' || page === 'faq' ? page : 'terms'
-  const [locale, setLocale] = useState<'cnr' | 'en' | 'sq' | 'it' | 'es'>(() => resolveLegalContentKey(i18n.language))
-  const [json, setJson] = useState('')
+  const [uiLang, setUiLang] = useState<LanguageCode>(() => initialUiLang(i18n.language))
+  const locale = useMemo(() => languageCodeToLegalLocale(uiLang), [uiLang])
+
+  const [termsSections, setTermsSections] = useState<LegalSection[]>([])
+  const [privacySections, setPrivacySections] = useState<LegalSection[]>([])
+  const [faqItems, setFaqItems] = useState<FaqItem[]>([])
   const [err, setErr] = useState('')
 
   const titleKey =
@@ -43,13 +54,14 @@ export function AdminLegalEditorPage() {
   const loadDefault = useCallback(() => {
     if (kind === 'terms') {
       const o = loadTermsOverride(locale)
-      setJson(JSON.stringify(o ?? getBuiltInTerms(locale), null, 2))
+      setTermsSections(o ?? getBuiltInTerms(locale))
     } else if (kind === 'privacy') {
       const o = loadPrivacyOverride(locale)
-      setJson(JSON.stringify(o ?? getBuiltInPrivacy(locale), null, 2))
+      setPrivacySections(o ?? getBuiltInPrivacy(locale))
     } else {
       const o = loadFaqOverride(locale)
-      setJson(JSON.stringify(o ?? getBuiltInFaq(locale), null, 2))
+      const arr = o ?? getBuiltInFaq(locale)
+      setFaqItems(arr.map((x, i) => ({ ...x, id: x.id || String(i + 1) })))
     }
     setErr('')
   }, [kind, locale])
@@ -60,23 +72,37 @@ export function AdminLegalEditorPage() {
 
   const onSave = () => {
     try {
-      const parsed = JSON.parse(json) as unknown
-      if (!Array.isArray(parsed)) throw new Error('not_array')
       if (kind === 'faq') {
-        saveFaqOverride(locale, parsed as FaqItem[])
+        const out = faqItems.map((x, i) => ({
+          id: String(x.id || i + 1),
+          question: x.question.trim(),
+          answer: x.answer.trim(),
+        }))
+        saveFaqOverride(locale, out)
       } else if (kind === 'privacy') {
-        savePrivacyOverride(locale, parsed as LegalSection[])
+        savePrivacyOverride(
+          locale,
+          privacySections.map((s) => ({ title: s.title.trim(), body: s.body.trim() })),
+        )
       } else {
-        saveTermsOverride(locale, parsed as LegalSection[])
+        saveTermsOverride(
+          locale,
+          termsSections.map((s) => ({ title: s.title.trim(), body: s.body.trim() })),
+        )
       }
       setErr('')
       window.alert(t('admin.legalEditor.saved'))
     } catch {
-      setErr(t('admin.legalEditor.errJson'))
+      setErr(t('admin.legalEditor.errSave'))
     }
   }
 
+  const summaryLine = (title: string, fallbackKey: string) =>
+    title.trim() || t(fallbackKey)
+
   if (!isAdminSession()) return null
+
+  const showBalkanHint = locale === 'cnr' && ['sr', 'hr', 'bs'].includes(uiLang)
 
   return (
     <div className="ra-admin-legal">
@@ -86,31 +112,204 @@ export function AdminLegalEditorPage() {
       </Helmet>
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t(titleKey)}</h1>
-        <p className="ra-admin-subtitle">{t('admin.legalEditor.lead')}</p>
+        <p className="ra-admin-subtitle">{t('admin.legalEditor.leadSimple')}</p>
       </header>
 
-      <div className="ra-admin-toolbar">
-        <label className="ra-fld">
+      <div className="ra-admin-toolbar ra-admin-toolbar--legal">
+        <label className="ra-fld ra-admin-legal__lang-field">
           <span>{t('admin.legalEditor.locale')}</span>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)}>
-            {LOCALES.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
+          <select
+            className="ra-admin-legal__lang-select"
+            value={uiLang}
+            onChange={(e) => setUiLang(e.target.value as LanguageCode)}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.short} — {l.name}
               </option>
             ))}
           </select>
         </label>
+        {showBalkanHint && (
+          <p className="ra-admin-legal__locale-hint">{t('admin.legalEditor.sharedBalkanPack')}</p>
+        )}
         <button type="button" className="ra-btn" onClick={loadDefault}>
           {t('admin.legalEditor.reload')}
         </button>
       </div>
 
-      <label className="ra-fld">
-        <span>{t('admin.legalEditor.json')}</span>
-        <textarea className="ra-admin-legal__textarea" rows={22} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} />
-      </label>
+      {kind === 'terms' && (
+        <div className="ra-admin-legal-simple">
+          {termsSections.map((s, i) => (
+            <details key={i} className="ra-admin-legal-simple__details">
+              <summary className="ra-admin-legal-simple__summary">
+                <span className="ra-admin-legal-simple__summary-text">
+                  {summaryLine(s.title, 'admin.legalEditor.untitledSection')}
+                </span>
+              </summary>
+              <div className="ra-admin-legal-simple__details-body">
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.sectionTitle')}</span>
+                  <input
+                    className="ra-admin-legal__input"
+                    value={s.title}
+                    onChange={(e) => {
+                      const next = [...termsSections]
+                      next[i] = { ...next[i], title: e.target.value }
+                      setTermsSections(next)
+                    }}
+                  />
+                </label>
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.sectionBody')}</span>
+                  <textarea
+                    className="ra-admin-legal__textarea"
+                    rows={8}
+                    value={s.body}
+                    onChange={(e) => {
+                      const next = [...termsSections]
+                      next[i] = { ...next[i], body: e.target.value }
+                      setTermsSections(next)
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ra-btn ra-btn--sm ra-admin-legal-simple__remove"
+                  onClick={() => setTermsSections(termsSections.filter((_, j) => j !== i))}
+                >
+                  {t('admin.legalEditor.removeSection')}
+                </button>
+              </div>
+            </details>
+          ))}
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary"
+            onClick={() => setTermsSections([...termsSections, { title: '', body: '' }])}
+          >
+            {t('admin.legalEditor.addSection')}
+          </button>
+        </div>
+      )}
+
+      {kind === 'privacy' && (
+        <div className="ra-admin-legal-simple">
+          {privacySections.map((s, i) => (
+            <details key={i} className="ra-admin-legal-simple__details">
+              <summary className="ra-admin-legal-simple__summary">
+                <span className="ra-admin-legal-simple__summary-text">
+                  {summaryLine(s.title, 'admin.legalEditor.untitledSection')}
+                </span>
+              </summary>
+              <div className="ra-admin-legal-simple__details-body">
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.sectionTitle')}</span>
+                  <input
+                    className="ra-admin-legal__input"
+                    value={s.title}
+                    onChange={(e) => {
+                      const next = [...privacySections]
+                      next[i] = { ...next[i], title: e.target.value }
+                      setPrivacySections(next)
+                    }}
+                  />
+                </label>
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.sectionBody')}</span>
+                  <textarea
+                    className="ra-admin-legal__textarea"
+                    rows={8}
+                    value={s.body}
+                    onChange={(e) => {
+                      const next = [...privacySections]
+                      next[i] = { ...next[i], body: e.target.value }
+                      setPrivacySections(next)
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ra-btn ra-btn--sm ra-admin-legal-simple__remove"
+                  onClick={() => setPrivacySections(privacySections.filter((_, j) => j !== i))}
+                >
+                  {t('admin.legalEditor.removeSection')}
+                </button>
+              </div>
+            </details>
+          ))}
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary"
+            onClick={() => setPrivacySections([...privacySections, { title: '', body: '' }])}
+          >
+            {t('admin.legalEditor.addSection')}
+          </button>
+        </div>
+      )}
+
+      {kind === 'faq' && (
+        <div className="ra-admin-legal-simple">
+          {faqItems.map((item, i) => (
+            <details key={item.id + String(i)} className="ra-admin-legal-simple__details">
+              <summary className="ra-admin-legal-simple__summary">
+                <span className="ra-admin-legal-simple__summary-text">
+                  {summaryLine(item.question, 'admin.legalEditor.untitledFaq')}
+                </span>
+              </summary>
+              <div className="ra-admin-legal-simple__details-body">
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.faqQuestion')}</span>
+                  <input
+                    className="ra-admin-legal__input"
+                    value={item.question}
+                    onChange={(e) => {
+                      const next = [...faqItems]
+                      next[i] = { ...next[i], question: e.target.value }
+                      setFaqItems(next)
+                    }}
+                  />
+                </label>
+                <label className="ra-fld">
+                  <span>{t('admin.legalEditor.faqAnswer')}</span>
+                  <textarea
+                    className="ra-admin-legal__textarea"
+                    rows={8}
+                    value={item.answer}
+                    onChange={(e) => {
+                      const next = [...faqItems]
+                      next[i] = { ...next[i], answer: e.target.value }
+                      setFaqItems(next)
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="ra-btn ra-btn--sm ra-admin-legal-simple__remove"
+                  onClick={() => setFaqItems(faqItems.filter((_, j) => j !== i))}
+                >
+                  {t('admin.legalEditor.removeFaq')}
+                </button>
+              </div>
+            </details>
+          ))}
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary"
+            onClick={() =>
+              setFaqItems([
+                ...faqItems,
+                { id: String(faqItems.length + 1), question: '', answer: '' },
+              ])
+            }
+          >
+            {t('admin.legalEditor.addFaq')}
+          </button>
+        </div>
+      )}
+
       {err && <p className="ra-admin-gate__err">{err}</p>}
-      <button type="button" className="ra-btn ra-btn--primary" onClick={onSave}>
+      <button type="button" className="ra-btn ra-btn--primary ra-admin-legal-simple__save" onClick={onSave}>
         {t('admin.legalEditor.save')}
       </button>
     </div>

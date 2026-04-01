@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { Helmet } from 'react-helmet-async'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getPricingPlans } from '../content/pricingPlans'
+import { getPricingPlans, resolvePlanForSubscription } from '../content/pricingPlans'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
@@ -339,8 +339,11 @@ export function OwnerDashboardPage() {
                   <button
                     type="button"
                     className="ra-btn ra-btn--primary ra-pricing-card__cta"
+                    disabled={resolvePlanForSubscription(p) == null}
                     onClick={() => {
-                      activateOwnerSubscription(profile, p.id)
+                      const target = resolvePlanForSubscription(p)
+                      if (!target) return
+                      activateOwnerSubscription(profile, target)
                       refreshProfile()
                     }}
                   >

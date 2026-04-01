@@ -1,4 +1,4 @@
-import type { SearchCountryId } from './countryIds'
+import { SEARCH_COUNTRY_IDS, type SearchCountryId } from './countryIds'
 
 function parseLines(raw: string): string[] {
   const lines = raw
@@ -35,4 +35,14 @@ export async function loadCitiesForCountry(id: SearchCountryId): Promise<string[
       break
   }
   return parseLines(mod.default)
+}
+
+/** Svi gradovi (za autocomplete kad je „Sve države“). */
+export async function loadAllCitiesMerged(): Promise<string[]> {
+  const lists = await Promise.all(SEARCH_COUNTRY_IDS.map((id) => loadCitiesForCountry(id)))
+  const uniq = new Set<string>()
+  for (const list of lists) {
+    for (const c of list) uniq.add(c)
+  }
+  return [...uniq].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
 }

@@ -16,7 +16,8 @@ import type { SubscriptionPlan } from '../types/plan'
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
 import { findOwnerProfileByEmail, saveOwnerProfile } from '../utils/ownerSession'
-import { ADMIN_LOGIN_EMAIL, setAdminSession, verifyAdminLogin } from '../utils/adminSession'
+import { fetchAdminLogin } from '../lib/adminAuthApi'
+import { setAdminSession } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import {
   clearPendingRegistrationForEmail,
@@ -81,51 +82,48 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     if (!isValidEmail(email) || !password.trim()) return
     const em = email.trim().toLowerCase()
 
-    /** Admin nije u Supabase — samo ovaj email + lozinka iz .env (VITE_ADMIN_PASSWORD) ili demo default. */
-    if (em === ADMIN_LOGIN_EMAIL.toLowerCase()) {
-      if (verifyAdminLogin(email, password)) {
-        setAdminSession(true)
-        setLoggedIn(false)
-        onClose()
-        navigate('/admin', { replace: true })
-        return
-      }
-      setLoginErr(t('auth.loginPasswordWrong'))
-      return
-    }
-
     void (async () => {
       if (isEmailInDeletedOwners(em)) {
         setLoginErr(t('auth.loginAccountDeleted'))
         return
       }
       const existing = findOwnerProfileByEmail(email)
-      if (!existing) {
-        setLoginErr(t('auth.loginNotRegistered'))
-        return
-      }
-      const existingEmail = existing.email.trim().toLowerCase()
-      if (existingEmail !== em) {
-        setLoginErr(t('auth.loginWrongEmail'))
-        return
-      }
-      if (existing.passwordHash) {
-        const h = await sha256Hex(password)
-        if (h !== existing.passwordHash) {
-          setLoginErr(t('auth.loginPasswordWrong'))
+      if (existing) {
+        const existingEmail = existing.email.trim().toLowerCase()
+        if (existingEmail !== em) {
+          setLoginErr(t('auth.loginWrongEmail'))
           return
         }
-        saveOwnerProfile(existing)
-      } else {
-        saveOwnerProfile({
-          ...existing,
-          passwordHash: await sha256Hex(password),
-        })
+        if (existing.passwordHash) {
+          const h = await sha256Hex(password)
+          if (h !== existing.passwordHash) {
+            setLoginErr(t('auth.loginPasswordWrong'))
+            return
+          }
+          saveOwnerProfile(existing)
+        } else {
+          saveOwnerProfile({
+            ...existing,
+            passwordHash: await sha256Hex(password),
+          })
+        }
+        setLoggedIn(true)
+        onClose()
+        const blocked = getAdminOwnerMeta(existing.userId).blocked
+        navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+        return
       }
-      setLoggedIn(true)
-      onClose()
-      const blocked = getAdminOwnerMeta(existing.userId).blocked
-      navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+
+      const adminOk = await fetchAdminLogin(email, password)
+      if (adminOk) {
+        setAdminSession(true)
+        setLoggedIn(false)
+        onClose()
+        navigate('/admin', { replace: true })
+        return
+      }
+
+      setLoginErr(t('auth.loginPasswordWrong'))
     })()
   }
 

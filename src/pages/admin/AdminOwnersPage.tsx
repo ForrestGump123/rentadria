@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
 import type { SearchCountryId } from '../../data/cities/countryIds'
 import { SEARCH_COUNTRY_IDS } from '../../data/cities/countryIds'
 import type { SubscriptionPlan } from '../../types/plan'
@@ -22,25 +23,16 @@ import {
   type OwnerProfile,
 } from '../../utils/ownerSession'
 import { isAdminSession } from '../../utils/adminSession'
+import { shortOwnerId } from '../../utils/ownerDisplayId'
 import { sha256Hex } from '../../utils/passwordHash'
-
-const COUNTRY_FILTER_ORDER: ('all' | SearchCountryId)[] = [
-  'all',
-  'me',
-  'rs',
-  'hr',
-  'ba',
-  'al',
-  'it',
-  'es',
-]
+import { type CountryFilterState, filterByCountrySet } from '../../utils/subscriptionAdmin'
 
 export function AdminOwnersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
   const [search, setSearch] = useState('')
-  const [countryFilter, setCountryFilter] = useState<'all' | SearchCountryId>('all')
+  const [countryFilter, setCountryFilter] = useState<CountryFilterState>('all')
   const [editProfile, setEditProfile] = useState<OwnerProfile | null>(null)
   const [editMeta, setEditMeta] = useState<AdminOwnerMeta | null>(null)
 
@@ -52,10 +44,7 @@ export function AdminOwnersPage() {
   }, [epoch])
 
   const filtered = useMemo(() => {
-    let list = profiles
-    if (countryFilter !== 'all') {
-      list = list.filter((p) => p.countryId === countryFilter)
-    }
+    let list = filterByCountrySet(profiles, countryFilter)
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter(
@@ -133,17 +122,8 @@ export function AdminOwnersPage() {
         <p className="ra-admin-owners__hint">{t('admin.owners.hintPlan')}</p>
       </header>
 
-      <div className="ra-admin-owners__chips" role="group" aria-label={t('admin.owners.countryFilterAria')}>
-        {COUNTRY_FILTER_ORDER.map((id) => (
-          <button
-            key={id}
-            type="button"
-            className={`ra-admin-owners__chip ${countryFilter === id ? 'is-active' : ''}`}
-            onClick={() => setCountryFilter(id)}
-          >
-            {id === 'all' ? t('admin.owners.filterAll') : t(`search.country_${id}`)}
-          </button>
-        ))}
+      <div className="ra-admin-owners__chips-wrap">
+        <AdminCountryChips value={countryFilter} onChange={setCountryFilter} allLabel={t('admin.owners.filterAll')} />
       </div>
 
       <div className="ra-admin-listings__toolbar">
@@ -189,7 +169,9 @@ export function AdminOwnersPage() {
                   : '—'
               return (
                 <tr key={p.userId}>
-                  <td className="ra-admin-listings__mono">{p.userId.slice(0, 18)}…</td>
+                  <td className="ra-admin-listings__mono" title={p.userId}>
+                    {shortOwnerId(p.userId)}
+                  </td>
                   <td>{p.displayName}</td>
                   <td>{p.email}</td>
                   <td>{p.phone ?? '—'}</td>

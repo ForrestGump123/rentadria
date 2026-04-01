@@ -26,6 +26,9 @@ secrets/
 # Lokalni brojač posjeta (api/track-visit) — na Vercelu se ne persistira u fajl
 api/data/site-visits.json
 
+# Generisane studio kartice automobila (npm run generate:car-studio) — hiljade PNG-ova
+car-model-studio-renders/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

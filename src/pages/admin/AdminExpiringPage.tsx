@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
-import { SEARCH_COUNTRY_IDS, SEARCH_COUNTRY_ISO } from '../../data/cities/countryIds'
-import type { SearchCountryId } from '../../data/cities/countryIds'
+import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
 import { isAdminSession } from '../../utils/adminSession'
 import { isOwnerDeleted } from '../../utils/deletedOwnersStore'
 import {
@@ -12,8 +11,9 @@ import {
   type OwnerProfile,
 } from '../../utils/ownerSession'
 import {
+  type CountryFilterState,
   daysUntilSubscriptionEnd,
-  filterByCountry,
+  filterByCountrySet,
   hasActiveSubscriptionWindow,
   matchesOwnerSearch,
 } from '../../utils/subscriptionAdmin'
@@ -27,7 +27,7 @@ export function AdminExpiringPage() {
   const { t } = useTranslation()
   const [epoch, setEpoch] = useState(0)
   const [search, setSearch] = useState('')
-  const [country, setCountry] = useState<'all' | SearchCountryId>('all')
+  const [country, setCountry] = useState<CountryFilterState>('all')
   const [contactModal, setContactModal] = useState<OwnerProfile | null>(null)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
@@ -40,8 +40,7 @@ export function AdminExpiringPage() {
   }, [epoch])
 
   const filtered = useMemo(() => {
-    const q = filterByCountry(base, country).filter((p) => matchesOwnerSearch(p, search))
-    return q
+    return filterByCountrySet(base, country).filter((p) => matchesOwnerSearch(p, search))
   }, [base, country, search])
 
   const rows30 = useMemo(() => {
@@ -139,27 +138,7 @@ export function AdminExpiringPage() {
           <span>{t('admin.expiring.search')}</span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('admin.expiring.searchPh')} />
         </label>
-        <div className="ra-admin-expiring__countries" role="tablist" aria-label={t('admin.expiring.countryFilter')}>
-          <button
-            type="button"
-            role="tab"
-            className={`ra-admin-expiring__tab ${country === 'all' ? 'is-active' : ''}`}
-            onClick={() => setCountry('all')}
-          >
-            {t('admin.expiring.allCountries')}
-          </button>
-          {SEARCH_COUNTRY_IDS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="tab"
-              className={`ra-admin-expiring__tab ${country === c ? 'is-active' : ''}`}
-              onClick={() => setCountry(c)}
-            >
-              {SEARCH_COUNTRY_ISO[c]}
-            </button>
-          ))}
-        </div>
+        <AdminCountryChips value={country} onChange={setCountry} allLabel={t('admin.expiring.allCountries')} />
       </div>
 
       <section className="ra-admin-expiring__block" aria-labelledby="ex30">

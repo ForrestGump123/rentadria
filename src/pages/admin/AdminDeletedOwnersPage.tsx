@@ -28,6 +28,7 @@ export function AdminDeletedOwnersPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.deletedOwners.heading')}</h1>
         <p className="ra-admin-subtitle">{t('admin.deletedOwners.lead')}</p>
+        <p className="ra-admin-subtitle">{t('admin.deletedOwners.retention30')}</p>
       </header>
 
       <div className="ra-admin-listings__table-wrap">

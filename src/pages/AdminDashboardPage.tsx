@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
-import { isAdminSession, setAdminSession, verifyAdminLogin } from '../utils/adminSession'
+import { fetchAdminLogin, fetchAdminLogout } from '../lib/adminAuthApi'
+import { isAdminSession, setAdminSession } from '../utils/adminSession'
 import {
   countListings,
   countOwnerAccounts,
@@ -142,9 +143,10 @@ export function AdminDashboardPage() {
     [authed],
   )
 
-  const login = (e: FormEvent) => {
+  const login = async (e: FormEvent) => {
     e.preventDefault()
-    if (verifyAdminLogin(adminEmail, password)) {
+    const ok = await fetchAdminLogin(adminEmail, password)
+    if (ok) {
       setAdminSession(true)
       setAuthed(true)
       setError(false)
@@ -156,9 +158,12 @@ export function AdminDashboardPage() {
   }
 
   const logoutAdmin = () => {
-    setAdminSession(false)
-    setAuthed(false)
-    navigate('/', { replace: true })
+    void (async () => {
+      await fetchAdminLogout()
+      setAdminSession(false)
+      setAuthed(false)
+      navigate('/', { replace: true })
+    })()
   }
 
   if (!authed) {

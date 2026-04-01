@@ -1,6 +1,7 @@
 import { getListingById } from '../data/listings'
 import type { Listing } from '../types'
 import type { ListingCategory } from '../types'
+import type { SubscriptionPlan } from '../types/plan'
 import { getAllOwnerListingRows } from './ownerSession'
 
 /** Kategorija stranice na kojoj se reklama prikazuje */
@@ -10,8 +11,19 @@ export type AdPlacement = 'slideshow' | 'featured' | 'sideSlideshow'
 
 const STORAGE_KEY = 'rentadria_owner_ad_bookings_v1'
 
-/** Trajanje jedne reklame (dana) i pauza prije novog zakupa istog vlasnika u istoj kategoriji */
+/**
+ * Trajanje jedne reklame (dana) i pauza prije novog zakupa istog vlasnika u istoj kategoriji.
+ * Pro plan (pricingPlans): 15 dana slideshow + 15 dana featured — u demo zakupu su isti kalendarski period za odabrane pozicije.
+ */
 export const AD_DURATION_DAYS = 15
+/** Agency paket: 3 mjeseca (≈90 dana) po opisu na cjenovniku */
+export const AD_DURATION_DAYS_AGENCY = 90
+
+/** Trajanje zakupa u skladu s planom pretplate (Basic/Pro: 15 dana, Agency: 90 dana). */
+export function adDurationDaysForPlan(plan: SubscriptionPlan | null): number {
+  if (plan === 'agency') return AD_DURATION_DAYS_AGENCY
+  return AD_DURATION_DAYS
+}
 export const AD_COOLDOWN_DAYS = 15
 export const AD_PRICE_EUR = 15
 
@@ -67,9 +79,9 @@ export function addDaysLocal(d: Date, n: number): Date {
   return startOfDayLocal(x)
 }
 
-/** Završetak perioda od `start` uključujući AD_DURATION_DAYS kalendarskih dana (end = start + duration - 1 dan zadnji uključen) */
-export function bookingEndStart(start: Date): Date {
-  return addDaysLocal(start, AD_DURATION_DAYS - 1)
+/** Završetak perioda od `start` uključujući `durationDays` kalendarskih dana (zadnji dan uključen). */
+export function bookingEndStart(start: Date, durationDays: number = AD_DURATION_DAYS): Date {
+  return addDaysLocal(start, durationDays - 1)
 }
 
 /** Prvi dan nakon isteka reklame (za sljedeći globalni slot) */
@@ -116,10 +128,13 @@ export function createDemoBooking(opts: {
   ownerUserId: string
   category: AdCategory
   placements: AdPlacement[]
+  /** Default: prema planu (Pro 15 d., Agency 90 d.) */
+  durationDays?: number
 }): OwnerAdBooking | null {
   if (!opts.placements.length) return null
   const start = computeNextSlotStart(opts.ownerUserId, opts.category)
-  const end = bookingEndStart(start)
+  const dur = opts.durationDays ?? AD_DURATION_DAYS
+  const end = bookingEndStart(start, dur)
   const row: OwnerAdBooking = {
     id: newId(),
     ownerUserId: opts.ownerUserId,

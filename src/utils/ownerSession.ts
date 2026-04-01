@@ -473,10 +473,13 @@ export function findOwnerProfileByEmail(email: string): OwnerProfile | null {
 
 function minimalOwnerProfile(userId: string): OwnerProfile {
   const safe = userId.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 48) || 'owner'
+  const looksEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userId.trim())
+  const email = looksEmail ? userId.trim() : `${safe}@owner.local`
+  const displayName = looksEmail ? (userId.split('@')[0] ?? safe) : safe
   return {
     userId,
-    email: `${safe}@owner.local`,
-    displayName: safe,
+    email,
+    displayName,
     plan: null,
     subscriptionActive: false,
     registeredAt: new Date().toISOString(),

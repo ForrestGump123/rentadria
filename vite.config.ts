@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { adminAuthDevPlugin } from './server/viteAdminAuthPlugin.ts'
 
 /** Production base path. Default `/` for Vercel, Netlify, custom domains. */
 function productionBase(): string {
@@ -11,7 +12,7 @@ function productionBase(): string {
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  plugins: [react()],
+  plugins: [react(), adminAuthDevPlugin()],
   base: command === 'build' ? productionBase() : '/',
   server: {
     proxy: {

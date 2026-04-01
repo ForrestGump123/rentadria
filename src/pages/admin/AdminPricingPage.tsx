@@ -8,12 +8,25 @@ import {
 } from '../../content/pricingPlans'
 import { isAdminSession } from '../../utils/adminSession'
 import { savePricingOverride } from '../../utils/pricingOverrides'
+import { PLAN_IDS, type SubscriptionPlan } from '../../types/plan'
+
+function newEmptyPlan(): PricingPlanDef {
+  return {
+    id: `plan-${Date.now()}`,
+    name: 'Plan',
+    tagline: '',
+    price: '0',
+    features: [''],
+    mapsToPlan: null,
+  }
+}
 
 export function AdminPricingPage() {
   const { t, i18n } = useTranslation()
   const loc = resolvePricingLocale(i18n.language)
   const [epoch, setEpoch] = useState(0)
   const [editing, setEditing] = useState<PricingPlanDef | null>(null)
+  const [isNew, setIsNew] = useState(false)
 
   const plans = useMemo(() => {
     void epoch
@@ -28,12 +41,38 @@ export function AdminPricingPage() {
     return () => window.removeEventListener('rentadria-pricing-overrides-updated', on)
   }, [bump])
 
+  const persistPlans = (next: PricingPlanDef[]) => {
+    savePricingOverride(loc, next)
+    bump()
+  }
+
   const onSaveEdit = () => {
     if (!editing) return
-    const next = plans.map((p) => (p.id === editing.id ? editing : p))
-    savePricingOverride(loc, next)
+    const id = editing.id.trim()
+    if (!id) {
+      window.alert(t('admin.pricingAdmin.errId'))
+      return
+    }
+    const next = isNew ? [...plans, { ...editing, id }] : plans.map((p) => (p.id === editing.id ? { ...editing, id } : p))
+    persistPlans(next)
     setEditing(null)
-    bump()
+    setIsNew(false)
+  }
+
+  const onAddPlan = () => {
+    setIsNew(true)
+    setEditing(newEmptyPlan())
+  }
+
+  const onDeleteEditing = () => {
+    if (!editing || isNew) {
+      setEditing(null)
+      setIsNew(false)
+      return
+    }
+    if (!window.confirm(t('admin.pricingAdmin.confirmDelete'))) return
+    persistPlans(plans.filter((p) => p.id !== editing.id))
+    setEditing(null)
   }
 
   const onReset = () => {
@@ -58,12 +97,17 @@ export function AdminPricingPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.pricingAdmin.title')}</h1>
         <p className="ra-admin-subtitle">{t('admin.pricingAdmin.lead')}</p>
-        <button type="button" className="ra-btn" onClick={onReset}>
-          {t('admin.pricingAdmin.resetDefaults')}
-        </button>
+        <div className="ra-admin-pricing-admin__toolbar">
+          <button type="button" className="ra-btn ra-btn--primary" onClick={onAddPlan}>
+            {t('admin.pricingAdmin.addPlan')}
+          </button>
+          <button type="button" className="ra-btn" onClick={onReset}>
+            {t('admin.pricingAdmin.resetDefaults')}
+          </button>
+        </div>
       </header>
 
-      <div className="ra-pricing-grid">
+      <div className="ra-pricing-grid ra-admin-pricing-admin__grid">
         {plans.map((p) => (
           <article key={p.id} className={`ra-pricing-card ${p.popular ? 'ra-pricing-card--popular' : ''}`}>
             <div className="ra-pricing-card__head">
@@ -80,7 +124,14 @@ export function AdminPricingPage() {
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <button type="button" className="ra-btn ra-btn--primary ra-btn--sm" onClick={() => setEditing({ ...p })}>
+            <button
+              type="button"
+              className="ra-btn ra-btn--primary ra-btn--sm"
+              onClick={() => {
+                setIsNew(false)
+                setEditing({ ...p })
+              }}
+            >
               {t('admin.pricingAdmin.edit')}
             </button>
           </article>
@@ -90,21 +141,63 @@ export function AdminPricingPage() {
       <p className="ra-admin-pricing-admin__hint">{t('admin.pricingAdmin.hint')}</p>
 
       {editing && (
-        <div className="ra-modal" role="dialog" onClick={() => setEditing(null)}>
-          <div className="ra-modal__panel ra-admin-owners__modal ra-admin-owners__modal--wide" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="ra-modal"
+          role="dialog"
+          onClick={() => {
+            setEditing(null)
+            setIsNew(false)
+          }}
+        >
+          <div
+            className="ra-modal__panel ra-admin-owners__modal ra-admin-owners__modal--wide"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="ra-admin-title">{t('admin.pricingAdmin.editTitle')}</h2>
+            <label className="ra-fld">
+              <span>{t('admin.pricingAdmin.fldId')}</span>
+              <input
+                value={editing.id}
+                disabled={!isNew}
+                onChange={(e) => setEditing({ ...editing, id: e.target.value })}
+              />
+            </label>
             <label className="ra-fld">
               <span>{t('admin.pricingAdmin.fldName')}</span>
               <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             </label>
             <label className="ra-fld">
               <span>{t('admin.pricingAdmin.fldTagline')}</span>
-              <input value={editing.tagline} onChange={(e) => setEditing({ ...editing, tagline: e.target.value })} />
+              <input
+                value={editing.tagline}
+                onChange={(e) => setEditing({ ...editing, tagline: e.target.value })}
+              />
             </label>
             <label className="ra-fld">
               <span>{t('admin.pricingAdmin.fldPrice')}</span>
               <input value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} />
             </label>
+            <label className="ra-fld">
+              <span>{t('admin.pricingAdmin.fldMapsToPlan')}</span>
+              <select
+                value={editing.mapsToPlan ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setEditing({
+                    ...editing,
+                    mapsToPlan: v === '' ? null : (v as SubscriptionPlan),
+                  })
+                }}
+              >
+                <option value="">{t('admin.pricingAdmin.mapsNone')}</option>
+                {PLAN_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {t(`pricing.planNames.${id}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="ra-admin-pricing-admin__field-hint">{t('admin.pricingAdmin.mapsHint')}</p>
             <label className="ra-fld">
               <span>{t('admin.pricingAdmin.fldFeatures')}</span>
               <textarea
@@ -133,7 +226,19 @@ export function AdminPricingPage() {
               <button type="button" className="ra-btn ra-btn--primary" onClick={onSaveEdit}>
                 {t('admin.pricingAdmin.save')}
               </button>
-              <button type="button" className="ra-btn" onClick={() => setEditing(null)}>
+              {!isNew && (
+                <button type="button" className="ra-btn ra-admin-listings__btn-del" onClick={onDeleteEditing}>
+                  {t('admin.pricingAdmin.deletePlan')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="ra-btn"
+                onClick={() => {
+                  setEditing(null)
+                  setIsNew(false)
+                }}
+              >
                 {t('admin.pricingAdmin.cancel')}
               </button>
             </div>

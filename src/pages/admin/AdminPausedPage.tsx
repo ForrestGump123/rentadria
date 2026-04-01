@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
-import { SEARCH_COUNTRY_IDS, SEARCH_COUNTRY_ISO } from '../../data/cities/countryIds'
-import type { SearchCountryId } from '../../data/cities/countryIds'
+import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
 import { isAdminSession } from '../../utils/adminSession'
 import { isOwnerDeleted } from '../../utils/deletedOwnersStore'
 import {
@@ -12,7 +11,12 @@ import {
   type OwnerProfile,
   saveOwnerProfileForAdmin,
 } from '../../utils/ownerSession'
-import { filterByCountry, isSubscriptionDateExpired, matchesOwnerSearch } from '../../utils/subscriptionAdmin'
+import {
+  type CountryFilterState,
+  filterByCountrySet,
+  isSubscriptionDateExpired,
+  matchesOwnerSearch,
+} from '../../utils/subscriptionAdmin'
 
 function planLabel(p: OwnerProfile, t: (k: string) => string): string {
   if (!p.plan) return '—'
@@ -29,7 +33,7 @@ export function AdminPausedPage() {
   const { t } = useTranslation()
   const [epoch, setEpoch] = useState(0)
   const [search, setSearch] = useState('')
-  const [country, setCountry] = useState<'all' | SearchCountryId>('all')
+  const [country, setCountry] = useState<CountryFilterState>('all')
   const [contactModal, setContactModal] = useState<OwnerProfile | null>(null)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
@@ -39,7 +43,7 @@ export function AdminPausedPage() {
     const list = getAllOwnerProfilesForAdmin().filter(
       (p) => !isOwnerDeleted(p.userId) && p.plan != null && isSubscriptionDateExpired(p),
     )
-    return filterByCountry(list, country)
+    return filterByCountrySet(list, country)
       .filter((p) => matchesOwnerSearch(p, search))
       .map((p) => ({ p, days: daysSinceExpiry(p) }))
       .sort((a, b) => b.days - a.days)
@@ -85,25 +89,7 @@ export function AdminPausedPage() {
           <span>{t('admin.paused.search')}</span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('admin.paused.searchPh')} />
         </label>
-        <div className="ra-admin-expiring__countries" role="tablist">
-          <button
-            type="button"
-            className={`ra-admin-expiring__tab ${country === 'all' ? 'is-active' : ''}`}
-            onClick={() => setCountry('all')}
-          >
-            {t('admin.expiring.allCountries')}
-          </button>
-          {SEARCH_COUNTRY_IDS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`ra-admin-expiring__tab ${country === c ? 'is-active' : ''}`}
-              onClick={() => setCountry(c)}
-            >
-              {SEARCH_COUNTRY_ISO[c]}
-            </button>
-          ))}
-        </div>
+        <AdminCountryChips value={country} onChange={setCountry} allLabel={t('admin.expiring.allCountries')} />
       </div>
 
       <div className="ra-admin-listings__table-wrap">

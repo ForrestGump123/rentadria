@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LISTING_IMAGE_FALLBACK } from '../data/listings'
 import type { Listing } from '../types'
+import { isAdminPromoListingId } from '../utils/adminBannerListings'
 import { listingImageUrl } from '../utils/imageUrl'
 import { listingTitle } from '../utils/listingTitle'
 
@@ -141,14 +142,14 @@ export function SideAdsColumn({ items, side, onOpenListing }: SideAdsColumnProps
 
   if (loop.length === 0) {
     return (
-      <aside className={`ra-side ra-side--${side}`} aria-label="Listings">
+      <aside className={`ra-side ra-side--${side}`} aria-label={t('search.sideColumn')}>
         <div className="ra-side__mask ra-side__mask--empty" />
       </aside>
     )
   }
 
   return (
-    <aside className={`ra-side ra-side--${side}`} aria-label="Listings">
+    <aside className={`ra-side ra-side--${side}`} aria-label={t('search.sideColumn')}>
       <div
         ref={scrollRef}
         className="ra-side__mask ra-side__mask--scroll-auto"
@@ -166,13 +167,18 @@ export function SideAdsColumn({ items, side, onOpenListing }: SideAdsColumnProps
         onPointerCancel={endPointer}
       >
         <div className="ra-side__track ra-side__track--scroll-auto">
-          {loop.map((item, i) => (
+          {loop.map((item, i) => {
+            const promo = isAdminPromoListingId(item.id)
+            return (
             <button
               key={`${item.id}-${i}`}
               type="button"
-              className="ra-side__card"
+              className={`ra-side__card ${promo ? 'ra-side__card--promo' : ''}`}
               onClick={() => onCardOpen(item)}
             >
+              {promo && (
+                <span className="ra-side__promo-badge">{t('search.sponsoredBadge')}</span>
+              )}
               <div className="ra-side__img-wrap">
                 <img
                   src={listingImageUrl(item.image)}
@@ -185,9 +191,14 @@ export function SideAdsColumn({ items, side, onOpenListing }: SideAdsColumnProps
                 />
               </div>
               <h3 className="ra-side__title">{listingTitle(item, t)}</h3>
-              <p className="ra-side__meta">{item.location}</p>
+              {promo ? (
+                <p className="ra-side__promo-desc">{item.location}</p>
+              ) : (
+                <p className="ra-side__meta">{item.location}</p>
+              )}
             </button>
-          ))}
+            )
+          })}
         </div>
       </div>
     </aside>

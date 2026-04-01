@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LISTING_IMAGE_FALLBACK } from '../data/listings'
 import type { Listing, ListingCategory } from '../types'
@@ -6,6 +6,7 @@ import type { SearchCountryId } from '../data/cities/countryIds'
 import { useCurrency } from '../context/CurrencyContext'
 import { listingImageUrl } from '../utils/imageUrl'
 import { listingTitle } from '../utils/listingTitle'
+import { getPublicSiteListingCounts } from '../utils/publicSiteStats'
 import { HeroSearchBar } from './HeroSearchBar'
 
 type HeroSlideshowProps = {
@@ -49,10 +50,26 @@ export function HeroSlideshow({
   searchVehicleMake,
   onSearchVehicleMake,
 }: HeroSlideshowProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { formatPriceLabel } = useCurrency()
   const [index, setIndex] = useState(0)
   const [heroSrc, setHeroSrc] = useState<string>('')
+  const [listingStats, setListingStats] = useState(() => getPublicSiteListingCounts())
+  const fmtCount = useMemo(
+    () => (n: number) => n.toLocaleString(i18n.language.replace('_', '-')),
+    [i18n.language],
+  )
+
+  useEffect(() => {
+    const bump = () => setListingStats(getPublicSiteListingCounts())
+    bump()
+    window.addEventListener('rentadria-owner-listings-updated', bump)
+    window.addEventListener('storage', bump)
+    return () => {
+      window.removeEventListener('rentadria-owner-listings-updated', bump)
+      window.removeEventListener('storage', bump)
+    }
+  }, [])
   const safe = slides.length > 0 ? slides : []
   const current = safe.length ? safe[index % safe.length] : undefined
   const h = `hero.${category}` as const
@@ -77,7 +94,9 @@ export function HeroSlideshow({
     return (
       <section className="ra-hero">
         <div className="ra-hero__media ra-hero__media--empty">
-          <div className="ra-hero__overlay" />
+          <div className="ra-hero__media-visual" aria-hidden>
+            <div className="ra-hero__overlay" />
+          </div>
           <div className="ra-hero__content">
             <p className="ra-hero__badge">{t(`${h}.badge`)}</p>
             <h1 className="ra-hero__title">
@@ -109,20 +128,22 @@ export function HeroSlideshow({
   return (
     <section className="ra-hero">
       <div className="ra-hero__media">
-        <img
-          src={heroSrc || listingImageUrl(current.image)}
-          alt=""
-          className="ra-hero__img"
-          loading="eager"
-          onError={() => setHeroSrc(LISTING_IMAGE_FALLBACK)}
-        />
-        <div className="ra-hero__overlay" />
-        <button
-          type="button"
-          className="ra-hero__backdrop-hit"
-          onClick={() => onOpenListing(current)}
-          aria-label={t('listingPage.openAria')}
-        />
+        <div className="ra-hero__media-visual" aria-hidden>
+          <img
+            src={heroSrc || listingImageUrl(current.image)}
+            alt=""
+            className="ra-hero__img"
+            loading="eager"
+            onError={() => setHeroSrc(LISTING_IMAGE_FALLBACK)}
+          />
+          <div className="ra-hero__overlay" />
+          <button
+            type="button"
+            className="ra-hero__backdrop-hit"
+            onClick={() => onOpenListing(current)}
+            aria-label={t('listingPage.openAria')}
+          />
+        </div>
         <div className="ra-hero__content">
           <p className="ra-hero__badge">{t(`${h}.badge`)}</p>
           <h1 className="ra-hero__title">
@@ -148,19 +169,19 @@ export function HeroSlideshow({
 
           <div className="ra-stats">
             <div>
-              <strong>12,400+</strong>
+              <strong>{fmtCount(listingStats.accommodations)}</strong>
               <span>{t('stats.accommodations')}</span>
             </div>
             <div>
-              <strong>3,400+</strong>
+              <strong>{fmtCount(listingStats.cars)}</strong>
               <span>{t('stats.cars')}</span>
             </div>
             <div>
-              <strong>1,900+</strong>
+              <strong>{fmtCount(listingStats.motorcycles)}</strong>
               <span>{t('stats.motorcycles')}</span>
             </div>
             <div>
-              <strong>5</strong>
+              <strong>{fmtCount(listingStats.countries)}</strong>
               <span>{t('stats.countries')}</span>
             </div>
           </div>

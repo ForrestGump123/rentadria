@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Logo } from './Logo'
 import { AmexMark, MastercardMark, VisaMark } from './icons/PaymentBrandIcons'
+import { TreatBeerLink } from './TreatBeerLink'
 
 export function Footer() {
   const { t } = useTranslation()
@@ -16,6 +17,13 @@ export function Footer() {
             <Link to="/privacy">{t('footer.privacy')}</Link>
             <Link to="/faq">{t('footer.faq')}</Link>
             <Link to="/pricing">{t('footer.pricing')}</Link>
+            <button
+              type="button"
+              className="ra-footer__cookie-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent('rentadria-open-cookie-settings'))}
+            >
+              {t('footer.cookies')}
+            </button>
           </nav>
         </div>
 
@@ -25,6 +33,7 @@ export function Footer() {
           <div className="ra-footer__bar-spacer" aria-hidden />
           <p className="ra-footer__copy">{t('footer.copyrightLine')}</p>
           <div className="ra-footer__payments">
+            <TreatBeerLink variant="footer" />
             <span className="ra-footer__card-ico" title="Visa">
               <VisaMark />
             </span>

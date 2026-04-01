@@ -4,17 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Listing, ListingCategory } from '../types'
 import type { SearchCountryId } from '../data/cities/countryIds'
-import { loadCitiesForCountry } from '../data/cities/loadCities'
+import { loadAllCitiesMerged, loadCitiesForCountry } from '../data/cities/loadCities'
 import { listingsByCategoryMerged } from '../data/listings'
-import { filterListingsByLocation } from '../utils/locationFilter'
+import { filterHomeListings } from '../utils/locationFilter'
 import { filterListingsBySearchFacets } from '../utils/searchFacets'
 import { Header } from '../components/Header'
 import { HeroSlideshow } from '../components/HeroSlideshow'
+import { EntryPopupBanner } from '../components/EntryPopupBanner'
 import { SideAdsColumn } from '../components/SideAdsColumn'
 import { FeaturedMarquee } from '../components/FeaturedMarquee'
 import { AdGrid } from '../components/AdGrid'
 import { Footer } from '../components/Footer'
 import { listingImageUrl } from '../utils/imageUrl'
+import { adminBannersToListings, isAdminPromoListingId } from '../utils/adminBannerListings'
+import { listBannersForSlot } from '../utils/adminBannersStore'
 import { mergePromotedFirst, getPromotedListingsForPlacement } from '../utils/ownerAds'
 import type { SubscriptionPlan } from '../types/plan'
 import { isSubscriptionPlan } from '../types/plan'
@@ -33,6 +36,7 @@ export function HomePage() {
   })
   const [page, setPage] = useState(1)
   const [adsEpoch, setAdsEpoch] = useState(0)
+  const [bannerEpoch, setBannerEpoch] = useState(0)
   const [registrationIntent, setRegistrationIntent] = useState<{
     plan: SubscriptionPlan | null
   } | null>(null)
@@ -53,9 +57,24 @@ export function HomePage() {
 
   useEffect(() => {
     if (!draftCountry) {
-      setCitiesDraft([])
-      setCitiesDraftLoading(false)
-      return
+      let cancelled = false
+      setCitiesDraftLoading(true)
+      loadAllCitiesMerged()
+        .then((list) => {
+          if (!cancelled) {
+            setCitiesDraft(list)
+            setCitiesDraftLoading(false)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setCitiesDraft([])
+            setCitiesDraftLoading(false)
+          }
+        })
+      return () => {
+        cancelled = true
+      }
     }
     let cancelled = false
     setCitiesDraftLoading(true)
@@ -108,10 +127,10 @@ export function HomePage() {
   const citiesReady = !appliedCountry || !citiesAppliedLoading
 
   const gridItems = useMemo(() => {
-    const locFiltered = filterListingsByLocation(
+    const locFiltered = filterHomeListings(
       baseList,
       appliedCountry,
-      appliedCity || null,
+      appliedCity,
       citiesApplied.length ? citiesApplied : null,
       citiesReady,
     )
@@ -132,6 +151,19 @@ export function HomePage() {
     appliedVehicleMake,
   ])
 
+  const hasActiveSearch = useMemo(
+    () =>
+      Boolean(
+        appliedCountry ||
+          appliedCity.trim() ||
+          appliedPropertyType.trim() ||
+          appliedVehicleMake.trim(),
+      ),
+    [appliedCountry, appliedCity, appliedPropertyType, appliedVehicleMake],
+  )
+
+  const gridIdSet = useMemo(() => new Set(gridItems.map((l) => l.id)), [gridItems])
+
   const promoSlides = useMemo(
     () => getPromotedListingsForPlacement(category, 'slideshow'),
     [category, adsEpoch],
@@ -145,9 +177,37 @@ export function HomePage() {
     [category, adsEpoch],
   )
 
+  const promoSlidesScoped = useMemo(
+    () => (hasActiveSearch ? promoSlides.filter((l) => gridIdSet.has(l.id)) : promoSlides),
+    [hasActiveSearch, promoSlides, gridIdSet],
+  )
+  const promoFeaturedScoped = useMemo(
+    () => (hasActiveSearch ? promoFeatured.filter((l) => gridIdSet.has(l.id)) : promoFeatured),
+    [hasActiveSearch, promoFeatured, gridIdSet],
+  )
+  const promoSideScoped = useMemo(
+    () => (hasActiveSearch ? promoSide.filter((l) => gridIdSet.has(l.id)) : promoSide),
+    [hasActiveSearch, promoSide, gridIdSet],
+  )
+
+  const adminSlideshow = useMemo(() => {
+    void bannerEpoch
+    return adminBannersToListings(listBannersForSlot('slideshow', appliedCountry), category)
+  }, [bannerEpoch, appliedCountry, category])
+
+  const adminSideLeft = useMemo(() => {
+    void bannerEpoch
+    return adminBannersToListings(listBannersForSlot('left', appliedCountry), category)
+  }, [bannerEpoch, appliedCountry, category])
+
+  const adminSideRight = useMemo(() => {
+    void bannerEpoch
+    return adminBannersToListings(listBannersForSlot('right', appliedCountry), category)
+  }, [bannerEpoch, appliedCountry, category])
+
   const slides = useMemo(
-    () => mergePromotedFirst(promoSlides, gridItems, 8),
-    [gridItems, promoSlides],
+    () => mergePromotedFirst(adminSlideshow, mergePromotedFirst(promoSlidesScoped, gridItems, 8), 8),
+    [adminSlideshow, gridItems, promoSlidesScoped],
   )
 
   const featured = useMemo(() => {
@@ -155,13 +215,16 @@ export function HomePage() {
     const feat = list.filter((l) => l.featured)
     const rest = list.filter((l) => !l.featured)
     const ordered = [...feat, ...rest]
-    return mergePromotedFirst(promoFeatured, ordered, 24)
-  }, [gridItems, promoFeatured])
+    return mergePromotedFirst(promoFeaturedScoped, ordered, 24)
+  }, [gridItems, promoFeaturedScoped])
 
-  const sideLeft = useMemo(() => mergePromotedFirst(promoSide, gridItems), [gridItems, promoSide])
+  const sideLeft = useMemo(
+    () => mergePromotedFirst(adminSideLeft, mergePromotedFirst(promoSideScoped, gridItems)),
+    [adminSideLeft, gridItems, promoSideScoped],
+  )
   const sideRight = useMemo(
-    () => mergePromotedFirst(promoSide, [...gridItems].reverse()),
-    [gridItems, promoSide],
+    () => mergePromotedFirst(adminSideRight, mergePromotedFirst(promoSideScoped, [...gridItems].reverse())),
+    [adminSideRight, gridItems, promoSideScoped],
   )
 
   const ogImage = useMemo(() => {
@@ -213,6 +276,19 @@ export function HomePage() {
   }, [])
 
   useEffect(() => {
+    const bump = () => setBannerEpoch((e) => e + 1)
+    window.addEventListener('rentadria-admin-banners-updated', bump)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'rentadria_admin_banners_v1') bump()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('rentadria-admin-banners-updated', bump)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+
+  useEffect(() => {
     setDraftPropertyType('')
     setAppliedPropertyType('')
     setDraftVehicleMake('')
@@ -230,6 +306,7 @@ export function HomePage() {
 
   const openListing = useCallback(
     (listing: Listing) => {
+      if (isAdminPromoListingId(listing.id)) return
       void navigate(`/listing/${listing.id}`)
     },
     [navigate],
@@ -249,6 +326,9 @@ export function HomePage() {
     setAppliedPropertyType(draftPropertyType.trim())
     setAppliedVehicleMake(draftVehicleMake.trim())
     setPage(1)
+    requestAnimationFrame(() => {
+      document.getElementById('home-search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }, [draftCountry, draftCity, draftPropertyType, draftVehicleMake])
 
   return (
@@ -270,6 +350,8 @@ export function HomePage() {
         onConsumedRegistrationIntent={onConsumedRegistrationIntent}
       />
 
+      <EntryPopupBanner searchCountryId={appliedCountry} epoch={bannerEpoch} />
+
       <main className="ra-main">
         <div className="ra-row">
           <SideAdsColumn side="left" items={sideLeft} onOpenListing={openListing} />
@@ -287,9 +369,15 @@ export function HomePage() {
               citiesLoading={citiesDraftLoading}
               onSearchSubmit={onSearchSubmit}
               searchPropertyType={draftPropertyType}
-              onSearchPropertyType={setDraftPropertyType}
+              onSearchPropertyType={(v) => {
+                setDraftPropertyType(v)
+                setAppliedPropertyType(v)
+              }}
               searchVehicleMake={draftVehicleMake}
-              onSearchVehicleMake={setDraftVehicleMake}
+              onSearchVehicleMake={(v) => {
+                setDraftVehicleMake(v)
+                setAppliedVehicleMake(v)
+              }}
             />
           </div>
           <SideAdsColumn side="right" items={sideRight} onOpenListing={openListing} />

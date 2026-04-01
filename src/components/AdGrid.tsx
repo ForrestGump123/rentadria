@@ -22,11 +22,15 @@ export function AdGrid({ items, page, onPage, onOpenListing }: AdGridProps) {
   const slice = items.slice(start, start + PAGE_SIZE)
 
   return (
-    <section className="ra-grid-section" aria-labelledby="listings-heading">
+    <section id="home-search-results" className="ra-grid-section" aria-labelledby="listings-heading">
       <div className="ra-section-head">
         <h2 id="listings-heading">{t('sections.listings')}</h2>
+        <p className="ra-section-head__meta">{t('search.resultsLine', { count: items.length })}</p>
       </div>
-      <div className="ra-grid">
+      {items.length === 0 ? (
+        <p className="ra-grid__empty">{t('search.noResults')}</p>
+      ) : (
+        <div className="ra-grid">
         {slice.map((item) => (
           <button
             key={item.id}
@@ -51,9 +55,10 @@ export function AdGrid({ items, page, onPage, onOpenListing }: AdGridProps) {
             </div>
           </button>
         ))}
-      </div>
+        </div>
+      )}
 
-      {totalPages > 1 && (
+      {items.length > 0 && totalPages > 1 && (
         <nav className="ra-pagination" aria-label="Pagination">
           <button
             type="button"

@@ -70,10 +70,11 @@ export function savePromoCode(
   const isNewCode = prev?.code !== code
 
   const adminRec = getAdminPromoByCode(code)
-  if (adminRec && isNewCode) {
+  if (!adminRec) return { ok: false, reason: 'unknown' }
+  if (isNewCode) {
     const v = validateAdminPromoForOwner(code, profile)
     if (!v.ok) return { ok: false, reason: v.reason }
-    incrementPromoUses(v.record.id, profile.countryId)
+    incrementPromoUses(adminRec.id, profile.countryId)
   }
 
   const m = load()

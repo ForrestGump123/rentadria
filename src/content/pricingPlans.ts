@@ -1,13 +1,23 @@
 import type { SubscriptionPlan } from '../types/plan'
+import { isSubscriptionPlan } from '../types/plan'
 import { loadPricingOverride } from '../utils/pricingOverrides'
 
 export type PricingPlanDef = {
-  id: SubscriptionPlan
+  id: string
+  /** Za dodatne pakete: koji plan aktivira u aplikaciji (null = samo prikaz, bez aktivacije) */
+  mapsToPlan?: SubscriptionPlan | null
   name: string
   tagline: string
   price: string
   features: string[]
   popular?: boolean
+}
+
+/** Koji plan pretplate odgovara kartici (npr. dodatni paket mapiran na Pro). */
+export function resolvePlanForSubscription(p: PricingPlanDef): SubscriptionPlan | null {
+  if (p.mapsToPlan != null && isSubscriptionPlan(p.mapsToPlan)) return p.mapsToPlan
+  if (isSubscriptionPlan(p.id)) return p.id
+  return null
 }
 
 export const PRICING_PLANS_CNR: PricingPlanDef[] = [

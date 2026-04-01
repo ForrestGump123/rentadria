@@ -8,7 +8,9 @@ import { useCurrency } from '../context/CurrencyContext'
 import { LANGUAGES, type LanguageCode } from '../languages'
 import { AuthModal } from './AuthModal'
 import { Logo } from './Logo'
+import { fetchAdminLogout } from '../lib/adminAuthApi'
 import { isAdminSession, setAdminSession } from '../utils/adminSession'
+import { TreatBeerLink } from './TreatBeerLink'
 import { clearOwnerSession } from '../utils/ownerSession'
 import { isLoggedIn } from '../utils/storage'
 
@@ -164,6 +166,7 @@ export function Header({
           </nav>
 
           <div className="ra-header__actions">
+            <TreatBeerLink variant="header" />
             {adminLogged && (
               <>
                 <Link to="/admin" className="ra-link-btn">
@@ -173,9 +176,12 @@ export function Header({
                   type="button"
                   className="ra-link-btn"
                   onClick={() => {
-                    setAdminSession(false)
-                    setAdminLogged(false)
-                    navigate('/', { replace: true })
+                    void (async () => {
+                      await fetchAdminLogout()
+                      setAdminSession(false)
+                      setAdminLogged(false)
+                      navigate('/', { replace: true })
+                    })()
                   }}
                 >
                   {t('nav.adminLogout')}

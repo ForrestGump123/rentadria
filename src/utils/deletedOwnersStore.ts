@@ -2,6 +2,8 @@ import type { AdminOwnerMeta } from './adminOwnerMeta'
 import type { OwnerListingRow, OwnerProfile } from './ownerSession' // type-only: no runtime cycle
 
 const KEY = 'rentadria_deleted_owners_v1'
+/** Nakon 30 dana zapis se automatski briše (bez restore). */
+const RETENTION_MS = 30 * 86_400_000
 
 export type DeletedOwnerRecord = {
   userId: string
@@ -26,7 +28,15 @@ function save(rows: DeletedOwnerRecord[]) {
   localStorage.setItem(KEY, JSON.stringify(rows))
 }
 
+function purgeOlderThan30Days(): void {
+  const now = Date.now()
+  const prev = load()
+  const rows = prev.filter((r) => now - new Date(r.deletedAt).getTime() <= RETENTION_MS)
+  if (rows.length !== prev.length) save(rows)
+}
+
 export function listDeletedOwners(): DeletedOwnerRecord[] {
+  purgeOlderThan30Days()
   return load().slice().sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
 }
 

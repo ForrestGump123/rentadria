@@ -53,9 +53,13 @@ export function HeroSearchBar({
 }: HeroSearchBarProps) {
   const { t } = useTranslation()
   const listId = useId()
-  const makeListId = useId()
+  const makePanelId = useId()
   const [open, setOpen] = useState(false)
+  const [makeOpen, setMakeOpen] = useState(false)
+  const [propertyMenuOpen, setPropertyMenuOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const makeWrapRef = useRef<HTMLDivElement>(null)
+  const propertyWrapRef = useRef<HTMLDivElement>(null)
 
   const makeCatalog = category === 'motorcycle' ? MOTORCYCLE_MAKES : VEHICLE_MAKES
   const makeSuggestions = useMemo(() => {
@@ -71,13 +75,16 @@ export function HeroSearchBar({
   }, [cities, city])
 
   useEffect(() => {
-    if (!open) return
+    if (!open && !propertyMenuOpen && !makeOpen) return
     const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+      const node = e.target as Node
+      if (wrapRef.current && !wrapRef.current.contains(node)) setOpen(false)
+      if (propertyWrapRef.current && !propertyWrapRef.current.contains(node)) setPropertyMenuOpen(false)
+      if (makeWrapRef.current && !makeWrapRef.current.contains(node)) setMakeOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+  }, [open, propertyMenuOpen, makeOpen])
 
   return (
     <div className="ra-search">
@@ -105,51 +112,121 @@ export function HeroSearchBar({
       </label>
 
       {category === 'accommodation' && (
-        <label className="ra-search__field ra-search__field--facet">
-          <span className="ra-search__facet-label">{t('search.propertyType')}</span>
-          <select
-            className="ra-search__select"
-            value={propertyType}
-            onChange={(e) => onPropertyType(e.target.value)}
+        <div
+          className="ra-search__field ra-search__field--property-dd"
+          ref={propertyWrapRef}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setPropertyMenuOpen(false)
+          }}
+        >
+          <button
+            type="button"
+            className="ra-search__property-trigger"
+            aria-haspopup="listbox"
+            aria-expanded={propertyMenuOpen}
             aria-label={t('search.propertyType')}
+            onClick={() => setPropertyMenuOpen((v) => !v)}
           >
-            <option value="">{t('search.facetAll')}</option>
-            {ACC_PROPERTY_TYPES.map((id) => (
-              <option key={id} value={id}>
-                {t(`owner.listing.pt.${id}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span className="ra-search__property-trigger-text">
+              {propertyType === '' ? t('search.propertyType') : t(`owner.listing.pt.${propertyType}`)}
+            </span>
+            <span className="ra-search__property-caret" aria-hidden>
+              ▾
+            </span>
+          </button>
+          {propertyMenuOpen && (
+            <ul className="ra-search__property-menu" role="listbox">
+              <li role="none">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={propertyType === ''}
+                  className="ra-search__property-opt"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onPropertyType('')
+                    setPropertyMenuOpen(false)
+                  }}
+                >
+                  {t('search.facetAll')}
+                </button>
+              </li>
+              {ACC_PROPERTY_TYPES.map((id) => (
+                <li key={id} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={propertyType === id}
+                    className="ra-search__property-opt"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onPropertyType(id)
+                      setPropertyMenuOpen(false)
+                    }}
+                  >
+                    {t(`owner.listing.pt.${id}`)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {(category === 'car' || category === 'motorcycle') && (
-        <label className="ra-search__field ra-search__field--grow ra-search__field--facet">
-          <span className="ra-search__facet-label">
-            {category === 'car' ? t('search.carMake') : t('search.motoMake')}
-          </span>
+        <div
+          className="ra-search__field ra-search__field--grow ra-search__combo"
+          ref={makeWrapRef}
+        >
           <input
             type="search"
             name="make"
-            list={makeListId}
-            placeholder={category === 'car' ? t('search.carMakePh') : t('search.motoMakePh')}
+            placeholder={category === 'car' ? t('search.carMake') : t('search.motoMake')}
             value={vehicleMake}
-            onChange={(e) => onVehicleMake(e.target.value)}
+            onChange={(e) => {
+              onVehicleMake(e.target.value)
+              setMakeOpen(true)
+            }}
+            onFocus={() => setMakeOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onSubmit()
+                setMakeOpen(false)
+              }
+              if (e.key === 'Escape') setMakeOpen(false)
+            }}
+            autoComplete="off"
+            aria-controls={makePanelId}
             aria-label={category === 'car' ? t('search.carMake') : t('search.motoMake')}
           />
-          <datalist id={makeListId}>
-            {makeSuggestions.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-        </label>
+          {makeOpen && makeSuggestions.length > 0 && (
+            <ul id={makePanelId} className="ra-search__suggest" role="listbox">
+              {makeSuggestions.map((m) => (
+                <li key={m} role="option">
+                  <button
+                    type="button"
+                    className="ra-search__suggest-btn"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onVehicleMake(m)
+                      setMakeOpen(false)
+                    }}
+                  >
+                    {m}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="ra-search__field ra-search__field--grow ra-search__combo" ref={wrapRef}>
         <input
           type="search"
           name="city"
-          placeholder={t('search.city')}
+          placeholder={t('search.placeOrKeyword')}
           value={city}
           onChange={(e) => {
             onCity(e.target.value)
@@ -165,13 +242,13 @@ export function HeroSearchBar({
             if (e.key === 'Escape') setOpen(false)
           }}
           autoComplete="off"
-          disabled={!countryId || citiesLoading}
+          disabled={citiesLoading}
           aria-controls={`${listId}-panel`}
         />
-        {countryId && citiesLoading && (
+        {citiesLoading && (
           <span className="ra-search__city-hint">{t('search.citiesLoading')}</span>
         )}
-        {countryId && !citiesLoading && open && filtered.length > 0 && (
+        {!citiesLoading && open && filtered.length > 0 && (
           <ul id={`${listId}-panel`} className="ra-search__suggest" role="listbox">
             {filtered.map((c) => (
               <li key={c} role="option">
@@ -195,6 +272,9 @@ export function HeroSearchBar({
       <button type="button" className="ra-btn ra-btn--primary ra-search__btn" onClick={onSubmit}>
         {t('search.button')}
       </button>
+      <p className="ra-search__hint" role="note">
+        {countryId ? t('search.hintWithCountry') : t('search.hintNoCountry')}
+      </p>
     </div>
   )
 }

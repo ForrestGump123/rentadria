@@ -45,7 +45,8 @@
     "ownerDashboard": "Panel del propietario",
     "logout": "Cerrar sesión",
     "adminPanel": "Panel de administración",
-    "adminLogout": "Cerrar sesión (admin)"
+    "adminLogout": "Cerrar sesión (admin)",
+    "treatBeer": "Invítanos a una cerveza"
   },
   "hero": {
     "accommodation": {
@@ -108,6 +109,7 @@
     "privacy": "Privacidad",
     "faq": "FAQ",
     "pricing": "Precios",
+    "cookies": "Cookies",
     "rateDisclaimer": "Las conversiones de divisa son orientativas; el tipo real puede diferir del de su banco, tarjeta o proveedor de pago.",
     "copyrightLine": "© 2026 · Powered by RentAdria"
   },

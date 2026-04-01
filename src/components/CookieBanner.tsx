@@ -35,6 +35,15 @@ export function CookieBanner() {
     }
   }, [])
 
+  useEffect(() => {
+    const onOpen = () => {
+      setVisible(true)
+      setCustomOpen(false)
+    }
+    window.addEventListener('rentadria-open-cookie-settings', onOpen)
+    return () => window.removeEventListener('rentadria-open-cookie-settings', onOpen)
+  }, [])
+
   const close = useCallback((prefs: CookiePrefs) => {
     saveCookiePrefs(prefs)
     setVisible(false)

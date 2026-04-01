@@ -8,7 +8,6 @@ import 'leaflet/dist/leaflet.css'
 import i18n from './i18n'
 import App from './App.tsx'
 import { CurrencyProvider } from './context/CurrencyContext'
-
 const routerBasename =
   import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
 

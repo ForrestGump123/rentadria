@@ -45,7 +45,8 @@
     "ownerDashboard": "Paneli i pronarit",
     "logout": "Dilni",
     "adminPanel": "Paneli admin",
-    "adminLogout": "Dilni admin"
+    "adminLogout": "Dilni admin",
+    "treatBeer": "Fik një birrë"
   },
   "hero": {
     "accommodation": {
@@ -108,6 +109,7 @@
     "privacy": "Privatësia",
     "faq": "FAQ",
     "pricing": "Çmimet",
+    "cookies": "Cookies",
     "rateDisclaimer": "Konvertimet e valutave janë vetëm informuese; kursi aktual mund të ndryshojë nga banka, karta ose ofruesi i pagesës.",
     "copyrightLine": "© 2026 · Powered by RentAdria"
   },

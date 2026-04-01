@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { getPricingPlans } from '../../content/pricingPlans'
+import { getPricingPlans, resolvePlanForSubscription } from '../../content/pricingPlans'
 import type { SubscriptionPlan } from '../../types/plan'
 import {
   getInquiryNotificationPrefs,
@@ -80,14 +80,15 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
 
       <div className="ra-pricing-grid ra-owner-settings__plans">
         {pricingPlans.map((p) => {
-          const isCurrent = profile.plan === p.id
+          const target = resolvePlanForSubscription(p)
+          const isCurrent = target != null && profile.plan === target
           return (
             <button
               key={p.id}
               type="button"
-              disabled={isCurrent}
+              disabled={isCurrent || target == null}
               className={`ra-pricing-card ra-owner-settings__plan-btn ${p.popular ? 'ra-pricing-card--popular' : ''} ${isCurrent ? 'ra-owner-settings__plan-btn--current' : ''}`}
-              onClick={() => selectPlan(p.id)}
+              onClick={() => target && selectPlan(target)}
             >
               <div className="ra-pricing-card__head">
                 <div className="ra-pricing-card__title-row">
@@ -125,7 +126,14 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
           <input
             type="checkbox"
             checked={prefs.receiveEnabled}
-            onChange={(e) => setPrefs((x) => ({ ...x, receiveEnabled: e.target.checked }))}
+            onChange={(e) => {
+              const on = e.target.checked
+              setPrefs((x) =>
+                on
+                  ? { ...x, receiveEnabled: true }
+                  : { receiveEnabled: false, emailChannel: false, dashboardChannel: false },
+              )
+            }}
           />
           <span>{t('owner.settingsPage.receiveToggle')}</span>
         </label>

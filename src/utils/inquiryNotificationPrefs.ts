@@ -22,10 +22,11 @@ export function getInquiryNotificationPrefs(userId: string): InquiryNotification
     const o = JSON.parse(raw) as Record<string, Partial<InquiryNotificationPrefs>>
     const p = o[userId]
     if (!p || typeof p !== 'object') return { ...DEFAULT }
+    const receiveEnabled = p.receiveEnabled !== false
     return {
-      receiveEnabled: p.receiveEnabled !== false,
-      emailChannel: p.emailChannel !== false,
-      dashboardChannel: p.dashboardChannel !== false,
+      receiveEnabled,
+      emailChannel: receiveEnabled && p.emailChannel !== false,
+      dashboardChannel: receiveEnabled && p.dashboardChannel !== false,
     }
   } catch {
     return { ...DEFAULT }

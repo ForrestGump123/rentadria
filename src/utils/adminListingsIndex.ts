@@ -64,6 +64,12 @@ function countryKeyForListing(
   return countryKeyFromLocation(location)
 }
 
+/** Javni broj zemalja na početnoj — iz drafta ili sufiksa lokacije „, ME“. */
+export function countryKeyForPublicListing(listing: Listing): SearchCountryId | null {
+  const draft = loadAccommodationDraftForPublicListingPage(listing.id)
+  return countryKeyForListing(listing.id, listing.location, draft)
+}
+
 function ownerNameFromDraft(d: AccommodationListingDraft | null, userId: string): string {
   const o = d?.contacts?.find((c) => c.type === 'owner')
   if (o) {

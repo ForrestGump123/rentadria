@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../../types'
 import {
   AD_COOLDOWN_DAYS,
-  AD_DURATION_DAYS,
   AD_PRICE_EUR,
+  adDurationDaysForPlan,
   type AdCategory,
   type AdPlacement,
   computeNextSlotStart,
@@ -54,6 +54,7 @@ export function OwnerAdsPage({ profile }: Props) {
   )
 
   const isPro = profile.plan === 'pro'
+  const adDays = adDurationDaysForPlan(profile.plan)
 
   const togglePlacement = (p: AdPlacement) => {
     setPlacement((prev) => ({ ...prev, [p]: !prev[p] }))
@@ -69,6 +70,7 @@ export function OwnerAdsPage({ profile }: Props) {
       ownerUserId: profile.userId,
       category,
       placements: chosen,
+      durationDays: adDurationDaysForPlan(profile.plan),
     })
     if (row) {
       const loc = i18n.language === 'en' ? 'en-GB' : 'sr-Latn-ME'
@@ -131,11 +133,11 @@ export function OwnerAdsPage({ profile }: Props) {
             <p className="ra-owner-ads__slot-label">{t('owner.adsPage.firstSlotLabel')}</p>
             <p className="ra-owner-ads__slot-date">{slotLabel}</p>
             <p className="ra-owner-ads__price">
-              {t('owner.adsPage.priceLine', { price: AD_PRICE_EUR, days: AD_DURATION_DAYS })}
+              {t('owner.adsPage.priceLine', { price: AD_PRICE_EUR, days: adDays })}
             </p>
             <p className="ra-owner-ads__rules-hint">
               {t('owner.adsPage.rulesHint', {
-                duration: AD_DURATION_DAYS,
+                duration: adDays,
                 cooldown: AD_COOLDOWN_DAYS,
               })}
             </p>

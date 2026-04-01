@@ -33,7 +33,15 @@ Ako repo već postoji: `git push`.
 3. **Environment Variables** — kopiraj iz `.env.example` sve što koristiš (posebno `JWT_SECRET`, `SITE_URL`, Brevo, Supabase, Meta, `SOCIAL_ENQUEUE_SECRET` + `VITE_SOCIAL_ENQUEUE_SECRET` isti string, opciono `SITE_VISITS_READ_SECRET` + `VITE_SITE_VISITS_READ_SECRET` isti string).
 4. **Deploy**.
 
-## 4. Nakon deploya
+## 4. Instagram / Facebook (red + cron)
+
+1. **Šablon slike (1024×1024):** stavi fajl kao `public/social/sablon-instagram.png` (prazan kalendar kao tvoj „sablon za instagram“). Bez toga server ne može generisati JPEG za objavu.
+2. **Supabase:** tabele/RPC `social_queue` i `enqueue_social_post` moraju biti deployovane (vidi SQL u projektu / dokumentaciji).
+3. **Enqueue:** kad vlasnik objavi oglas i uključi „Objavi na Instagram/Facebook“, frontend šalje POST na `/api/social-enqueue` (treba `SOCIAL_ENQUEUE_SECRET` na serveru i isti `VITE_SOCIAL_ENQUEUE_SECRET` u buildu).
+4. **Obrada:** Vercel cron zove `/api/social-process-queue` **svakih 15 minuta** (`*/15 * * * *`). U jednom pozivu obrađuje se do **40** redova iz reda (svi koji su spremni). Caption i layout slike prate univerzalni šablon u kodu (`server/lib/socialCaption.ts`, `renderSocialTemplate.ts`).
+5. **Meta:** `META_ACCESS_TOKEN`, `META_IG_USER_ID`, `META_PAGE_ID` (i ostalo iz `publishMetaSocial`) — bez toga red se označi kao greška ili samo upozorenje.
+
+## 5. Nakon deploya
 
 - Otvori production URL i provjeri glavnu stranicu i `/admin`.
 - Ako si uključio `SITE_VISITS_READ_SECRET`, mora biti **isti** na serveru i u `VITE_*` (admin statistika posjeta).

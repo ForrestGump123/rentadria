@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { LegalShell } from '../components/LegalShell'
-import { getPricingPlans } from '../content/pricingPlans'
+import { getPricingPlans, resolvePlanForSubscription } from '../content/pricingPlans'
 import type { SubscriptionPlan } from '../types/plan'
 import { isLoggedIn } from '../utils/storage'
 
@@ -56,7 +56,14 @@ export function PricingPage() {
             <button
               type="button"
               className="ra-btn ra-btn--primary ra-pricing-card__cta"
-              onClick={() => onSelectPlan(p.id)}
+              onClick={() => {
+                const plan = resolvePlanForSubscription(p)
+                if (!plan) {
+                  window.alert(t('pricing.selectPlanContact'))
+                  return
+                }
+                onSelectPlan(plan)
+              }}
             >
               {t('pricing.selectPlan')}
             </button>

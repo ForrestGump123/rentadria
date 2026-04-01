@@ -111,6 +111,16 @@ export function ListingPage() {
   const [reviewText, setReviewText] = useState('')
   const [reviews, setReviews] = useState<StoredReview[]>([])
 
+  const publicReviews = useMemo(
+    () => reviews.filter((r) => !r.hidden && !r.blocked),
+    [reviews],
+  )
+  const headlineRating = useMemo(() => {
+    if (!publicReviews.length) return 0
+    const sum = publicReviews.reduce((a, r) => a + r.rating, 0)
+    return Math.round((sum / publicReviews.length) * 10) / 10
+  }, [publicReviews])
+
   const pdfRootRef = useRef<HTMLDivElement>(null)
   const logged = isLoggedIn()
 
@@ -261,7 +271,7 @@ export function ListingPage() {
                   <span className="ra-detail-meta__ico" aria-hidden>
                     ★
                   </span>
-                  {detail.rating.toFixed(1)}
+                  {headlineRating.toFixed(1)}
                 </span>
                 <span className="ra-detail-meta__item">
                   <span className="ra-detail-meta__ico ra-detail-meta__ico--pin" aria-hidden>

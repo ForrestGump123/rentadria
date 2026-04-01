@@ -45,7 +45,8 @@
     "ownerDashboard": "Panel vlasnika",
     "logout": "Odjava",
     "adminPanel": "Admin panel",
-    "adminLogout": "Odjavi admina"
+    "adminLogout": "Odjavi admina",
+    "treatBeer": "Časti pivo"
   },
   "hero": {
     "accommodation": {
@@ -108,6 +109,7 @@
     "privacy": "Privatnost",
     "faq": "FAQ",
     "pricing": "Cjenovnik",
+    "cookies": "Kolačići",
     "rateDisclaimer": "Kursne konverzije su informativne; stvarni kurs može se razlikovati od prikazanog (banka, kartica, platni servis).",
     "copyrightLine": "© 2026 · Powered by RentAdria"
   },
