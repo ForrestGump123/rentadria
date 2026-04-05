@@ -19,10 +19,10 @@ export type SocialCardPayload = {
 function categoryLabel(cat: SocialCardCategory): string {
   if (cat === 'car') return 'RENT A CAR'
   if (cat === 'motorcycle') return 'MOTO'
-  return 'SMJEŠTAJ'
+  return 'ACCOMMODATION'
 }
 
-/** Ikona u badgeu (crna na cyan pozadini šablona), viewBox 0 0 24 24. */
+/** Badge icon (dark on cyan template), viewBox 0 0 24 24. */
 function categoryIconSvgInner(cat: SocialCardCategory): string {
   if (cat === 'car') {
     return `<path fill="#0f172a" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>`
@@ -118,7 +118,7 @@ export async function renderSocialTemplate(payload: SocialCardPayload): Promise<
   }
 
   const cat = categoryLabel(payload.category)
-  const titleLine = truncateVisual(`${(payload.title || 'Oglas').trim()} #${payload.displayId}`, 52)
+  const titleLine = truncateVisual(`${(payload.title || 'Listing').trim()} #${payload.displayId}`, 52)
   const locLine = truncateVisual((payload.location || '—').trim(), 56)
   const priceLine = truncateVisual((payload.priceLabel || '—').trim(), 22)
   const phoneLine = truncateVisual((payload.phone || '—').trim(), 28)
@@ -162,7 +162,7 @@ export async function renderSocialTemplate(payload: SocialCardPayload): Promise<
         <svg width="${iconPx}" height="${iconPx}" viewBox="0 0 24 24" aria-hidden="true">${iconInner}</svg>
         <text x="${iconPx + Math.round(8 * scale)}" y="${Math.round(15 * scale)}" fill="#0f172a" font-family="Segoe UI,system-ui,Arial,sans-serif" font-size="${badgeFs}" font-weight="700">${escapeXml(cat)}</text>
       </g>
-      <text x="${Math.round(44 * scale)}" y="${footCtaY}" fill="#22d3ee" font-family="Segoe UI,system-ui,Arial,sans-serif" font-size="${footFs}" font-weight="600" letter-spacing="0.04em">PRIKAŽI KONTAKT NA RENTADRIA.COM</text>
+      <text x="${Math.round(44 * scale)}" y="${footCtaY}" fill="#22d3ee" font-family="Segoe UI,system-ui,Arial,sans-serif" font-size="${footFs}" font-weight="600" letter-spacing="0.04em">VIEW CONTACT ON RENTADRIA.COM</text>
       <rect x="${footBoxX}" y="${footBoxY}" width="${footBoxW}" height="${footBoxH}" rx="${Math.round(12 * scale)}" ry="${Math.round(12 * scale)}" fill="none" stroke="#22d3ee" stroke-width="${Math.max(2, Math.round(2 * scale))}"/>
       <path fill="#ffffff" transform="translate(${footBoxX + Math.round(14 * scale)}, ${footBoxY + Math.round(13 * scale)}) scale(${0.62 * scale})" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
       <text x="${footBoxX + Math.round(38 * scale)}" y="${footPhoneCy}" fill="#ffffff" font-family="Segoe UI,system-ui,Arial,sans-serif" font-size="${Math.round(16 * scale)}" text-anchor="start">${escapeXml(phoneLine)}</text>

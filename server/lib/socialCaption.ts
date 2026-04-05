@@ -1,6 +1,6 @@
 import type { SocialCardCategory } from './renderSocialTemplate.js'
 
-/** Ikona u prvom redu captiona (usklađeno s UI šablonom). */
+/** First-line caption icon (matches client Instagram template). */
 export function categoryCaptionEmoji(cat: SocialCardCategory): string {
   if (cat === 'car') return '🚗'
   if (cat === 'motorcycle') return '🏍️'
@@ -8,17 +8,18 @@ export function categoryCaptionEmoji(cat: SocialCardCategory): string {
 }
 
 /**
- * Univerzalni caption za Instagram + Facebook (tekst ispod generisane slike).
- * Naslov i kontakt dolaze iz payloada reda; link koristi javni ID oglasa.
+ * Universal caption for Instagram + Facebook (text below the rendered image).
+ * Title, phone and URL come from `social_queue` — same source as the template render.
+ * Copy aligned with `instagram.*` in `src/locales/en.json`.
  */
 const HASHTAG_BLOCK =
-  '#RentAdria #Travel #Montenegro #Albania #Serbia #Croatia #BosniaHerzegovina #Spain #Italy #BalkanTravel #Accommodation #RentACar #MotoRent #NoCommission'
+  '#RentAdria #Travel #Montenegro #BalkanTravel #Albania #Bosnia #Herzegovina #Croatia #Serbia #Italy #Spain #Accommodation #RentACar #MotoRent #NoCommission'
 
 export function buildRentadriaSocialCaption(params: {
   category: SocialCardCategory
-  /** npr. "Penthouse #14" — naslov sa sajta + kratki prikaz ID-a */
+  /** e.g. "Penthouse #14" — site title + short display id */
   titleLine: string
-  /** Puna URL stranice oglasa */
+  /** Full listing page URL */
   listingUrl: string
   phoneLine: string
 }): string {
@@ -26,10 +27,10 @@ export function buildRentadriaSocialCaption(params: {
   let caption = [
     `🌊 ${params.titleLine} ${emoji}`,
     '',
-    'Tražite savršen boravak ili prevoz na Jadranu i Mediteranu? Povežite se direktno sa vlasnikom i uštedite na provizijama.',
+    'Looking for the perfect stay or transport on the Adriatic and Mediterranean? Connect directly with the owner and save on commissions.',
     '',
-    `🔗 Detaljnije na: ${params.listingUrl}`,
-    `📞 Kontaktirajte vlasnika direktno: ${params.phoneLine}`,
+    `🔗 More details at: ${params.listingUrl}`,
+    `📞 Contact the owner directly: ${params.phoneLine}`,
     '',
     HASHTAG_BLOCK,
   ].join('\n')
