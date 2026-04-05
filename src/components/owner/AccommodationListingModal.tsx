@@ -921,18 +921,20 @@ export function AccommodationListingModal({
         break
       }
     }
-    const img0 = images[0]?.label
-    const imageDataUrl =
-      img0 && (img0.startsWith('data:') || img0.startsWith('http')) ? img0 : null
-    void enqueueListingSocial({
-      listingPublicId: pid,
-      category: formCategory,
-      title: titleForRow,
-      location: locationStr,
-      priceLabel: priceStr,
-      phone: phoneStr,
-      imageDataUrl,
-    })
+    if (exportSocial && socialExportConsent) {
+      const img0 = images[0]?.label
+      const imageDataUrl =
+        img0 && (img0.startsWith('data:') || img0.startsWith('http')) ? img0 : null
+      void enqueueListingSocial({
+        listingPublicId: pid,
+        category: formCategory,
+        title: titleForRow,
+        location: locationStr,
+        priceLabel: priceStr,
+        phone: phoneStr,
+        imageDataUrl,
+      })
+    }
 
     flushDraftRef.current()
     onClose()
