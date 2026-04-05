@@ -162,6 +162,8 @@ export function applyPromoSubscriptionToProfile(
 ): OwnerProfile {
   const now = new Date()
   const cap = record.validUntil ? endOfValidDayIso(record.validUntil) : null
+  /** Prazna lista u adminu = sve kategorije; inače samo označene (npr. samo moto). */
+  const promoCategoryScope = record.categories.length > 0 ? [...record.categories] : undefined
 
   switch (record.type) {
     case 'free_forever':
@@ -171,6 +173,7 @@ export function applyPromoSubscriptionToProfile(
         subscriptionActive: true,
         validUntil: '2099-12-31T23:59:59.999Z',
         basicCategoryChoice: undefined,
+        promoCategoryScope,
       }
     case 'free_year': {
       const yearEnd = addOneYearIso(now)
@@ -181,6 +184,7 @@ export function applyPromoSubscriptionToProfile(
         subscriptionActive: true,
         validUntil: vu,
         basicCategoryChoice: undefined,
+        promoCategoryScope,
       }
     }
     case 'free_month': {
@@ -192,6 +196,7 @@ export function applyPromoSubscriptionToProfile(
         subscriptionActive: true,
         validUntil: vu,
         basicCategoryChoice: undefined,
+        promoCategoryScope,
       }
     }
     case 'discount_percent':
@@ -202,6 +207,7 @@ export function applyPromoSubscriptionToProfile(
         subscriptionActive: true,
         validUntil: cap ?? addOneYearIso(now),
         basicCategoryChoice: undefined,
+        promoCategoryScope,
       }
   }
 }

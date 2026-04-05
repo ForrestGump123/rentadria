@@ -49,6 +49,11 @@ export type OwnerProfile = {
    * `null` = must pick on dashboard. Legacy Basic users without this field get `accommodation`.
    */
   basicCategoryChoice?: ListingCategory | null
+  /**
+   * Promotivni kod: ako je u adminu označena samo jedna ili više kategorija (ne sve),
+   * ograničenje koje kategorije se smiju koristiti (Pro benefit samo u tom opsegu).
+   */
+  promoCategoryScope?: ListingCategory[] | null
   registeredAt: string
   validUntil: string
   /** Kontakt telefon vlasnika (Postavke profila). */
@@ -97,7 +102,13 @@ export function getEffectiveUnlockedCategories(profile: OwnerProfile): ListingCa
   if (ex.accommodation) set.add('accommodation')
   if (ex.car) set.add('car')
   if (ex.motorcycle) set.add('motorcycle')
-  return Array.from(set)
+  let result = Array.from(set)
+  const scope = profile.promoCategoryScope
+  if (scope && scope.length > 0) {
+    const allow = new Set(scope)
+    result = result.filter((c) => allow.has(c))
+  }
+  return result
 }
 
 export function activateOwnerSubscription(profile: OwnerProfile, plan: SubscriptionPlan): void {
@@ -107,6 +118,7 @@ export function activateOwnerSubscription(profile: OwnerProfile, plan: Subscript
     subscriptionActive: true,
     validUntil: addOneYearIso(),
     basicCategoryChoice: plan === 'basic' ? null : undefined,
+    promoCategoryScope: undefined,
   })
 }
 
@@ -349,6 +361,7 @@ export function normalizeOwnerProfileForSession(p: OwnerProfile): OwnerProfile {
       plan: null,
       subscriptionActive: false,
       basicCategoryChoice: undefined,
+      promoCategoryScope: undefined,
     }
   }
   let next: OwnerProfile = {
@@ -419,6 +432,15 @@ export function getOwnerProfile(): OwnerProfile | null {
       countryId = p.countryId as SearchCountryId
     }
 
+    let promoCategoryScope: ListingCategory[] | undefined
+    if (Array.isArray(p.promoCategoryScope)) {
+      const valid: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
+      const picked = p.promoCategoryScope.filter((x): x is ListingCategory =>
+        valid.includes(x as ListingCategory),
+      )
+      if (picked.length > 0) promoCategoryScope = picked
+    }
+
     const draft: OwnerProfile = {
       userId: p.userId,
       email: p.email,
@@ -437,6 +459,7 @@ export function getOwnerProfile(): OwnerProfile | null {
       avatarDataUrl,
       passwordHash,
       countryId,
+      promoCategoryScope,
     }
     return normalizeOwnerProfileForSession(draft)
   } catch {

@@ -19,11 +19,126 @@ import {
 
 export { isDuplicateListing, listingFingerprint }
 
-export const LISTING_IMAGE_FALLBACK =
-  'https://placehold.co/800x520/0a101e/26c6da/png?text=RentAdria'
+export const LISTING_IMAGE_FALLBACK = 'https://picsum.photos/seed/rentadria-fallback/800/520'
 
-/** Javni seed oglasi (demo) uklonjeni — na početnoj se prikazuju samo oglasi koje vlasnici objave u ovom pregledaču. */
-const raw: Omit<Listing, 'title' | 'titleSlot'>[] = []
+/**
+ * Javni seed oglasi (demo): po četiri po kategoriji za slideshow / layout.
+ * Uz to se i dalje spajaju oglasi vlasnika iz localStorage.
+ */
+const raw: Omit<Listing, 'title' | 'titleSlot'>[] = [
+  {
+    id: 'demo-seed-accommodation',
+    category: 'accommodation',
+    location: 'Dubrovnik, HR',
+    priceLabel: '€85 / night',
+    image: 'https://picsum.photos/seed/rentadria-demo-accommodation/800/520',
+    createdAt: '2025-06-01T12:00:00.000Z',
+    featured: true,
+    ownerPropertyType: 'apartment',
+  },
+  {
+    id: 'demo-seed-accommodation-2',
+    category: 'accommodation',
+    location: 'Budva, ME',
+    priceLabel: '€72 / night',
+    image: 'https://picsum.photos/seed/rentadria-demo-accommodation-2/800/520',
+    createdAt: '2025-05-30T12:00:00.000Z',
+    featured: true,
+    ownerPropertyType: 'studio',
+  },
+  {
+    id: 'demo-seed-accommodation-3',
+    category: 'accommodation',
+    location: 'Zadar, HR',
+    priceLabel: '€95 / night',
+    image: 'https://picsum.photos/seed/rentadria-demo-accommodation-3/800/520',
+    createdAt: '2025-05-25T12:00:00.000Z',
+    ownerPropertyType: 'villa',
+  },
+  {
+    id: 'demo-seed-accommodation-4',
+    category: 'accommodation',
+    location: 'Ulcinj, ME',
+    priceLabel: '€55 / night',
+    image: 'https://picsum.photos/seed/rentadria-demo-accommodation-4/800/520',
+    createdAt: '2025-05-18T12:00:00.000Z',
+    ownerPropertyType: 'room',
+  },
+  {
+    id: 'demo-seed-car',
+    category: 'car',
+    location: 'Split, HR',
+    priceLabel: '€45 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-car/800/520',
+    createdAt: '2025-05-28T12:00:00.000Z',
+    ownerVehicleMake: 'Volkswagen',
+  },
+  {
+    id: 'demo-seed-car-2',
+    category: 'car',
+    location: 'Podgorica, ME',
+    priceLabel: '€38 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-car-2/800/520',
+    createdAt: '2025-05-26T12:00:00.000Z',
+    featured: true,
+    ownerVehicleMake: 'Škoda',
+  },
+  {
+    id: 'demo-seed-car-3',
+    category: 'car',
+    location: 'Tirana, AL',
+    priceLabel: '€42 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-car-3/800/520',
+    createdAt: '2025-05-22T12:00:00.000Z',
+    ownerVehicleMake: 'Toyota',
+  },
+  {
+    id: 'demo-seed-car-4',
+    category: 'car',
+    location: 'Sarajevo, BA',
+    priceLabel: '€35 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-car-4/800/520',
+    createdAt: '2025-05-15T12:00:00.000Z',
+    ownerVehicleMake: 'Ford',
+  },
+  {
+    id: 'demo-seed-motorcycle',
+    category: 'motorcycle',
+    location: 'Kotor, ME',
+    priceLabel: '€25 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-motorcycle/800/520',
+    createdAt: '2025-05-20T12:00:00.000Z',
+    ownerVehicleMake: 'Yamaha',
+  },
+  {
+    id: 'demo-seed-motorcycle-2',
+    category: 'motorcycle',
+    location: 'Herceg Novi, ME',
+    priceLabel: '€22 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-motorcycle-2/800/520',
+    createdAt: '2025-05-19T12:00:00.000Z',
+    featured: true,
+    ownerVehicleMake: 'Honda',
+  },
+  {
+    id: 'demo-seed-motorcycle-3',
+    category: 'motorcycle',
+    location: 'Bar, ME',
+    priceLabel: '€18 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-motorcycle-3/800/520',
+    createdAt: '2025-05-12T12:00:00.000Z',
+    ownerVehicleMake: 'Piaggio',
+  },
+  {
+    id: 'demo-seed-motorcycle-4',
+    category: 'motorcycle',
+    location: 'Shkodër, AL',
+    priceLabel: '€20 / day',
+    image: 'https://picsum.photos/seed/rentadria-demo-motorcycle-4/800/520',
+    createdAt: '2025-05-10T12:00:00.000Z',
+    ownerVehicleMake: 'BMW',
+  },
+]
 
 const titles: Record<ListingCategory, (i: number) => string> = {
   accommodation: (i) => {

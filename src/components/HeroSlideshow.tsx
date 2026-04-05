@@ -167,6 +167,25 @@ export function HeroSlideshow({
             onVehicleMake={onSearchVehicleMake}
           />
 
+          <button
+            type="button"
+            className="ra-hero__current-listing"
+            onClick={() => onOpenListing(current)}
+          >
+            <span className="ra-hero__current-listing__icon" aria-hidden>
+              {FLOAT_ICON[category]}
+            </span>
+            <span className="ra-hero__current-listing__main">
+              <span className="ra-hero__current-listing__title">
+                {listingTitle(current, t)}
+              </span>
+              <span className="ra-hero__current-listing__loc">{current.location}</span>
+            </span>
+            <span className="ra-hero__current-listing__price">
+              {formatPriceLabel(current.priceLabel)}
+            </span>
+          </button>
+
           <div className="ra-stats">
             <div>
               <strong>{fmtCount(listingStats.accommodations)}</strong>
@@ -185,34 +204,28 @@ export function HeroSlideshow({
               <span>{t('stats.countries')}</span>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="ra-hero__floating"
-            onClick={() => onOpenListing(current)}
-          >
-            <span aria-hidden>{FLOAT_ICON[category]}</span>
-            <span>
-              {listingTitle(current, t)} | {current.location} | {formatPriceLabel(current.priceLabel)}
-            </span>
-          </button>
         </div>
       </div>
 
-      {safe.length > 1 && (
-        <div className="ra-hero__dots" role="tablist" aria-label="Slideshow">
-          {safe.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              aria-selected={i === index}
-              className={`ra-dot ${i === index ? 'ra-dot--active' : ''}`}
-              onClick={() => setIndex(i)}
-            />
-          ))}
-        </div>
-      )}
+      {safe.length > 1 ? (
+        <>
+          <div className="ra-hero__dots" role="tablist" aria-label="Slideshow">
+            {safe.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={i === index}
+                className={`ra-dot ${i === index ? 'ra-dot--active' : ''}`}
+                onClick={() => setIndex(i)}
+              />
+            ))}
+          </div>
+          <p className="ra-hero__slideshow-hint" role="note">
+            {t('hero.slideshowHintMob')}
+          </p>
+        </>
+      ) : null}
     </section>
   )
 }

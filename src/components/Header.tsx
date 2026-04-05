@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../types'
@@ -78,13 +78,17 @@ export function Header({
   const [modalPlan, setModalPlan] = useState<SubscriptionPlan | null>(null)
   const [langOpen, setLangOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [catMenuOpen, setCatMenuOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [logged, setLogged] = useState(() => isLoggedIn())
   const [adminLogged, setAdminLogged] = useState(() => isAdminSession())
-  const [navOpen, setNavOpen] = useState(false)
   const location = useLocation()
+  const catWrapRef = useRef<HTMLDivElement>(null)
+  const moreWrapRef = useRef<HTMLDivElement>(null)
   const currentLang =
     (LANGUAGES.find((l) => l.code === (i18n.language || 'en').split('-')[0])?.code ?? 'en') as LanguageCode
   const current = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0]
+  const currentCat = cats.find((c) => c.id === category) ?? cats[0]
 
   useEffect(() => {
     if (!registrationIntent) return
@@ -105,6 +109,19 @@ export function Header({
   }, [langOpen, currencyOpen])
 
   useEffect(() => {
+    if (!catMenuOpen && !moreMenuOpen) return
+    const onDoc = (e: MouseEvent) => {
+      const n = e.target as Node
+      if (catWrapRef.current?.contains(n)) return
+      if (moreWrapRef.current?.contains(n)) return
+      setCatMenuOpen(false)
+      setMoreMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [catMenuOpen, moreMenuOpen])
+
+  useEffect(() => {
     const onAuth = () => setLogged(isLoggedIn())
     window.addEventListener('rentadria-auth', onAuth)
     return () => window.removeEventListener('rentadria-auth', onAuth)
@@ -117,7 +134,8 @@ export function Header({
   }, [])
 
   useEffect(() => {
-    setNavOpen(false)
+    setCatMenuOpen(false)
+    setMoreMenuOpen(false)
   }, [location.pathname, location.search])
 
   const closeAuth = () => {
@@ -125,28 +143,217 @@ export function Header({
     setModalPlan(null)
   }
 
+  const openLogin = () => {
+    setModalPlan(null)
+    setAuthMode('login')
+    setAuthOpen(true)
+    setMoreMenuOpen(false)
+  }
+
+  const openRegister = () => {
+    setModalPlan(null)
+    setAuthMode('register')
+    setAuthOpen(true)
+    setMoreMenuOpen(false)
+  }
+
   return (
     <>
-      <header className={`ra-header ${navOpen ? 'ra-header--nav-open' : ''}`}>
+      <header
+        className={`ra-header ${catMenuOpen || moreMenuOpen ? 'ra-header--menus-open' : ''}`}
+      >
         <div className="ra-header__inner">
           <Logo variant="header" />
 
-          <button
-            type="button"
-            className="ra-header__burger"
-            aria-expanded={navOpen}
-            aria-controls="ra-main-cat-nav"
-            onClick={() => setNavOpen((o) => !o)}
-          >
-            <span className="ra-header__burger-line" aria-hidden />
-            <span className="ra-header__burger-line" aria-hidden />
-            <span className="ra-header__burger-line" aria-hidden />
-            <span className="ra-sr-only">{navOpen ? t('nav.burgerClose') : t('nav.burgerOpen')}</span>
-          </button>
+          <div className="ra-header__mobile-tools">
+            <div className="ra-header__cat-wrap" ref={catWrapRef}>
+              <button
+                type="button"
+                id="ra-header-cat-trigger"
+                className={`ra-header__cat-trigger ${catMenuOpen ? 'ra-header__cat-trigger--open' : ''}`}
+                aria-expanded={catMenuOpen}
+                aria-controls="ra-header-cat-panel"
+                aria-haspopup="menu"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMoreMenuOpen(false)
+                  setLangOpen(false)
+                  setCurrencyOpen(false)
+                  setCatMenuOpen((o) => !o)
+                }}
+              >
+                <span className="ra-nav__icon">{currentCat.icon}</span>
+                <span className="ra-header__cat-trigger-label">{t(`nav.${category}`)}</span>
+                <span className="ra-header__cat-chev" aria-hidden>
+                  ▾
+                </span>
+              </button>
+              {catMenuOpen ? (
+                <ul
+                  id="ra-header-cat-panel"
+                  className="ra-header__cat-panel"
+                  role="menu"
+                  aria-labelledby="ra-header-cat-trigger"
+                >
+                  {cats.map((c) => (
+                    <li key={c.id} role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={category === c.id ? 'is-active' : ''}
+                        onClick={() => {
+                          onCategory(c.id)
+                          setCatMenuOpen(false)
+                        }}
+                      >
+                        <span className="ra-nav__icon">{c.icon}</span>
+                        <span>{t(`nav.${c.id}`)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            <div className="ra-header__more-wrap" ref={moreWrapRef}>
+              <button
+                type="button"
+                id="ra-header-more-trigger"
+                className={`ra-header__more-trigger ${moreMenuOpen ? 'ra-header__more-trigger--open' : ''}`}
+                aria-expanded={moreMenuOpen}
+                aria-controls="ra-header-more-panel"
+                aria-haspopup="menu"
+                aria-label={t('nav.siteMenuAria')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setCatMenuOpen(false)
+                  setLangOpen(false)
+                  setCurrencyOpen(false)
+                  setMoreMenuOpen((o) => !o)
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+                  <path
+                    fill="currentColor"
+                    d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"
+                  />
+                </svg>
+              </button>
+              {moreMenuOpen ? (
+                <div
+                  id="ra-header-more-panel"
+                  className="ra-header__more-panel"
+                  role="menu"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <div className="ra-header__more-section">
+                    <p className="ra-header__more-h">{t('nav.moreSectionAccount')}</p>
+                    <div className="ra-header__more-actions">
+                      {adminLogged && (
+                        <>
+                          <Link to="/admin" className="ra-link-btn" onClick={() => setMoreMenuOpen(false)}>
+                            {t('nav.adminPanel')}
+                          </Link>
+                          <button
+                            type="button"
+                            className="ra-link-btn"
+                            onClick={() => {
+                              void (async () => {
+                                await fetchAdminLogout()
+                                setAdminSession(false)
+                                setAdminLogged(false)
+                                setMoreMenuOpen(false)
+                                navigate('/', { replace: true })
+                              })()
+                            }}
+                          >
+                            {t('nav.adminLogout')}
+                          </button>
+                        </>
+                      )}
+                      {logged && (
+                        <>
+                          <Link to="/owner" className="ra-link-btn" onClick={() => setMoreMenuOpen(false)}>
+                            {t('nav.ownerDashboard')}
+                          </Link>
+                          <button
+                            type="button"
+                            className="ra-link-btn"
+                            onClick={() => {
+                              clearOwnerSession()
+                              setLogged(false)
+                              setMoreMenuOpen(false)
+                              navigate('/', { replace: true })
+                            }}
+                          >
+                            {t('nav.logout')}
+                          </button>
+                        </>
+                      )}
+                      {!adminLogged && !logged && (
+                        <>
+                          <button type="button" className="ra-btn ra-btn--primary" onClick={openLogin}>
+                            {t('nav.login')}
+                          </button>
+                          <button type="button" className="ra-btn ra-btn--primary" onClick={openRegister}>
+                            {t('nav.register')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="ra-header__more-section">
+                    <p className="ra-header__more-h">{t('nav.moreSectionLanguage')}</p>
+                    <div className="ra-header__more-lang-grid">
+                      {LANGUAGES.map((l) => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          className={`ra-header__chip ${l.code === currentLang ? 'is-active' : ''}`}
+                          onClick={() => {
+                            void i18n.changeLanguage(l.code as LanguageCode)
+                            setMoreMenuOpen(false)
+                          }}
+                        >
+                          <span aria-hidden>{l.flag}</span>
+                          <span>{l.short}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ra-header__more-section">
+                    <p className="ra-header__more-h">{t('nav.moreSectionCurrency')}</p>
+                    <div className="ra-header__more-currency-grid">
+                      {CURRENCIES.map((code) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className={`ra-header__chip ${code === currency ? 'is-active' : ''}`}
+                          onClick={() => {
+                            setCurrency(code)
+                            setMoreMenuOpen(false)
+                          }}
+                        >
+                          <span>{CURRENCY_SYM[code]}</span>
+                          <span>{code}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ra-header__more-section">
+                    <TreatBeerLink variant="header" />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
 
           <nav
-            id="ra-main-cat-nav"
-            className={`ra-nav ${navOpen ? 'is-open' : ''}`}
+            className="ra-nav ra-nav--desktop"
             aria-label={t('nav.categoriesAria')}
           >
             {cats.map((c) => (
@@ -154,10 +361,7 @@ export function Header({
                 key={c.id}
                 type="button"
                 className={`ra-nav__btn ${category === c.id ? 'ra-nav__btn--active' : ''}`}
-                onClick={() => {
-                  onCategory(c.id)
-                  setNavOpen(false)
-                }}
+                onClick={() => onCategory(c.id)}
               >
                 <span className="ra-nav__icon">{c.icon}</span>
                 <span>{t(`nav.${c.id}`)}</span>
@@ -165,7 +369,7 @@ export function Header({
             ))}
           </nav>
 
-          <div className="ra-header__actions">
+          <div className="ra-header__actions ra-header__actions--desktop">
             <TreatBeerLink variant="header" />
             {adminLogged && (
               <>
@@ -210,7 +414,7 @@ export function Header({
               <>
                 <button
                   type="button"
-                  className="ra-link-btn"
+                  className="ra-btn ra-btn--primary"
                   onClick={() => {
                     setModalPlan(null)
                     setAuthMode('login')

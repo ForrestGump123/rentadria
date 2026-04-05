@@ -33,6 +33,7 @@ import { listingTitle as listingTitleT } from '../utils/listingTitle'
 import { downloadElementAsPdf } from '../utils/pdfListing'
 import { isLoggedIn, setLoggedIn } from '../utils/storage'
 import type { ListingCategory } from '../types'
+import type { OwnerContact } from '../types/listingDetail'
 import { useCurrency } from '../context/CurrencyContext'
 
 function trField(v: string, t: (k: string) => string) {
@@ -82,7 +83,9 @@ export function ListingPage() {
     if (isAccommodationDraftListingId(listing.id)) {
       const draft = loadAccommodationDraftForPublicListingPage(listing.id)
       if (!draft) return null
-      return buildAccommodationDraftDetail(draft, t, i18n.language, listing.id)
+      return buildAccommodationDraftDetail(draft, t, i18n.language, listing.id, {
+        omitContactChannels: true,
+      })
     }
     const d = buildListingDetail(listing)
     if (listing.category === 'accommodation') return d
@@ -104,6 +107,9 @@ export function ListingPage() {
 
   const [tab, setTab] = useState<'desc' | 'chars' | 'prices'>('desc')
   const [showContact, setShowContact] = useState(false)
+  const [revealedContacts, setRevealedContacts] = useState<OwnerContact[] | null>(null)
+  const [contactLoading, setContactLoading] = useState(false)
+  const [contactLoadError, setContactLoadError] = useState(false)
   const [lightbox, setLightbox] = useState<number | null>(null)
   const [inquiryOpen, setInquiryOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -138,6 +144,13 @@ export function ListingPage() {
     } catch {
       incrementListingViewForListing(listing.id)
     }
+  }, [listing?.id])
+
+  useEffect(() => {
+    setShowContact(false)
+    setRevealedContacts(null)
+    setContactLoadError(false)
+    setContactLoading(false)
   }, [listing?.id])
 
   useEffect(() => {
@@ -176,6 +189,31 @@ export function ListingPage() {
     if (!pdfRootRef.current || !listing) return
     await downloadElementAsPdf(pdfRootRef.current, `rentadria-${listing.id}.pdf`)
   }, [listing])
+
+  const toggleContactPanel = useCallback(async () => {
+    if (showContact) {
+      setShowContact(false)
+      return
+    }
+    if (!listing) return
+    if (revealedContacts === null) {
+      setContactLoadError(false)
+      setContactLoading(true)
+      try {
+        const { resolveListingPublicContacts } = await import('../data/listingContactResolve')
+        const contacts = await resolveListingPublicContacts(listing, t, i18n.language)
+        setRevealedContacts(contacts)
+      } catch {
+        setContactLoadError(true)
+        setContactLoading(false)
+        return
+      } finally {
+        setContactLoading(false)
+      }
+    }
+    incrementContactClickForListing(listing.id)
+    setShowContact(true)
+  }, [listing, revealedContacts, showContact, t, i18n.language])
 
   const submitReview = useCallback(() => {
     if (!id || !logged || !reviewText.trim()) return
@@ -476,19 +514,26 @@ export function ListingPage() {
             <button
               type="button"
               className="ra-btn ra-btn--primary"
-              onClick={() => {
-                setShowContact((v) => {
-                  if (!v) incrementContactClickForListing(listing.id)
-                  return !v
-                })
-              }}
+              disabled={contactLoading}
+              onClick={() => void toggleContactPanel()}
             >
-              {showContact ? t('detail.contact.hide') : t('detail.contact.show')}
+              {contactLoading
+                ? t('detail.contact.loading')
+                : showContact
+                  ? t('detail.contact.hide')
+                  : t('detail.contact.show')}
             </button>
           </div>
 
+          {contactLoadError ? (
+            <p className="ra-detail-copy ra-detail-contact-err" role="alert">
+              {t('detail.contact.loadError')}
+            </p>
+          ) : null}
+
           {showContact &&
-            detail.publicContacts.map((ownerContact, oci) => (
+            revealedContacts &&
+            revealedContacts.map((ownerContact, oci) => (
               <section key={`${ownerContact.displayName}-${oci}`} className="ra-owner-card">
                 <div className="ra-owner-head">
                   <h3>{t('detail.owner.title')}</h3>
@@ -539,7 +584,9 @@ export function ListingPage() {
 
           <div className="ra-detail-pdf-snapshot" aria-hidden>
             <h2 className="ra-detail-pdf-h">{t('detail.owner.title')}</h2>
-            {detail.publicContacts.map((ownerContact, oci) => (
+            {showContact &&
+              revealedContacts &&
+              revealedContacts.map((ownerContact, oci) => (
               <div key={`pdf-${oci}`} className="ra-detail-pdf-owner">
                 {ownerContact.avatarUrl ? (
                   <img
@@ -562,7 +609,7 @@ export function ListingPage() {
                   </p>
                 ))}
               </div>
-            ))}
+              ))}
             <h2 className="ra-detail-pdf-h">{t('detail.map.title')}</h2>
             <p>{listing.location}</p>
             <p>

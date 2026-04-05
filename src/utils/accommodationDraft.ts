@@ -26,8 +26,25 @@ import { getContactAvatarGlobal } from './contactAvatarGlobal'
 import { getOwnerAvatarPublic } from './ownerAvatarPublic'
 import { resolveOwnerUserIdForListing } from './visitorInquiries'
 
-const PLACEHOLDER_IMG =
-  'https://placehold.co/800x520/0a101e/26c6da/png?text=RentAdria'
+const PLACEHOLDER_IMG = 'https://picsum.photos/seed/rentadria-draft-placeholder/800/520'
+
+export type BuildAccommodationDraftDetailOptions = {
+  /** Ne stavljaj email/telefon/Telegram u objekt dok korisnik ne klikne „Prikaži kontakt“. */
+  omitContactChannels?: boolean
+}
+
+function applyOmitContactChannels(
+  contacts: OwnerContact[],
+  omit: boolean | undefined,
+): OwnerContact[] {
+  if (!omit) return contacts
+  return contacts.map((c) => ({
+    ...c,
+    email: '',
+    phones: [],
+    telegram: '',
+  }))
+}
 
 export const ACCOMMODATION_DRAFT_LISTING_ID = 'owner-draft-accommodation'
 export const ACCOMMODATION_DRAFT_LS_KEY = 'rentadria_listing_draft_accommodation'
@@ -749,6 +766,7 @@ function buildMotorcycleDraftDetail(
   t: TFunction,
   uiLang: string,
   publicListingId?: string,
+  opts?: BuildAccommodationDraftDetailOptions,
 ): ListingDetailExtra {
   const desc = pickDraftLangString(d.descriptions, uiLang)
 
@@ -866,7 +884,7 @@ function buildMotorcycleDraftDetail(
     characteristicGroups,
     pricesAndPayment: pricesLines.length ? pricesLines.join('\n') : '—',
     pricePanel,
-    publicContacts: safeContacts,
+    publicContacts: applyOmitContactChannels(safeContacts, opts?.omitContactChannels),
     contactVisibility: d.contactVis,
     mapLat,
     mapLng,
@@ -882,6 +900,7 @@ function buildCarDraftDetail(
   t: TFunction,
   uiLang: string,
   publicListingId?: string,
+  opts?: BuildAccommodationDraftDetailOptions,
 ): ListingDetailExtra {
   const desc = pickDraftLangString(d.descriptions, uiLang)
 
@@ -997,7 +1016,7 @@ function buildCarDraftDetail(
     characteristicGroups,
     pricesAndPayment: pricesLines.length ? pricesLines.join('\n') : '—',
     pricePanel,
-    publicContacts: safeContacts,
+    publicContacts: applyOmitContactChannels(safeContacts, opts?.omitContactChannels),
     contactVisibility: d.contactVis,
     mapLat,
     mapLng,
@@ -1013,12 +1032,13 @@ export function buildAccommodationDraftDetail(
   t: TFunction,
   uiLang: string,
   publicListingId?: string,
+  opts?: BuildAccommodationDraftDetailOptions,
 ): ListingDetailExtra {
   if (draftFormCategory(d) === 'motorcycle') {
-    return buildMotorcycleDraftDetail(d, t, uiLang, publicListingId)
+    return buildMotorcycleDraftDetail(d, t, uiLang, publicListingId, opts)
   }
   if (draftFormCategory(d) === 'car') {
-    return buildCarDraftDetail(d, t, uiLang, publicListingId)
+    return buildCarDraftDetail(d, t, uiLang, publicListingId, opts)
   }
   const desc = pickDraftLangString(d.descriptions, uiLang)
   const heatingSet = new Set(d.featHeating)
@@ -1151,7 +1171,7 @@ export function buildAccommodationDraftDetail(
     characteristicGroups,
     pricesAndPayment: pricesLines.length ? pricesLines.join('\n') : '—',
     pricePanel,
-    publicContacts: safeContacts,
+    publicContacts: applyOmitContactChannels(safeContacts, opts?.omitContactChannels),
     contactVisibility: d.contactVis,
     mapLat,
     mapLng,

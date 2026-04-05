@@ -147,6 +147,10 @@
     "categoriesAria": "Listing categories",
     "burgerOpen": "Open category menu",
     "burgerClose": "Close category menu",
+    "siteMenuAria": "Language, currency & account",
+    "moreSectionAccount": "Account",
+    "moreSectionLanguage": "Language",
+    "moreSectionCurrency": "Currency",
     "treatBeer": "Buy us a beer"
   },
   "owner": {
@@ -172,6 +176,7 @@
     },
     "newListing": "+ New listing",
     "datesBanner": "Registration date: {{registered}} | Valid until: {{validUntil}}",
+    "promoScopeNote": "Promo code is limited to: {{categories}}",
     "statsTitle": "Statistics — monthly report",
     "statsViews": "Views this month",
     "statsContacts": "Show contact clicks this month",
@@ -1211,7 +1216,19 @@
       "titleBefore": "Ride freely on your",
       "titleHighlight": "motorcycle",
       "subtitle": "Scooters and bikes for open roads across the Mediterranean."
-    }
+    },
+    "slideshowHintMob": "Background photo changes about every 8 seconds. Tap a dot to jump to a slide.",
+    "sideStripMobTitle": "Promotions (left & right columns)",
+    "sideStripMobHint": "Same feed as the left and right columns, in one row: auto-scroll like Featured, or drag to scroll.",
+    "sideStripMobAria": "Promoted listings, horizontal scroll"
+  },
+  "instagram": {
+    "captionLine1": "🌊 {{title}} {{icon}}",
+    "captionBody": "Looking for the perfect stay or transport on the Adriatic and Mediterranean? Connect directly with the owner and save on commissions.",
+    "captionLineUrl": "🔗 More details at: {{url}}",
+    "captionLinePhone": "📞 Contact the owner directly: {{phone}}",
+    "captionPhonePlaceholder": "(phone shown on the listing after “Show contact”)",
+    "captionHashtags": "#RentAdria #Travel #Montenegro #BalkanTravel #Albania #Bosnia #Herzegovina #Croatia #Serbia #Italy #Spain #Accommodation #RentACar #MotoRent #NoCommission"
   },
   "search": {
     "country": "Country",
@@ -1238,7 +1255,8 @@
     "hintWithCountry": "Pick a city from the list or type — Search filters titles and locations below.",
     "resultsLine": "{{count}} listings",
     "sideColumn": "Promoted and listings",
-    "sponsoredBadge": "Sponsored"
+    "sponsoredBadge": "Sponsored",
+    "featuredStripAria": "Featured listings"
   },
   "currency": {
     "aria": "Currency",
@@ -1352,6 +1370,8 @@
     "contact": {
       "show": "Show contact",
       "hide": "Hide contact",
+      "loading": "Loading…",
+      "loadError": "We could not load contact details. Check your connection and try again.",
       "messagePrefill": "Hello, I'm interested in \"{{title}}\" on RentAdria."
     },
     "owner": {

@@ -147,6 +147,10 @@
     "categoriesAria": "Kategorije oglasa",
     "burgerOpen": "Otvori meni kategorija",
     "burgerClose": "Zatvori meni kategorija",
+    "siteMenuAria": "Jezik, valuta i nalog",
+    "moreSectionAccount": "Nalog",
+    "moreSectionLanguage": "Jezik",
+    "moreSectionCurrency": "Valuta",
     "treatBeer": "Časti pivo"
   },
   "owner": {
@@ -172,6 +176,7 @@
     },
     "newListing": "+ Novi oglas",
     "datesBanner": "Datum prijave: {{registered}} | Važi do: {{validUntil}}",
+    "promoScopeNote": "Promotivni kod važi samo za: {{categories}}",
     "statsTitle": "Statistika — mjesečni izvještaj",
     "statsViews": "Pregledi ovaj mjesec",
     "statsContacts": "Prikaži kontakt klikovi ovaj mjesec",
@@ -1211,7 +1216,19 @@
       "titleBefore": "Vozi slobodno na svom",
       "titleHighlight": "motoru",
       "subtitle": "Skuteri i motori za slobodne vožnje po najljepšim putevima Mediterana."
-    }
+    },
+    "slideshowHintMob": "Pozadinska slika se mijenja otprilike svakih 8 sekundi. Tačkicama birate slajd.",
+    "sideStripMobTitle": "Promocije (lijeva i desna kolona)",
+    "sideStripMobHint": "Isti sadržaj kao lijeva i desna kolona u jednom redu: automatski skrol kao „Istaknuto“, ili prevucite prstom.",
+    "sideStripMobAria": "Lista promovisanih oglasa, vodoravni skrol"
+  },
+  "instagram": {
+    "captionLine1": "🌊 {{title}} {{icon}}",
+    "captionBody": "Tražite savršen boravak ili prevoz na Jadranu i Mediteranu? Povežite se direktno sa vlasnikom i uštedite na provizijama.",
+    "captionLineUrl": "🔗 Detaljnije na: {{url}}",
+    "captionLinePhone": "📞 Kontaktirajte vlasnika direktno: {{phone}}",
+    "captionPhonePlaceholder": "(broj na oglasu nakon „Prikaži kontakt“)",
+    "captionHashtags": "#RentAdria #Travel #Montenegro #BalkanTravel #Albania #Bosnia #Herzegovina #Croatia #Serbia #Italy #Spain #Accommodation #RentACar #MotoRent #NoCommission"
   },
   "search": {
     "country": "Zemlja",
@@ -1238,7 +1255,8 @@
     "hintWithCountry": "Izaberite grad sa liste ili upišite — Pretraga filtrira naslove i lokacije ispod.",
     "resultsLine": "{{count}} oglasa",
     "sideColumn": "Promocije i oglasi",
-    "sponsoredBadge": "Sponzor"
+    "sponsoredBadge": "Sponzor",
+    "featuredStripAria": "Istaknuti oglasi"
   },
   "currency": {
     "aria": "Valuta",
@@ -1352,6 +1370,8 @@
     "contact": {
       "show": "Prikaži kontakt",
       "hide": "Sakrij kontakt",
+      "loading": "Učitavanje…",
+      "loadError": "Kontakt se nije mogao učitati. Provjerite vezu i pokušajte ponovo.",
       "messagePrefill": "Zdravo, zanimam se za oglas \"{{title}}\" na RentAdria."
     },
     "owner": {

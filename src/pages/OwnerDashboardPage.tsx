@@ -449,6 +449,13 @@ export function OwnerDashboardPage() {
                 validUntil: formatDateDots(profile.validUntil),
               })}
             </div>
+            {profile.promoCategoryScope && profile.promoCategoryScope.length > 0 && (
+              <p className="ra-owner-banner ra-owner-banner--promo-scope" role="note">
+                {t('owner.promoScopeNote', {
+                  categories: profile.promoCategoryScope.map((c) => t(`nav.${c}`)).join(', '),
+                })}
+              </p>
+            )}
 
             <div className="ra-owner-tabs" role="tablist" aria-label={t('owner.categoriesAria')}>
               {CAT_ORDER.filter((c) => unlocked.includes(c)).map((c) => {

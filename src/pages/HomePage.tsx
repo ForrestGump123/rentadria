@@ -13,6 +13,7 @@ import { HeroSlideshow } from '../components/HeroSlideshow'
 import { EntryPopupBanner } from '../components/EntryPopupBanner'
 import { SideAdsColumn } from '../components/SideAdsColumn'
 import { FeaturedMarquee } from '../components/FeaturedMarquee'
+import { MobileSidePromoStrip } from '../components/MobileSidePromoStrip'
 import { AdGrid } from '../components/AdGrid'
 import { Footer } from '../components/Footer'
 import { listingImageUrl } from '../utils/imageUrl'
@@ -383,8 +384,16 @@ export function HomePage() {
           <SideAdsColumn side="right" items={sideRight} onOpenListing={openListing} />
         </div>
 
+        <MobileSidePromoStrip
+          sideLeft={sideLeft}
+          sideRight={sideRight}
+          onOpenListing={openListing}
+        />
+
         <div className="ra-below">
-          <FeaturedMarquee items={featured} onOpenListing={openListing} />
+          <section className="ra-home-featured-strip" aria-label={t('search.featuredStripAria')}>
+            <FeaturedMarquee items={featured} onOpenListing={openListing} />
+          </section>
           <AdGrid items={gridItems} page={page} onPage={setPage} onOpenListing={openListing} />
         </div>
       </main>
