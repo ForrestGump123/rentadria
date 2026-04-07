@@ -78,17 +78,14 @@ export function Header({
   const [modalPlan, setModalPlan] = useState<SubscriptionPlan | null>(null)
   const [langOpen, setLangOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-  const [catMenuOpen, setCatMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [logged, setLogged] = useState(() => isLoggedIn())
   const [adminLogged, setAdminLogged] = useState(() => isAdminSession())
   const location = useLocation()
-  const catWrapRef = useRef<HTMLDivElement>(null)
   const moreWrapRef = useRef<HTMLDivElement>(null)
   const currentLang =
     (LANGUAGES.find((l) => l.code === (i18n.language || 'en').split('-')[0])?.code ?? 'en') as LanguageCode
   const current = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0]
-  const currentCat = cats.find((c) => c.id === category) ?? cats[0]
 
   useEffect(() => {
     if (!registrationIntent) return
@@ -109,17 +106,15 @@ export function Header({
   }, [langOpen, currencyOpen])
 
   useEffect(() => {
-    if (!catMenuOpen && !moreMenuOpen) return
+    if (!moreMenuOpen) return
     const onDoc = (e: MouseEvent) => {
       const n = e.target as Node
-      if (catWrapRef.current?.contains(n)) return
       if (moreWrapRef.current?.contains(n)) return
-      setCatMenuOpen(false)
       setMoreMenuOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [catMenuOpen, moreMenuOpen])
+  }, [moreMenuOpen])
 
   useEffect(() => {
     const onAuth = () => setLogged(isLoggedIn())
@@ -134,7 +129,6 @@ export function Header({
   }, [])
 
   useEffect(() => {
-    setCatMenuOpen(false)
     setMoreMenuOpen(false)
   }, [location.pathname, location.search])
 
@@ -160,61 +154,12 @@ export function Header({
   return (
     <>
       <header
-        className={`ra-header ${catMenuOpen || moreMenuOpen ? 'ra-header--menus-open' : ''}`}
+        className={`ra-header ${moreMenuOpen ? 'ra-header--menus-open' : ''}`}
       >
         <div className="ra-header__inner">
           <Logo variant="header" />
 
           <div className="ra-header__mobile-tools">
-            <div className="ra-header__cat-wrap" ref={catWrapRef}>
-              <button
-                type="button"
-                id="ra-header-cat-trigger"
-                className={`ra-header__cat-trigger ${catMenuOpen ? 'ra-header__cat-trigger--open' : ''}`}
-                aria-expanded={catMenuOpen}
-                aria-controls="ra-header-cat-panel"
-                aria-haspopup="menu"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setMoreMenuOpen(false)
-                  setLangOpen(false)
-                  setCurrencyOpen(false)
-                  setCatMenuOpen((o) => !o)
-                }}
-              >
-                <span className="ra-nav__icon">{currentCat.icon}</span>
-                <span className="ra-header__cat-trigger-label">{t(`nav.${category}`)}</span>
-                <span className="ra-header__cat-chev" aria-hidden>
-                  ▾
-                </span>
-              </button>
-              {catMenuOpen ? (
-                <ul
-                  id="ra-header-cat-panel"
-                  className="ra-header__cat-panel"
-                  role="menu"
-                  aria-labelledby="ra-header-cat-trigger"
-                >
-                  {cats.map((c) => (
-                    <li key={c.id} role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={category === c.id ? 'is-active' : ''}
-                        onClick={() => {
-                          onCategory(c.id)
-                          setCatMenuOpen(false)
-                        }}
-                      >
-                        <span className="ra-nav__icon">{c.icon}</span>
-                        <span>{t(`nav.${c.id}`)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-
             <div className="ra-header__more-wrap" ref={moreWrapRef}>
               <button
                 type="button"
@@ -226,7 +171,6 @@ export function Header({
                 aria-label={t('nav.siteMenuAria')}
                 onClick={(e) => {
                   e.stopPropagation()
-                  setCatMenuOpen(false)
                   setLangOpen(false)
                   setCurrencyOpen(false)
                   setMoreMenuOpen((o) => !o)
@@ -536,6 +480,28 @@ export function Header({
             </div>
           </div>
         </div>
+
+        <nav className="ra-header__mobile-catbar" aria-label={t('nav.categoriesAria')}>
+          <div className="ra-header__mobile-catbar-inner">
+            {cats.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`ra-header__mobile-catbtn ${category === c.id ? 'is-active' : ''}`}
+                aria-current={category === c.id ? 'page' : undefined}
+                onClick={() => {
+                  setMoreMenuOpen(false)
+                  onCategory(c.id)
+                }}
+              >
+                <span className="ra-header__mobile-catbtn-icon" aria-hidden>
+                  {c.icon}
+                </span>
+                <span className="ra-header__mobile-catbtn-label">{t(`nav.${c.id}`)}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
       </header>
       <AuthModal
         open={authOpen}
