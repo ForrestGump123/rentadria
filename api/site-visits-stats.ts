@@ -8,7 +8,7 @@ import {
 import {
   dayBreakdown,
   dayTotal,
-  loadVisits,
+  loadVisitsSince,
   monthBreakdown,
   monthTotal,
   yearBreakdown,
@@ -42,14 +42,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const data = await loadVisits()
     const dayKeys = enumerateLastNDaysBelgrade(90)
+    const monthKeys = enumerateLastNMonthsBelgrade(24)
+    const oldestMonth = monthKeys[monthKeys.length - 1] || dayKeys[dayKeys.length - 1]
+    const minDay = `${oldestMonth}-01`
+
+    const data = await loadVisitsSince(minDay)
     const daily = dayKeys.map((day) => ({
       day,
       visits: dayTotal(day, data),
     }))
 
-    const monthKeys = enumerateLastNMonthsBelgrade(24)
     const monthly = monthKeys.map((ym) => ({
       month: ym,
       visits: monthTotal(ym, data),
