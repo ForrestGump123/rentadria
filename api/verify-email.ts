@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { send429 } from '../server/lib/apiSafe.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
+import { upsertRegisteredOwnerFromVerify } from '../server/lib/registeredOwnersDb.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { verifyVerifyToken } from '../server/lib/verifyJwt.js'
 
@@ -32,11 +33,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let plan = payload.plan
     if (!['basic', 'pro', 'agency'].includes(plan)) plan = 'basic'
 
+    const registeredAt = new Date().toISOString()
+    void upsertRegisteredOwnerFromVerify({ ...payload, plan }, registeredAt)
+
     res.status(200).json({
       ok: true,
       email: payload.email,
       name: payload.name,
       plan,
+      passwordHash: payload.passwordHash,
+      phone: payload.phone,
+      countryId: payload.countryId,
+      promoCode: payload.promoCode,
     })
   } catch (e) {
     const name = e && typeof e === 'object' && 'code' in e ? String((e as { code?: string }).code) : ''

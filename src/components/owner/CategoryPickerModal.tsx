@@ -15,7 +15,7 @@ export function CategoryPickerModal({ open, onClose, unlocked, onPick }: Props) 
   if (!open) return null
 
   return (
-    <div className="ra-modal" role="dialog" aria-modal="true" onClick={onClose}>
+    <div className="ra-modal ra-modal--owner-catpick" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="ra-modal__panel ra-owner-catpick" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="ra-modal__close" onClick={onClose} aria-label="Close">
           ×

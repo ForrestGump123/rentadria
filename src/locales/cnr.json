@@ -156,6 +156,11 @@
   "owner": {
     "pageTitle": "Panel vlasnika",
     "sidebarAria": "Navigacija za vlasnike",
+    "mobileNav": {
+      "trigger": "Panel — navigacija",
+      "expand": "Otvori navigaciju",
+      "collapse": "Zatvori navigaciju"
+    },
     "welcome": "Dobrodošli, {{name}}!",
     "lead": "Upravljajte oglasima po kategorijama. Kategorije koje niste platili ovdje se ne prikazuju.",
     "blockedLead": "Vaš nalog je suspendovan. Oglasi su sakriveni sa sajta. Možete samo Poruke — kontakt s administratorom.",

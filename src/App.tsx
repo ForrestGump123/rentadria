@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import './App.css'
 import { AdminSessionSync } from './components/AdminSessionSync'
@@ -14,6 +15,10 @@ import { OwnerDashboardPage } from './pages/OwnerDashboardPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 
 export default function App() {
+  useEffect(() => {
+    void import('./utils/localDevOwnerSeed').then((m) => m.runLocalDevOwnerSeed())
+  }, [])
+
   return (
     <>
       <AdminSessionSync />

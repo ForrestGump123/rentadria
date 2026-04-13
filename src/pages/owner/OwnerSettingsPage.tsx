@@ -113,7 +113,7 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
                   ✓ {t('owner.settingsPage.active')}
                 </p>
               ) : (
-                <span className="ra-btn ra-btn--primary ra-pricing-card__cta">{t('owner.settingsPage.upgrade')}</span>
+                <span className="ra-pricing-card__cta ra-pricing-card__cta--owner-plan">{t('owner.settingsPage.upgrade')}</span>
               )}
             </button>
           )

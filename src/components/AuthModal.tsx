@@ -17,6 +17,7 @@ import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
 import { findOwnerProfileByEmail, saveOwnerProfile } from '../utils/ownerSession'
 import { fetchAdminLogin } from '../lib/adminAuthApi'
+import { fetchOwnerRemoteLogin } from '../lib/ownerAuthApi'
 import { setAdminSession } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import {
@@ -123,6 +124,15 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         return
       }
 
+      const remote = await fetchOwnerRemoteLogin(em, password)
+      if (remote) {
+        saveOwnerProfile(remote)
+        onClose()
+        const blocked = getAdminOwnerMeta(remote.userId).blocked
+        navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+        return
+      }
+
       setLoginErr(t('auth.loginPasswordWrong'))
     })()
   }
@@ -165,6 +175,10 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         email: email.trim(),
         name: name.trim(),
         plan: initialPlan ?? 'basic',
+        passwordHash,
+        phone: phone.trim(),
+        countryId: registrationCodeToCountryId(country as RegistrationCountryCode),
+        promoCode: promoCode.trim() || undefined,
       })
     } catch (err) {
       if (import.meta.env.DEV) {

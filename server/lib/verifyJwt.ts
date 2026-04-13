@@ -1,9 +1,16 @@
 import { SignJWT, jwtVerify } from 'jose'
 
+const COUNTRY_IDS = new Set(['al', 'ba', 'me', 'hr', 'it', 'rs', 'es'])
+
 export type VerifyTokenPayload = {
   email: string
   name: string
   plan: string
+  /** SHA-256 heks vlasničke lozinke (isti format kao u `ownerSession`). */
+  passwordHash?: string
+  phone?: string
+  countryId?: string
+  promoCode?: string
 }
 
 function getSecret(): Uint8Array {
@@ -17,7 +24,16 @@ function getSecret(): Uint8Array {
 
 export async function signVerifyToken(payload: VerifyTokenPayload): Promise<string> {
   const secret = getSecret()
-  return new SignJWT({ ...payload })
+  const claims: Record<string, unknown> = {
+    email: payload.email,
+    name: payload.name,
+    plan: payload.plan,
+  }
+  if (payload.passwordHash) claims.passwordHash = payload.passwordHash
+  if (payload.phone) claims.phone = payload.phone
+  if (payload.countryId) claims.countryId = payload.countryId
+  if (payload.promoCode) claims.promoCode = payload.promoCode
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('48h')
@@ -31,5 +47,24 @@ export async function verifyVerifyToken(token: string): Promise<VerifyTokenPaylo
   const name = typeof payload.name === 'string' ? payload.name : ''
   const plan = typeof payload.plan === 'string' ? payload.plan : 'basic'
   if (!email) throw new Error('invalid_token')
-  return { email: email.toLowerCase(), name, plan }
+  const em = email.toLowerCase()
+  let passwordHash: string | undefined
+  if (typeof payload.passwordHash === 'string') {
+    const h = payload.passwordHash.trim().toLowerCase()
+    if (/^[a-f0-9]{64}$/.test(h)) passwordHash = h
+  }
+  const phone =
+    typeof payload.phone === 'string' && payload.phone.trim()
+      ? payload.phone.trim().slice(0, 80)
+      : undefined
+  let countryId: string | undefined
+  if (typeof payload.countryId === 'string') {
+    const c = payload.countryId.trim().toLowerCase()
+    if (COUNTRY_IDS.has(c)) countryId = c
+  }
+  const promoCode =
+    typeof payload.promoCode === 'string' && payload.promoCode.trim()
+      ? payload.promoCode.trim().slice(0, 64)
+      : undefined
+  return { email: em, name, plan, passwordHash, phone, countryId, promoCode }
 }

@@ -258,6 +258,11 @@
   "owner": {
     "pageTitle": "Paneli i pronarit",
     "sidebarAria": "Navigimi për pronarët",
+    "mobileNav": {
+      "trigger": "Paneli — navigimi",
+      "expand": "Hap navigimin",
+      "collapse": "Mbyll navigimin"
+    },
     "welcome": "Mirë se vini, {{name}}!",
     "lead": "Menaxhoni shpalljet sipas kategorisë. Kategoritë e papaguara nuk shfaqen këtu.",
     "onboarding": {

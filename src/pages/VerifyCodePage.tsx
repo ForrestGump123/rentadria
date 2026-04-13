@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import type { SearchCountryId } from '../data/cities/countryIds'
+import { SEARCH_COUNTRY_IDS } from '../data/cities/countryIds'
 import { Footer } from '../components/Footer'
 import { verifyEmailToken } from '../lib/verifyEmailToken'
 import { takePendingRegistration } from '../utils/pendingRegistration'
@@ -29,6 +31,10 @@ export function VerifyCodePage() {
         .then(async (data) => {
           if (cancelled) return
           const pending = takePendingRegistration(data.email)
+          const countryFromToken: SearchCountryId | undefined =
+            data.countryId && (SEARCH_COUNTRY_IDS as readonly string[]).includes(data.countryId)
+              ? (data.countryId as SearchCountryId)
+              : undefined
           const profile: OwnerProfile = {
             userId: data.email,
             email: data.email,
@@ -37,14 +43,15 @@ export function VerifyCodePage() {
             subscriptionActive: false,
             registeredAt: new Date().toISOString(),
             validUntil: '',
-            phone: pending?.phone,
-            countryId: pending?.countryId,
-            passwordHash: pending?.passwordHash,
+            phone: data.phone ?? pending?.phone,
+            countryId: countryFromToken ?? pending?.countryId,
+            passwordHash: data.passwordHash ?? pending?.passwordHash,
           }
           saveOwnerProfile(profile)
           const p = getOwnerProfile()
-          if (p && pending?.promoCode?.trim()) {
-            const r = await savePromoCode(p.userId, pending.promoCode, p)
+          const promo = (data.promoCode ?? pending?.promoCode)?.trim()
+          if (p && promo) {
+            const r = await savePromoCode(p.userId, promo, p)
             if (!r.ok && import.meta.env.DEV) {
               console.warn('[RentAdria] Promo kod pri registraciji nije primijenjen:', r.reason)
             }

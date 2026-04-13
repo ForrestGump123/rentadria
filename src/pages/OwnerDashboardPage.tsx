@@ -54,6 +54,20 @@ export function OwnerDashboardPage() {
   const [inquiryEpoch, setInquiryEpoch] = useState(0)
   const [inquiryUnread, setInquiryUnread] = useState(0)
   const [msgUnread, setMsgUnread] = useState(0)
+  const [mobileOwnerNavOpen, setMobileOwnerNavOpen] = useState(false)
+
+  useEffect(() => {
+    setMobileOwnerNavOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!mobileOwnerNavOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOwnerNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileOwnerNavOpen])
 
   useEffect(() => {
     const onAuth = () => setSessionEpoch((e) => e + 1)
@@ -188,7 +202,28 @@ export function OwnerDashboardPage() {
 
       <div className="ra-owner-app">
       <aside className="ra-owner-sidebar" aria-label={t('owner.sidebarAria')}>
-        <nav className="ra-owner-nav">
+        <button
+          type="button"
+          id="ra-owner-nav-trigger"
+          className="ra-owner-mobile-nav-trigger"
+          aria-expanded={mobileOwnerNavOpen}
+          aria-controls="ra-owner-nav"
+          aria-label={mobileOwnerNavOpen ? t('owner.mobileNav.collapse') : t('owner.mobileNav.expand')}
+          onClick={() => setMobileOwnerNavOpen((o) => !o)}
+        >
+          <span>{t('owner.mobileNav.trigger')}</span>
+          <span className="ra-owner-mobile-nav-trigger__chev" aria-hidden>
+            {mobileOwnerNavOpen ? '▲' : '▼'}
+          </span>
+        </button>
+        <nav
+          id="ra-owner-nav"
+          className={`ra-owner-nav ${mobileOwnerNavOpen ? 'is-open' : ''}`}
+          aria-labelledby="ra-owner-nav-trigger"
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a[href]')) setMobileOwnerNavOpen(false)
+          }}
+        >
           {blocked ? (
             <NavLink
               className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -509,7 +544,7 @@ export function OwnerDashboardPage() {
               </div>
 
               <div className="ra-owner-table-wrap">
-                <table className="ra-owner-table">
+                <table className="ra-owner-table ra-owner-table--owner-listings">
                   <thead>
                     <tr>
                       <th>{t('owner.colTitle')}</th>
@@ -531,15 +566,18 @@ export function OwnerDashboardPage() {
                     ) : (
                       filtered.map((row) => (
                         <tr key={row.id}>
-                          <td>{row.title}</td>
-                          <td>{row.viewsMonth}</td>
-                          <td>{row.contactClicksMonth}</td>
-                          <td>
+                          <td data-label={t('owner.colTitle')}>{row.title}</td>
+                          <td data-label={t('owner.colViews')}>{row.viewsMonth}</td>
+                          <td data-label={t('owner.colContacts')}>{row.contactClicksMonth}</td>
+                          <td data-label={t('owner.colDates')}>
                             {row.receivedAt} / {row.expiresAt}
                           </td>
-                          <td>{row.featuredUntil ?? '—'}</td>
-                          <td>{row.internalNote ?? '—'}</td>
-                          <td className="ra-owner-table__actions">
+                          <td data-label={t('owner.colFeatured')}>{row.featuredUntil ?? '—'}</td>
+                          <td data-label={t('owner.colNote')}>{row.internalNote ?? '—'}</td>
+                          <td
+                            className="ra-owner-table__actions"
+                            data-label={t('owner.colActions')}
+                          >
                             {row.publicListingId ? (
                               <button
                                 type="button"

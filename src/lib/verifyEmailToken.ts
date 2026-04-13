@@ -1,13 +1,33 @@
-export async function verifyEmailToken(token: string): Promise<{ email: string; name: string; plan: string }> {
+export type VerifyEmailSuccess = {
+  email: string
+  name: string
+  plan: string
+  passwordHash?: string
+  phone?: string
+  countryId?: string
+  promoCode?: string
+}
+
+export async function verifyEmailToken(token: string): Promise<VerifyEmailSuccess> {
   const res = await fetch('/api/verify-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
     body: JSON.stringify({ token }),
   })
-  let data: { ok?: boolean; email?: string; name?: string; plan?: string; error?: string }
+  let data: {
+    ok?: boolean
+    email?: string
+    name?: string
+    plan?: string
+    passwordHash?: string
+    phone?: string
+    countryId?: string
+    promoCode?: string
+    error?: string
+  }
   try {
-    data = (await res.json()) as { ok?: boolean; email?: string; name?: string; plan?: string; error?: string }
+    data = (await res.json()) as typeof data
   } catch {
     const e = new Error('bad_response') as Error & { code?: string }
     e.code = 'bad_response'
@@ -23,5 +43,9 @@ export async function verifyEmailToken(token: string): Promise<{ email: string; 
     email: data.email,
     name: data.name ?? '',
     plan: data.plan ?? 'basic',
+    passwordHash: typeof data.passwordHash === 'string' ? data.passwordHash : undefined,
+    phone: typeof data.phone === 'string' ? data.phone : undefined,
+    countryId: typeof data.countryId === 'string' ? data.countryId : undefined,
+    promoCode: typeof data.promoCode === 'string' ? data.promoCode : undefined,
   }
 }

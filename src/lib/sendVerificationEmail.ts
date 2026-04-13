@@ -3,6 +3,10 @@ export async function sendVerificationEmail(payload: {
   email: string
   name: string
   plan: string
+  passwordHash?: string
+  phone?: string
+  countryId?: string
+  promoCode?: string
 }): Promise<void> {
   const res = await fetch('/api/send-verification', {
     method: 'POST',

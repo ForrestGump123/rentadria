@@ -8,6 +8,8 @@ import { sendTransactionalEmail } from '../server/lib/sendBrevoMail.js'
 function siteBase(req: VercelRequest): string {
   const explicit = process.env.SITE_URL?.trim()
   if (explicit) return explicit.replace(/\/$/, '')
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin.trim() : ''
+  if (/^https?:\/\//i.test(origin)) return origin.replace(/\/$/, '')
   const vercel = process.env.VERCEL_URL?.trim()
   if (vercel) return `https://${vercel.replace(/^https?:\/\//, '')}`
   const host = req.headers['x-forwarded-host'] || req.headers.host
@@ -36,6 +38,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .toLowerCase()
     const name = String(body?.name ?? '').trim()
     const plan = String(body?.plan ?? 'basic').trim() || 'basic'
+    const passwordHash = String(body?.passwordHash ?? '')
+      .trim()
+      .toLowerCase()
+    const phone = String(body?.phone ?? '').trim().slice(0, 80)
+    const countryId = String(body?.countryId ?? '').trim().toLowerCase()
+    const promoCode = String(body?.promoCode ?? '').trim().slice(0, 64)
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       res.status(400).json({ error: 'invalid_email' })
@@ -49,6 +57,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(400).json({ error: 'invalid_plan' })
       return
     }
+    if (passwordHash && !/^[a-f0-9]{64}$/.test(passwordHash)) {
+      res.status(400).json({ error: 'invalid_password_hash' })
+      return
+    }
+    const allowedCountries = new Set(['al', 'ba', 'me', 'hr', 'it', 'rs', 'es'])
+    if (countryId && !allowedCountries.has(countryId)) {
+      res.status(400).json({ error: 'invalid_country' })
+      return
+    }
 
     if (
       !rateLimit(`reg:email:${email}`, 4, 86_400_000) ||
@@ -58,7 +75,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    const token = await signVerifyToken({ email, name, plan })
+    const token = await signVerifyToken({
+      email,
+      name,
+      plan,
+      ...(passwordHash ? { passwordHash } : {}),
+      ...(phone ? { phone } : {}),
+      ...(countryId ? { countryId } : {}),
+      ...(promoCode ? { promoCode } : {}),
+    })
     const base = siteBase(req)
     const verifyUrl = `${base}/verify?token=${encodeURIComponent(token)}`
 

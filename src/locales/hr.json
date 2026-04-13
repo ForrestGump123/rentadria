@@ -258,6 +258,11 @@
   "owner": {
     "pageTitle": "Sučelje vlasnika",
     "sidebarAria": "Navigacija za vlasnike",
+    "mobileNav": {
+      "trigger": "Panel — navigacija",
+      "expand": "Otvori navigaciju",
+      "collapse": "Zatvori navigaciju"
+    },
     "welcome": "Dobrodošli, {{name}}!",
     "lead": "Upravljajte oglasima po kategorijama. Kategorije koje niste platili ovdje se ne prikazuju.",
     "onboarding": {

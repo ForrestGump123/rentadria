@@ -156,6 +156,11 @@
   "owner": {
     "pageTitle": "Owner dashboard",
     "sidebarAria": "Owner navigation",
+    "mobileNav": {
+      "trigger": "Dashboard menu",
+      "expand": "Open navigation",
+      "collapse": "Close navigation"
+    },
     "welcome": "Welcome, {{name}}!",
     "lead": "Manage your listings by category. Categories you have not paid for are not shown here.",
     "blockedLead": "Your account is suspended. Your listings are hidden on the site. You can only use Messages to contact the administrator.",

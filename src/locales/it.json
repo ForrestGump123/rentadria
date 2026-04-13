@@ -258,6 +258,11 @@
   "owner": {
     "pageTitle": "Pannello proprietario",
     "sidebarAria": "Navigazione proprietario",
+    "mobileNav": {
+      "trigger": "Menu pannello",
+      "expand": "Apri navigazione",
+      "collapse": "Chiudi navigazione"
+    },
     "welcome": "Benvenuto, {{name}}!",
     "lead": "Gestisci gli annunci per categoria. Le categorie non acquistate non sono mostrate qui.",
     "onboarding": {

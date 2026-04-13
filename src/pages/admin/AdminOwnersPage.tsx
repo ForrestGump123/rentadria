@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -37,6 +37,29 @@ export function AdminOwnersPage() {
   const [editMeta, setEditMeta] = useState<AdminOwnerMeta | null>(null)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+
+  useEffect(() => {
+    if (!isAdminSession()) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-owners', { credentials: 'include' })
+        if (!r.ok || cancelled) return
+        const j = (await r.json()) as { ok?: boolean; owners?: OwnerProfile[] }
+        if (!j.ok || !Array.isArray(j.owners) || cancelled) return
+        for (const o of j.owners) {
+          if (!o?.userId || getOwnerProfileByUserId(o.userId)) continue
+          saveOwnerProfileForAdmin(o.userId, o)
+        }
+        bump()
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [bump])
 
   const profiles = useMemo(() => {
     void epoch

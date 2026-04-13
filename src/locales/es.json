@@ -258,6 +258,11 @@
   "owner": {
     "pageTitle": "Panel del propietario",
     "sidebarAria": "Navegación del propietario",
+    "mobileNav": {
+      "trigger": "Menú del panel",
+      "expand": "Abrir navegación",
+      "collapse": "Cerrar navegación"
+    },
     "welcome": "¡Bienvenido, {{name}}!",
     "lead": "Gestiona tus anuncios por categoría. Las categorías no pagadas no aparecen aquí.",
     "onboarding": {

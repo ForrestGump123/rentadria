@@ -426,21 +426,19 @@ body {
   margin: 0 auto;
   padding: 0.55rem max(1.15rem, env(safe-area-inset-left)) 0.8rem
     max(1.15rem, env(safe-area-inset-right));
-  display: flex;
-  gap: 0.55rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
   align-items: stretch;
-  justify-content: center;
 }
 
 .ra-header__mobile-catbtn {
-  flex: 1 1 0;
-  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   min-height: 44px;
-  padding: 0.5rem 0.55rem;
+  padding: 0.5rem 0.5rem;
   border-radius: 14px;
   border: 1px solid rgba(34, 211, 238, 0.32);
   background: rgba(10, 16, 30, 0.35);
@@ -612,19 +610,27 @@ body {
     display: block;
   }
 
-  /* Na baš uskim ekranima: dozvoli horizontalni scroll umjesto sabijanja teksta */
+  /* Malo zbijenije na mobilnom da uvijek stane 3 u red. */
   .ra-header__mobile-catbar-inner {
-    justify-content: flex-start;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    gap: 0.45rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.75rem;
   }
-  .ra-header__mobile-catbar-inner::-webkit-scrollbar {
-    display: none;
+}
+
+/* Ultra uski ekrani: dodatno smanji tipografiju/padding da iOS/Samsung font render ne razbije layout. */
+@media (max-width: 360px) {
+  .ra-header__mobile-catbar-inner {
+    gap: 0.38rem;
   }
   .ra-header__mobile-catbtn {
-    flex: 0 0 auto;
-    min-width: 30vw;
+    padding: 0.48rem 0.42rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.01em;
+  }
+  .ra-header__mobile-catbtn-icon svg {
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -3473,6 +3479,13 @@ body {
     max-width: 420px;
     margin: 0 auto;
   }
+
+  .ra-owner-main .ra-pricing-grid {
+    max-width: 100%;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 .ra-verify-main {
@@ -3705,6 +3718,7 @@ body {
   display: grid;
   grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
   align-items: stretch;
+  min-width: 0;
 }
 
 .ra-owner-sidebar {
@@ -3790,10 +3804,41 @@ body {
   text-align: center;
 }
 
+.ra-owner-mobile-nav-trigger {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(38, 198, 218, 0.35);
+  background: rgba(38, 198, 218, 0.1);
+  color: var(--ra-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ra-owner-mobile-nav-trigger:hover {
+  background: rgba(38, 198, 218, 0.16);
+}
+
+.ra-owner-mobile-nav-trigger__chev {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
 .ra-owner-main {
   padding: 1.25rem 1.25rem 2.5rem;
   max-width: 1200px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .ra-owner-head {
@@ -3965,6 +4010,14 @@ button.ra-owner-settings__plan-btn--current {
 
 .ra-owner-settings__plan-btn .ra-pricing-card__cta {
   margin-top: auto;
+}
+
+/* Span CTA unutar <button> kartice — ista vizuelna kao .ra-pricing-card__cta, bez ugniježđenog .ra-btn */
+.ra-owner-settings__plan-btn .ra-pricing-card__cta--owner-plan {
+  display: block;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .ra-owner-settings__active {
@@ -4281,6 +4334,77 @@ button.ra-owner-settings__plan-btn--current {
   margin-left: 0.15rem;
 }
 
+@media (max-width: 640px) {
+  .ra-owner-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ra-owner-head__btns {
+    width: 100%;
+  }
+
+  .ra-owner-head__btns .ra-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .ra-owner-stats__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ra-owner-stat {
+    padding: 0.55rem 0.4rem;
+  }
+
+  .ra-owner-stat strong {
+    font-size: 1.2rem;
+  }
+
+  .ra-owner-stat span:last-child {
+    font-size: 0.65rem;
+    line-height: 1.2;
+  }
+
+  .ra-owner-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-radius: 14px;
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    background: rgba(10, 16, 30, 0.45);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35) inset;
+  }
+
+  .ra-owner-tab {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.2rem;
+    min-height: 48px;
+    padding: 0.4rem 0.35rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-align: center;
+    line-height: 1.15;
+  }
+
+  .ra-owner-tab__ico {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .ra-owner-tab__check {
+    margin-left: 0;
+    font-size: 0.75rem;
+  }
+}
+
 .ra-owner-stats {
   margin-bottom: 1.5rem;
 }
@@ -4390,6 +4514,91 @@ button.ra-owner-settings__plan-btn--current {
 @media (max-width: 520px) {
   .ra-owner-table__actions {
     flex-wrap: wrap;
+  }
+}
+
+/* Mobilni prikaz liste oglasa: kartice umjesto široke tabele */
+@media (max-width: 720px) {
+  .ra-owner-table--owner-listings thead {
+    display: none;
+  }
+
+  .ra-owner-table--owner-listings tbody tr {
+    display: block;
+    margin-bottom: 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 14px;
+    border: 1px solid rgba(34, 211, 238, 0.22);
+    background: rgba(10, 16, 30, 0.55);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .ra-owner-table--owner-listings tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.88rem;
+    text-align: right;
+  }
+
+  .ra-owner-table--owner-listings tbody td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .ra-owner-table--owner-listings tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ra-muted);
+    text-align: left;
+    flex: 0 0 42%;
+    padding-top: 0.15rem;
+  }
+
+  .ra-owner-table--owner-listings tbody td.ra-owner-table__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .ra-owner-table--owner-listings tbody td.ra-owner-table__actions::before {
+    flex: 0 0 auto;
+    width: 100%;
+    padding-top: 0;
+  }
+
+  .ra-owner-table--owner-listings tbody td.ra-owner-table__actions .ra-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .ra-owner-table--owner-listings tbody td.ra-owner-table__empty {
+    display: block;
+    text-align: center;
+    border-bottom: none;
+    padding: 1.25rem 0.5rem;
+  }
+
+  .ra-owner-table--owner-listings tbody td.ra-owner-table__empty::before {
+    display: none;
+  }
+
+  /* Ukloni negativne margine od šireg bloka kad je kartični prikaz */
+  .ra-owner-main .ra-owner-table-wrap:has(.ra-owner-table--owner-listings) {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    overflow-x: visible;
+    border: none;
+    background: transparent;
   }
 }
 
@@ -5522,7 +5731,7 @@ button.ra-owner-settings__plan-btn--current {
   margin-top: 0.55rem;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 960px) {
   .ra-owner-listing__row-3 {
     grid-template-columns: 1fr;
   }
@@ -5530,6 +5739,8 @@ button.ra-owner-settings__plan-btn--current {
   .ra-owner-listing__main-split-left .ra-owner-listing__row-3 {
     grid-template-columns: 1fr;
     width: 100%;
+    max-width: 100%;
+    justify-content: stretch;
   }
 
   .ra-owner-listing__main-split-left .ra-owner-listing__row-3 .ra-fld {
@@ -6163,7 +6374,28 @@ button.ra-owner-settings__plan-btn--current {
 
 @media (max-width: 560px) {
   .ra-owner-catpick__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ra-owner-catpick__card {
+    padding: 0.75rem 0.35rem;
+    min-height: 5.5rem;
+    justify-content: center;
+    border-radius: 12px;
+    border-color: rgba(34, 211, 238, 0.28);
+    background: rgba(10, 16, 30, 0.4);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35) inset;
+  }
+
+  .ra-owner-catpick__ico {
+    font-size: 1.35rem;
+  }
+
+  .ra-owner-catpick__label {
+    font-size: 0.68rem;
+    text-align: center;
+    line-height: 1.2;
   }
 }
 
@@ -7836,24 +8068,45 @@ button.ra-owner-settings__plan-btn--current {
     z-index: 25;
     background: rgba(5, 10, 22, 0.98);
     flex-shrink: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
   }
 
-  .ra-owner-nav {
-    flex-direction: row;
+  .ra-owner-mobile-nav-trigger {
+    display: flex;
+  }
+
+  .ra-owner-nav:not(.is-open) {
+    display: none !important;
+  }
+
+  .ra-owner-nav.is-open {
+    display: flex !important;
+    flex-direction: column;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: visible;
+    width: 100%;
+    gap: 0.2rem;
+    margin-top: 0.35rem;
+    padding: 0.45rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(8, 12, 22, 0.98);
+    max-height: min(72vh, 520px);
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    gap: 0.3rem;
-    padding-bottom: 0.2rem;
     scrollbar-width: thin;
   }
 
   .ra-owner-nav__link {
     flex: 0 0 auto;
-    white-space: nowrap;
-    font-size: 0.8rem;
-    padding: 0.45rem 0.55rem;
+    white-space: normal;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.65rem;
+    min-height: 44px;
+    align-items: center;
+    border-radius: 10px;
   }
 
   .ra-owner-sidebar__logout {
@@ -7865,6 +8118,86 @@ button.ra-owner-settings__plan-btn--current {
     padding: 0.85rem max(0.6rem, env(safe-area-inset-left)) 2rem
       max(0.6rem, env(safe-area-inset-right));
     max-width: none;
+  }
+
+  .ra-owner-lead {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  /* Onboarding: planovi kao kvadratići — swipe + snap, cijela kartica u okviru ekrana */
+  .ra-owner-main .ra-pricing-grid.ra-owner-onboarding-plans {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(calc(100vw - 2.5rem), 300px, 68vh);
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: max(0.6rem, env(safe-area-inset-left));
+    padding-bottom: 0.5rem;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card {
+    scroll-snap-align: center;
+    width: min(calc(100vw - 2.5rem), 300px, 68vh);
+    height: min(calc(100vw - 2.5rem), 300px, 68vh);
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.7rem 0.6rem 0.55rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__name {
+    font-size: 0.95rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__tagline {
+    font-size: 0.62rem;
+    line-height: 1.2;
+    margin-bottom: 0.3rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__euro {
+    font-size: 1.15rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__list {
+    font-size: 0.62rem;
+    line-height: 1.28;
+    margin-bottom: 0.35rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__list li {
+    margin-bottom: 0.15rem;
+  }
+
+  .ra-owner-onboarding-plans .ra-pricing-card__cta {
+    padding: 0.42rem 0.55rem;
+    font-size: 0.78rem;
+  }
+
+  .ra-owner-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ra-owner-head__btns {
+    width: 100%;
+  }
+
+  .ra-owner-head__btns .ra-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
   }
 
   /* Tabele: skrol umjesto širenja stranice */
@@ -7903,6 +8236,23 @@ button.ra-owner-settings__plan-btn--current {
     align-items: stretch;
   }
 
+  /* Izbor kategorije „Novi oglas” — bottom sheet */
+  .ra-modal--owner-catpick {
+    place-items: end center;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-top: max(0.35rem, env(safe-area-inset-top));
+  }
+
+  .ra-modal--owner-catpick .ra-modal__panel.ra-owner-catpick {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 18px 18px 0 0;
+    max-height: min(88dvh, 520px);
+    padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom));
+  }
+
   .ra-modal__panel {
     width: 100%;
     max-width: 100%;
@@ -7924,16 +8274,69 @@ button.ra-owner-settings__plan-btn--current {
     border-radius: 0;
   }
 
+  .ra-owner-listing__head {
+    padding-left: max(0.65rem, env(safe-area-inset-left));
+    padding-right: max(0.65rem, env(safe-area-inset-right));
+  }
+
+  .ra-owner-listing__head h2 {
+    font-size: clamp(0.88rem, 3.6vw, 1.02rem);
+    line-height: 1.35;
+    padding-right: 0.35rem;
+  }
+
   .ra-owner-listing__tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    padding: 0.45rem max(0.55rem, env(safe-area-inset-left)) 0.55rem
+      max(0.55rem, env(safe-area-inset-right));
+    margin: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(8, 12, 22, 0.96);
+    scrollbar-width: none;
+  }
+
+  .ra-owner-listing__tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .ra-owner-listing__tab {
     flex: 0 0 auto;
     white-space: nowrap;
+    min-height: 44px;
+    padding: 0.42rem 0.85rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border-radius: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid transparent;
+    box-sizing: border-box;
+  }
+
+  .ra-owner-listing__tab.is-active {
+    color: var(--ra-text);
+    border-color: rgba(96, 165, 250, 0.55);
+    background: rgba(37, 99, 235, 0.28);
+    border-bottom-color: #38bdf8;
+  }
+
+  .ra-owner-listing__body {
+    padding-left: max(0.65rem, env(safe-area-inset-left));
+    padding-right: max(0.65rem, env(safe-area-inset-right));
+  }
+
+  .ra-owner-listing__dates-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-owner-listing__compact-fld select,
+  .ra-owner-listing__compact-fld input[type='text'],
+  .ra-owner-listing__compact-fld input[type='search'] {
+    min-height: 2.75rem;
+    font-size: 1rem;
   }
 
   /* Pravne stranice */
