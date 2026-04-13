@@ -125,11 +125,19 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
       }
 
       const remote = await fetchOwnerRemoteLogin(em, password)
-      if (remote) {
-        saveOwnerProfile(remote)
+      if (remote.ok) {
+        saveOwnerProfile(remote.profile)
         onClose()
-        const blocked = getAdminOwnerMeta(remote.userId).blocked
+        const blocked = getAdminOwnerMeta(remote.profile.userId).blocked
         navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+        return
+      }
+      if (remote.error === 'no_password_stored') {
+        setLoginErr(t('auth.loginPasswordNotOnServer'))
+        return
+      }
+      if (remote.error === 'backend_unavailable') {
+        setLoginErr(t('auth.loginRemoteUnavailable'))
         return
       }
 

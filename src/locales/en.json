@@ -16,6 +16,8 @@
     "selectedPlanBanner": "You selected the {{plan}} plan. It will be linked to your account after you complete registration.",
     "passwordRequired": "Password is required.",
     "loginPasswordWrong": "Incorrect password.",
+    "loginPasswordNotOnServer": "Your account is confirmed, but the password was not saved on the server (for example if you verified on another device with an older link). Open “Sign up”, enter the same email and password, and send a new confirmation email — then click the link once. Or check that your password is typed exactly as when you registered.",
+    "loginRemoteUnavailable": "Signing in on another device requires the server database (Supabase). If you are the site owner, configure SUPABASE_URL and run the SQL migration. Until then, sign in on the device where you confirmed the email.",
     "loginNotRegistered": "No account found. Registration is required before you can sign in as an owner.",
     "loginBlocked": "This account has been suspended. Contact support.",
     "loginAccountDeleted": "This account was removed. An administrator can restore it under Admin → Deleted accounts.",

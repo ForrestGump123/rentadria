@@ -59,18 +59,47 @@ export async function upsertRegisteredOwnerFromVerify(
   if (!supabase) return
 
   const userId = payload.email.toLowerCase()
-  const passwordHash =
+  const passwordHashFromJwt =
     payload.passwordHash && /^[a-f0-9]{64}$/i.test(payload.passwordHash)
       ? payload.passwordHash.toLowerCase()
       : null
+
+  const { data: existing } = await supabase
+    .from(TABLE)
+    .select('password_hash,registered_at,phone,country_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const ex = existing as Record<string, unknown> | null
+  const existingHash =
+    typeof ex?.password_hash === 'string' && /^[a-f0-9]{64}$/i.test(ex.password_hash)
+      ? ex.password_hash.trim().toLowerCase()
+      : null
+
+  /** Ne prepisuj postojeći hash sa null (stari JWT bez lozinke). */
+  const mergedPassword = passwordHashFromJwt ?? existingHash ?? null
+
+  const phonePayload = payload.phone?.trim() || null
+  const countryPayload =
+    payload.countryId && ALLOWED.has(payload.countryId) ? payload.countryId : null
+  const mergedPhone = phonePayload ?? (typeof ex?.phone === 'string' && ex.phone.trim() ? ex.phone.trim() : null)
+  const exCid = typeof ex?.country_id === 'string' ? ex.country_id.trim().toLowerCase() : ''
+  const mergedCountry =
+    countryPayload ?? (ALLOWED.has(exCid) ? exCid : null)
+
+  const registeredAt =
+    typeof ex?.registered_at === 'string' && ex.registered_at.trim()
+      ? String(ex.registered_at).trim()
+      : registeredAtIso
+
   const row = {
     user_id: userId,
     email: userId,
     display_name: payload.name.trim() || userId.split('@')[0] || userId,
-    phone: payload.phone?.trim() || null,
-    country_id: payload.countryId && ALLOWED.has(payload.countryId) ? payload.countryId : null,
-    password_hash: passwordHash,
-    registered_at: registeredAtIso,
+    phone: mergedPhone,
+    country_id: mergedCountry,
+    password_hash: mergedPassword,
+    registered_at: registeredAt,
     plan_pending: payload.plan,
     promo_code: payload.promoCode?.trim() || null,
     updated_at: new Date().toISOString(),
@@ -109,27 +138,30 @@ export async function listRegisteredOwnersForAdmin(): Promise<RegisteredOwnerApi
   return out
 }
 
-export async function loginRegisteredOwner(
-  email: string,
-  passwordPlain: string,
-): Promise<RegisteredOwnerApiRow | null> {
+export type OwnerLoginResult =
+  | { ok: true; profile: RegisteredOwnerApiRow }
+  | { ok: false; reason: 'no_backend' | 'not_found' | 'bad_password' | 'no_password' }
+
+export async function loginRegisteredOwner(email: string, passwordPlain: string): Promise<OwnerLoginResult> {
   const supabase = getSupabaseAdmin()
-  if (!supabase) return null
+  if (!supabase) return { ok: false, reason: 'no_backend' }
 
   const em = email.trim().toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return { ok: false, reason: 'not_found' }
 
   const { data, error } = await supabase.from(TABLE).select('*').eq('user_id', em).maybeSingle()
 
-  if (error || !data || typeof data !== 'object') return null
+  if (error || !data || typeof data !== 'object') return { ok: false, reason: 'not_found' }
   const rec = data as Record<string, unknown>
   const stored = typeof rec.password_hash === 'string' ? rec.password_hash.trim().toLowerCase() : ''
-  if (!/^[a-f0-9]{64}$/.test(stored)) return null
+  if (!/^[a-f0-9]{64}$/.test(stored)) return { ok: false, reason: 'no_password' }
 
   const hash = createHash('sha256').update(passwordPlain, 'utf8').digest('hex')
   const a = Buffer.from(hash, 'utf8')
   const b = Buffer.from(stored, 'utf8')
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, reason: 'bad_password' }
 
-  return rowToApi(rec)
+  const profile = rowToApi(rec)
+  if (!profile) return { ok: false, reason: 'not_found' }
+  return { ok: true, profile }
 }

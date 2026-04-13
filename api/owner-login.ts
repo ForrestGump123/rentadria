@@ -29,13 +29,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    const profile = await loginRegisteredOwner(email, password)
-    if (!profile) {
-      res.status(401).json({ ok: false, error: 'unauthorized' })
+    const result = await loginRegisteredOwner(email, password)
+    if (result.ok) {
+      res.status(200).json({ ok: true, profile: result.profile })
       return
     }
-
-    res.status(200).json({ ok: true, profile })
+    if (result.reason === 'no_backend') {
+      res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
+      return
+    }
+    if (result.reason === 'no_password') {
+      res.status(401).json({ ok: false, error: 'no_password_stored' })
+      return
+    }
+    res.status(401).json({ ok: false, error: 'unauthorized' })
   } catch {
     res.status(400).json({ ok: false, error: 'bad_request' })
   }

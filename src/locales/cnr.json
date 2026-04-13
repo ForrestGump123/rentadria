@@ -16,6 +16,8 @@
     "selectedPlanBanner": "Izabrali ste paket {{plan}}. Povezaće se s vašim nalogom nakon završetka registracije.",
     "passwordRequired": "Lozinka je obavezna.",
     "loginPasswordWrong": "Pogrešna lozinka.",
+    "loginPasswordNotOnServer": "Račun je potvrđen, ali lozinka nije snimljena na server (npr. verifikacija na drugom uređaju ili stari link). Otvorite „Registracija“, unesite isti email i lozinku i pošaljite novi verifikacijski email, zatim jednom kliknite link. Provjerite i tačnost lozinke (velika/mala slova).",
+    "loginRemoteUnavailable": "Prijava s drugog uređaja zahtijeva bazu na serveru (Supabase). Dok to nije podešeno, prijavite se na uređaju gdje ste potvrdili email.",
     "loginNotRegistered": "Nema naloga za ovu adresu. Prije prijave potrebna je registracija vlasnika.",
     "loginBlocked": "Ovaj nalog je suspendovan. Kontaktirajte podršku.",
     "loginAccountDeleted": "Ovaj nalog je uklonjen. Administrator ga može vratiti u Admin → Izbrisani nalozi.",
