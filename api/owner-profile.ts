@@ -38,15 +38,24 @@ function parsePatch(body: Record<string, unknown>): OwnerSelfProfilePatch | null
     patch.displayName = body.displayName
     any = true
   }
-  if (body.phone === null || typeof body.phone === 'string') {
+  if (body.phone === null) {
+    patch.phone = null
+    any = true
+  } else if (typeof body.phone === 'string') {
     patch.phone = body.phone
     any = true
   }
-  if (body.countryId === null || typeof body.countryId === 'string') {
+  if (body.countryId === null) {
+    patch.countryId = null
+    any = true
+  } else if (typeof body.countryId === 'string') {
     patch.countryId = body.countryId
     any = true
   }
-  if (body.avatarDataUrl === null || typeof body.avatarDataUrl === 'string') {
+  if (body.avatarDataUrl === null) {
+    patch.avatarDataUrl = null
+    any = true
+  } else if (typeof body.avatarDataUrl === 'string') {
     patch.avatarDataUrl = body.avatarDataUrl === '' ? null : body.avatarDataUrl
     any = true
   }
@@ -123,21 +132,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
       }
       const result = await patchRegisteredOwnerSelf(ownerUid, patch)
-      if (!result.ok) {
-        if (result.error === 'no_backend') {
-          res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
-          return
+      if (result.ok === false) {
+        switch (result.error) {
+          case 'no_backend':
+            res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
+            return
+          case 'not_found':
+            res.status(404).json({ ok: false, error: 'not_found' })
+            return
+          case 'invalid_avatar':
+            res.status(400).json({ ok: false, error: 'invalid_avatar' })
+            return
+          default:
+            res.status(400).json({ ok: false, error: result.error })
+            return
         }
-        if (result.error === 'not_found') {
-          res.status(404).json({ ok: false, error: 'not_found' })
-          return
-        }
-        if (result.error === 'invalid_avatar') {
-          res.status(400).json({ ok: false, error: 'invalid_avatar' })
-          return
-        }
-        res.status(400).json({ ok: false, error: result.error })
-        return
       }
       res.status(200).json({ ok: true, profile: jsonProfile(result.profile) })
       return
