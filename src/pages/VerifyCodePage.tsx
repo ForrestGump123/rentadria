@@ -39,19 +39,27 @@ export function VerifyCodePage() {
               ? (data.countryId as SearchCountryId)
               : undefined
           const registeredAtIso = data.registeredAt ?? new Date().toISOString()
+          const regDate = new Date(registeredAtIso)
 
           let plan: SubscriptionPlan | null = null
           let subscriptionActive = false
           let validUntil = ''
 
-          if ('subscriptionPlan' in data) {
-            const sp = data.subscriptionPlan
-            plan = sp != null && isSubscriptionPlan(sp) ? sp : null
+          const sp = data.subscriptionPlan
+          if (sp != null && isSubscriptionPlan(sp)) {
+            plan = sp
             subscriptionActive = Boolean(data.subscriptionActive)
             validUntil = typeof data.validUntil === 'string' ? data.validUntil : ''
-          } else {
-            const regDate = new Date(registeredAtIso)
-            if (registrationGetsFreePro(regDate)) {
+          }
+
+          /*
+           * API uvijek šalje ključ subscriptionPlan (često null). Ako je registracija u promotivnom
+           * periodu (isti kraj datuma kao server/lib/registrationPromo.ts), a server nije vratio
+           * kompletan Pro — nadopuni ovdje (isti smisao kao verify-email fallback).
+           * Agency ne diramo.
+           */
+          if (registrationGetsFreePro(regDate) && plan !== 'agency') {
+            if (plan !== 'pro' || !subscriptionActive || !String(validUntil).trim()) {
               plan = 'pro'
               subscriptionActive = true
               validUntil = addOneYearIsoFrom(regDate)
