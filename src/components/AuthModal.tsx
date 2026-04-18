@@ -15,9 +15,9 @@ import { isValidRegisterPhone } from '../utils/phoneValidation'
 import type { SubscriptionPlan } from '../types/plan'
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
-import { findOwnerProfileByEmail, saveOwnerProfile } from '../utils/ownerSession'
+import { findOwnerProfileByEmail, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 import { fetchAdminLogin } from '../lib/adminAuthApi'
-import { fetchOwnerRemoteLogin } from '../lib/ownerAuthApi'
+import { fetchOwnerRemoteLogin, type OwnerRemoteLoginResult } from '../lib/ownerAuthApi'
 import { setAdminSession } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import {
@@ -88,6 +88,31 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         setLoginErr(t('auth.loginAccountDeleted'))
         return
       }
+      const finishOwnerLogin = (profile: OwnerProfile) => {
+        try {
+          clearPendingRegistrationForEmail(profile.email.trim().toLowerCase())
+        } catch {
+          /* ignore */
+        }
+        saveOwnerProfile(profile)
+        onClose()
+        const blocked = getAdminOwnerMeta(profile.userId).blocked
+        navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+      }
+
+      const handleRemoteOwnerLoginFailure = (remote: OwnerRemoteLoginResult) => {
+        if (remote.ok) return
+        if (remote.error === 'no_password_stored') {
+          setLoginErr(t('auth.loginPasswordNotOnServer'))
+          return
+        }
+        if (remote.error === 'backend_unavailable') {
+          setLoginErr(t('auth.loginRemoteUnavailable'))
+          return
+        }
+        setLoginErr(t('auth.loginPasswordWrong'))
+      }
+
       const existing = findOwnerProfileByEmail(email)
       if (existing) {
         const existingEmail = existing.email.trim().toLowerCase()
@@ -95,23 +120,46 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
           setLoginErr(t('auth.loginWrongEmail'))
           return
         }
+
         if (existing.passwordHash) {
           const h = await sha256Hex(password)
-          if (h !== existing.passwordHash) {
-            setLoginErr(t('auth.loginPasswordWrong'))
+          if (h === existing.passwordHash) {
+            finishOwnerLogin(existing)
             return
           }
-          saveOwnerProfile(existing)
-        } else {
-          saveOwnerProfile({
+          /*
+           * Lokalni profil može biti zastario (npr. mail potvrđen na drugom uređaju / drugom pregledniku).
+           * Ne odbij odmah — server je izvor istine za lozinku i pretplatu.
+           */
+          const remoteAfterLocalMismatch = await fetchOwnerRemoteLogin(em, password)
+          if (remoteAfterLocalMismatch.ok) {
+            finishOwnerLogin(remoteAfterLocalMismatch.profile)
+            return
+          }
+          handleRemoteOwnerLoginFailure(remoteAfterLocalMismatch)
+          return
+        }
+
+        const remoteNoLocalHash = await fetchOwnerRemoteLogin(em, password)
+        if (remoteNoLocalHash.ok) {
+          finishOwnerLogin(remoteNoLocalHash.profile)
+          return
+        }
+        if (remoteNoLocalHash.error === 'backend_unavailable') {
+          finishOwnerLogin({
             ...existing,
             passwordHash: await sha256Hex(password),
           })
+          return
         }
-        setLoggedIn(true)
-        onClose()
-        const blocked = getAdminOwnerMeta(existing.userId).blocked
-        navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+        if (remoteNoLocalHash.error === 'no_password_stored') {
+          finishOwnerLogin({
+            ...existing,
+            passwordHash: await sha256Hex(password),
+          })
+          return
+        }
+        handleRemoteOwnerLoginFailure(remoteNoLocalHash)
         return
       }
 
@@ -126,22 +174,10 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
 
       const remote = await fetchOwnerRemoteLogin(em, password)
       if (remote.ok) {
-        saveOwnerProfile(remote.profile)
-        onClose()
-        const blocked = getAdminOwnerMeta(remote.profile.userId).blocked
-        navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
+        finishOwnerLogin(remote.profile)
         return
       }
-      if (remote.error === 'no_password_stored') {
-        setLoginErr(t('auth.loginPasswordNotOnServer'))
-        return
-      }
-      if (remote.error === 'backend_unavailable') {
-        setLoginErr(t('auth.loginRemoteUnavailable'))
-        return
-      }
-
-      setLoginErr(t('auth.loginPasswordWrong'))
+      handleRemoteOwnerLoginFailure(remote)
     })()
   }
 
