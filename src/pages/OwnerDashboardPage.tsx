@@ -26,6 +26,8 @@ import {
   type OwnerListingRow,
 } from '../utils/ownerSession'
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
+import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
+import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
 import { getUnreadThreadCountForOwner } from '../utils/ownerAdminMessages'
 import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
 import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
@@ -85,6 +87,21 @@ export function OwnerDashboardPage() {
     () => (isLoggedIn() ? getOwnerProfile() : null),
     [sessionEpoch],
   )
+
+  useEffect(() => {
+    if (!profile?.userId) return
+    let cancelled = false
+    void (async () => {
+      const [listOk] = await Promise.all([
+        pullOwnerListingsFromCloud(profile.userId),
+        pullOwnerProfileFromCloud(profile.userId),
+      ])
+      if (!cancelled && listOk) setListVersion((v) => v + 1)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [profile?.userId, sessionEpoch])
 
   useEffect(() => {
     const syncUnread = () => {

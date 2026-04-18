@@ -7317,9 +7317,23 @@ button.ra-owner-settings__plan-btn--current {
   line-height: 1.1;
 }
 
-.ra-admin-card span:last-child {
-  font-size: 0.78rem;
+.ra-admin-card__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ra-text, rgba(255, 255, 255, 0.88));
+}
+
+.ra-admin-card__hint {
+  font-size: 0.72rem;
+  line-height: 1.35;
   color: var(--ra-muted);
+}
+
+.ra-admin-subtitle--muted {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ra-muted);
+  max-width: 52rem;
 }
 
 .ra-admin-card--listings strong {

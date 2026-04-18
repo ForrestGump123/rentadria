@@ -12,6 +12,8 @@ export type VerifyEmailSuccess = {
   validUntil?: string
   basicCategoryChoice?: string | null
   registeredAt?: string
+  /** Kratkotrajan token za HttpOnly owner sesiju nakon verifikacije. */
+  ownerSessionExchange?: string
 }
 
 export async function verifyEmailToken(token: string): Promise<VerifyEmailSuccess> {
@@ -35,6 +37,7 @@ export async function verifyEmailToken(token: string): Promise<VerifyEmailSucces
     validUntil?: string
     basicCategoryChoice?: string | null
     registeredAt?: string
+    ownerSessionExchange?: string
     error?: string
   }
   try {
@@ -63,5 +66,7 @@ export async function verifyEmailToken(token: string): Promise<VerifyEmailSucces
     validUntil: typeof data.validUntil === 'string' ? data.validUntil : undefined,
     basicCategoryChoice: data.basicCategoryChoice ?? undefined,
     registeredAt: typeof data.registeredAt === 'string' ? data.registeredAt : undefined,
+    ownerSessionExchange:
+      typeof data.ownerSessionExchange === 'string' ? data.ownerSessionExchange : undefined,
   }
 }

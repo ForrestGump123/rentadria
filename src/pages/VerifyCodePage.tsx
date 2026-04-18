@@ -11,6 +11,9 @@ import { isSubscriptionPlan } from '../types/plan'
 import { takePendingRegistration } from '../utils/pendingRegistration'
 import { addOneYearIsoFrom, registrationGetsFreePro } from '../utils/registrationPromo'
 import { savePromoCode } from '../utils/ownerPromoCode'
+import { exchangeOwnerSessionAfterVerify, pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
+import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
+import { removeDeletedOwner } from '../utils/deletedOwnersStore'
 import { getOwnerProfile, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 
 const STORAGE_KEY = 'rentadria_verify_ctx'
@@ -85,6 +88,16 @@ export function VerifyCodePage() {
             basicCategoryChoice,
           }
           saveOwnerProfile(profile)
+          try {
+            removeDeletedOwner(profile.userId.trim().toLowerCase())
+          } catch {
+            /* ignore */
+          }
+          if (typeof data.ownerSessionExchange === 'string' && data.ownerSessionExchange.trim()) {
+            await exchangeOwnerSessionAfterVerify(data.ownerSessionExchange.trim())
+          }
+          await pullOwnerListingsFromCloud(profile.userId)
+          await pullOwnerProfileFromCloud(profile.userId)
           const p = getOwnerProfile()
           const promo = (data.promoCode ?? pending?.promoCode)?.trim()
           if (p && promo) {

@@ -4,7 +4,7 @@ import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { addOneYearIsoFrom, registrationGetsFreePro } from '../server/lib/registrationPromo.js'
 import { upsertRegisteredOwnerFromVerify } from '../server/lib/registeredOwnersDb.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
-import { verifyVerifyToken } from '../server/lib/verifyJwt.js'
+import { signOwnerSessionExchangeToken, verifyVerifyToken } from '../server/lib/verifyJwt.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
@@ -51,6 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    let ownerSessionExchange: string | undefined
+    try {
+      ownerSessionExchange = await signOwnerSessionExchangeToken(payload.email)
+    } catch {
+      /* JWT_SECRET nedostaje ili je prekratak — preskoči razmjenu sesije */
+    }
+
     res.status(200).json({
       ok: true,
       email: payload.email,
@@ -65,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       validUntil: validUntilOut,
       basicCategoryChoice: profileOut?.basicCategoryChoice ?? null,
       registeredAt: registeredAtOut,
+      ownerSessionExchange,
     })
   } catch (e) {
     const name = e && typeof e === 'object' && 'code' in e ? String((e as { code?: string }).code) : ''

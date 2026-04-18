@@ -19,6 +19,8 @@ export type RegisteredOwnerApiRow = {
   plan: 'basic' | 'pro' | 'agency' | null
   subscriptionActive: boolean
   basicCategoryChoice?: 'accommodation' | 'car' | 'motorcycle' | null
+  avatarDataUrl?: string | null
+  promoCategoryScope?: ('accommodation' | 'car' | 'motorcycle')[] | null
 }
 
 export type RegisteredOwnerListItem = RegisteredOwnerApiRow & {
@@ -51,6 +53,22 @@ function parseBasicCat(
   return null
 }
 
+const VALID_CATS = new Set(['accommodation', 'car', 'motorcycle'])
+
+function parsePromoCategoryScope(
+  r: Record<string, unknown>,
+): ('accommodation' | 'car' | 'motorcycle')[] | null {
+  if (!('promo_category_scope' in r)) return null
+  const v = r.promo_category_scope
+  if (v == null) return null
+  if (!Array.isArray(v)) return null
+  const out: ('accommodation' | 'car' | 'motorcycle')[] = []
+  for (const x of v) {
+    if (typeof x === 'string' && VALID_CATS.has(x)) out.push(x as 'accommodation' | 'car' | 'motorcycle')
+  }
+  return out.length > 0 ? out : null
+}
+
 export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | null {
   const userId = typeof r.user_id === 'string' ? r.user_id.trim().toLowerCase() : ''
   if (!userId) return null
@@ -72,6 +90,10 @@ export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | nu
   const subscriptionActive = Boolean(r.subscription_active)
   const validUntil = parseValidUntil(r)
   const bc = parseBasicCat(r)
+  const av = r.avatar_data_url
+  const avatarDataUrl =
+    typeof av === 'string' && av.startsWith('data:image/') ? av : null
+  const promoCategoryScope = parsePromoCategoryScope(r)
   return {
     userId,
     email: userId,
@@ -84,6 +106,8 @@ export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | nu
     plan,
     subscriptionActive,
     basicCategoryChoice: bc,
+    avatarDataUrl,
+    promoCategoryScope,
   }
 }
 
@@ -215,6 +239,91 @@ export type AdminOwnerUpdateInput = {
   validUntil: string | null
   basicCategoryChoice: 'accommodation' | 'car' | 'motorcycle' | null
   adminMeta: Record<string, unknown>
+  avatarDataUrl?: string | null
+  promoCategoryScope?: ('accommodation' | 'car' | 'motorcycle')[] | null
+}
+
+export type OwnerSelfProfilePatch = {
+  displayName?: string
+  phone?: string | null
+  countryId?: string | null
+  avatarDataUrl?: string | null
+  basicCategoryChoice?: 'accommodation' | 'car' | 'motorcycle' | null
+  promoCategoryScope?: ('accommodation' | 'car' | 'motorcycle')[] | null
+  passwordHash?: string | null
+}
+
+const MAX_AVATAR_DATA_URL_CHARS = 1_400_000
+
+export async function getRegisteredOwnerProfile(userId: string): Promise<RegisteredOwnerApiRow | null> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return null
+  const uid = userId.trim().toLowerCase()
+  const { data, error } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
+  if (error || !data || typeof data !== 'object') return null
+  return rowToApi(data as Record<string, unknown>)
+}
+
+export async function patchRegisteredOwnerSelf(
+  userId: string,
+  patch: OwnerSelfProfilePatch,
+): Promise<{ ok: true; profile: RegisteredOwnerApiRow } | { ok: false; error: string }> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return { ok: false, error: 'no_backend' }
+  const uid = userId.trim().toLowerCase()
+  const { data: existing, error: selErr } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
+  if (selErr || !existing || typeof existing !== 'object') return { ok: false, error: 'not_found' }
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+  if (typeof patch.displayName === 'string') {
+    const d = patch.displayName.trim()
+    if (d) updates.display_name = d
+  }
+  if (patch.phone !== undefined) updates.phone = patch.phone?.trim() ? patch.phone.trim().slice(0, 80) : null
+  if (patch.countryId !== undefined) {
+    const c = patch.countryId?.trim().toLowerCase() ?? ''
+    updates.country_id = c && ALLOWED.has(c) ? c : null
+  }
+  if (patch.avatarDataUrl !== undefined) {
+    if (patch.avatarDataUrl === null || patch.avatarDataUrl === '') updates.avatar_data_url = null
+    else if (
+      typeof patch.avatarDataUrl === 'string' &&
+      patch.avatarDataUrl.startsWith('data:image/') &&
+      patch.avatarDataUrl.length <= MAX_AVATAR_DATA_URL_CHARS
+    ) {
+      updates.avatar_data_url = patch.avatarDataUrl
+    } else {
+      return { ok: false, error: 'invalid_avatar' }
+    }
+  }
+  if (patch.basicCategoryChoice !== undefined) {
+    updates.basic_category_choice = patch.basicCategoryChoice
+  }
+  if (patch.promoCategoryScope !== undefined) {
+    updates.promo_category_scope =
+      patch.promoCategoryScope === null || patch.promoCategoryScope.length === 0
+        ? null
+        : patch.promoCategoryScope
+  }
+  if (patch.passwordHash !== undefined && patch.passwordHash !== null) {
+    const h = patch.passwordHash.trim().toLowerCase()
+    if (/^[a-f0-9]{64}$/.test(h)) updates.password_hash = h
+  }
+
+  if (Object.keys(updates).length <= 1) {
+    const p = rowToApi(existing as Record<string, unknown>)
+    return p ? { ok: true, profile: p } : { ok: false, error: 'not_found' }
+  }
+
+  const { error: upErr } = await supabase.from(TABLE).update(updates).eq('user_id', uid)
+  if (upErr) return { ok: false, error: upErr.message }
+
+  const { data: after } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
+  if (!after || typeof after !== 'object') return { ok: false, error: 'not_found' }
+  const profile = rowToApi(after as Record<string, unknown>)
+  if (!profile) return { ok: false, error: 'not_found' }
+  return { ok: true, profile }
 }
 
 export async function updateRegisteredOwnerByAdmin(input: AdminOwnerUpdateInput): Promise<{ ok: boolean; error?: string }> {
@@ -247,6 +356,23 @@ export async function updateRegisteredOwnerByAdmin(input: AdminOwnerUpdateInput)
     basic_category_choice: input.basicCategoryChoice,
     admin_meta: input.adminMeta,
     updated_at: new Date().toISOString(),
+  }
+
+  if (input.avatarDataUrl !== undefined) {
+    if (input.avatarDataUrl === null || input.avatarDataUrl === '') row.avatar_data_url = null
+    else if (
+      typeof input.avatarDataUrl === 'string' &&
+      input.avatarDataUrl.startsWith('data:image/') &&
+      input.avatarDataUrl.length <= MAX_AVATAR_DATA_URL_CHARS
+    ) {
+      row.avatar_data_url = input.avatarDataUrl
+    }
+  }
+  if (input.promoCategoryScope !== undefined) {
+    row.promo_category_scope =
+      input.promoCategoryScope === null || input.promoCategoryScope.length === 0
+        ? null
+        : input.promoCategoryScope
   }
 
   if (ex?.registered_at) row.registered_at = ex.registered_at
@@ -289,6 +415,15 @@ export async function listRegisteredOwnersForAdmin(): Promise<RegisteredOwnerLis
 export type OwnerLoginResult =
   | { ok: true; profile: RegisteredOwnerApiRow }
   | { ok: false; reason: 'no_backend' | 'not_found' | 'bad_password' | 'no_password' }
+
+/** Broj redova u `rentadria_registered_owners` (admin pregled). */
+export async function countRegisteredOwners(): Promise<number | null> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return null
+  const { count, error } = await supabase.from(TABLE).select('user_id', { count: 'exact', head: true })
+  if (error) return null
+  return typeof count === 'number' ? count : 0
+}
 
 export async function loginRegisteredOwner(email: string, passwordPlain: string): Promise<OwnerLoginResult> {
   const supabase = getSupabaseAdmin()

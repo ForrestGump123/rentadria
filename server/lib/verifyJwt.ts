@@ -68,3 +68,27 @@ export async function verifyVerifyToken(token: string): Promise<VerifyTokenPaylo
       : undefined
   return { email: em, name, plan, passwordHash, phone, countryId, promoCode }
 }
+
+/** Kratkotrajan token nakon verify-email za razmjenu u HttpOnly owner sesiju (bez ponovnog unosa lozinke). */
+export async function signOwnerSessionExchangeToken(email: string): Promise<string> {
+  const secret = getSecret()
+  const em = email.trim().toLowerCase()
+  return new SignJWT({ typ: 'owner_sess_ex' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(em)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(secret)
+}
+
+/** Vraća email (sub) ili null. */
+export async function verifyOwnerSessionExchangeToken(token: string): Promise<string | null> {
+  try {
+    const secret = getSecret()
+    const { payload } = await jwtVerify(token, secret)
+    if (payload.typ !== 'owner_sess_ex' || typeof payload.sub !== 'string' || !payload.sub.trim()) return null
+    return payload.sub.trim().toLowerCase()
+  } catch {
+    return null
+  }
+}

@@ -1,4 +1,8 @@
 -- Run this in Supabase → SQL Editor (once), then create Storage bucket (see comment at end).
+--
+-- VAŽNO: izvrši CIJELI ovaj fajl od prve linije do zadnje (Ctrl+A → paste → Run).
+-- Ako pokreneš samo dio od riječi "begin" bez bloka "declare ..." iznad, PostgreSQL
+-- tretira v_sched kao ime tabele → greška: relation "v_sched" does not exist.
 
 create table if not exists public.social_meta (
   id int primary key check (id = 1),

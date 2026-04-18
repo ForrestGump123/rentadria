@@ -7,10 +7,13 @@ import { isAdminSession } from '../../utils/adminSession'
 import { clearAdminReportsUnread, loadAllReports } from '../../utils/storage'
 import { formatDateDots } from '../../utils/ownerSession'
 
+type ReportRow = Record<string, string> & { at?: string }
+
 export function AdminReportsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
+  const [rows, setRows] = useState<ReportRow[]>([])
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
@@ -25,10 +28,38 @@ export function AdminReportsPage() {
     return () => window.removeEventListener('rentadria-reports-updated', on)
   }, [bump])
 
-  const rows = useMemo(() => {
-    void epoch
-    return loadAllReports().slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-reports-list', { credentials: 'include' })
+        const j = (await r.json()) as {
+          ok?: boolean
+          rows?: { id: string; payload: Record<string, string>; at: string }[]
+        }
+        if (cancelled || !r.ok || !j.ok || !Array.isArray(j.rows)) {
+          if (!cancelled) setRows(loadAllReports().slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')))
+          return
+        }
+        setRows(
+          j.rows.map((x) => ({
+            ...x.payload,
+            at: x.at,
+          })),
+        )
+      } catch {
+        if (!cancelled) setRows(loadAllReports().slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [epoch])
+
+  const sorted = useMemo(
+    () => rows.slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')),
+    [rows],
+  )
 
   if (!isAdminSession()) return null
 
@@ -56,14 +87,14 @@ export function AdminReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {sorted.length === 0 ? (
               <tr>
                 <td colSpan={6} className="ra-admin-listings__empty">
                   {t('admin.reports.empty')}
                 </td>
               </tr>
             ) : (
-              rows.map((r, i) => {
+              sorted.map((r, i) => {
                 const lid = r.listingId ?? ''
                 const listing = lid ? getListingById(lid) : undefined
                 return (

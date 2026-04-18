@@ -155,13 +155,29 @@ export function ListingPage() {
 
   useEffect(() => {
     if (!id) return
-    const sync = () => setReviews(loadReviewsForListing(id))
-    sync()
-    window.addEventListener('rentadria-reviews-updated', sync)
-    window.addEventListener('rentadria-listing-gallery-admin-changed', sync)
+    const syncLocal = () => setReviews(loadReviewsForListing(id))
+    const hydrate = () => {
+      void (async () => {
+        try {
+          const r = await fetch(`/api/listing-reviews?listingId=${encodeURIComponent(id)}`)
+          const j = (await r.json()) as { ok?: boolean; reviews?: StoredReview[] }
+          if (r.ok && j.ok && Array.isArray(j.reviews)) {
+            setReviews(j.reviews)
+            saveReviewsForListing(id, j.reviews)
+            return
+          }
+        } catch {
+          /* ignore */
+        }
+        syncLocal()
+      })()
+    }
+    hydrate()
+    window.addEventListener('rentadria-reviews-updated', syncLocal)
+    window.addEventListener('rentadria-listing-gallery-admin-changed', syncLocal)
     return () => {
-      window.removeEventListener('rentadria-reviews-updated', sync)
-      window.removeEventListener('rentadria-listing-gallery-admin-changed', sync)
+      window.removeEventListener('rentadria-reviews-updated', syncLocal)
+      window.removeEventListener('rentadria-listing-gallery-admin-changed', syncLocal)
     }
   }, [id])
 
@@ -225,6 +241,13 @@ export function ListingPage() {
     ]
     setReviews(next)
     saveReviewsForListing(id, next)
+    const added = next[next.length - 1]!
+    void fetch('/api/listing-reviews', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listingId: id, review: added }),
+    }).catch(() => {})
     bumpAdminReviewUnread()
     setReviewText('')
   }, [id, logged, reviewRating, reviewText, reviews])

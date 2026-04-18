@@ -14,9 +14,11 @@ import { sha256Hex } from '../utils/passwordHash'
 import { isValidRegisterPhone } from '../utils/phoneValidation'
 import type { SubscriptionPlan } from '../types/plan'
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
-import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
+import { isEmailInDeletedOwners, removeDeletedOwner } from '../utils/deletedOwnersStore'
 import { findOwnerProfileByEmail, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 import { fetchAdminLogin } from '../lib/adminAuthApi'
+import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
+import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
 import { fetchOwnerRemoteLogin, type OwnerRemoteLoginResult } from '../lib/ownerAuthApi'
 import { setAdminSession } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
@@ -84,24 +86,33 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     const em = email.trim().toLowerCase()
 
     void (async () => {
-      if (isEmailInDeletedOwners(em)) {
-        setLoginErr(t('auth.loginAccountDeleted'))
-        return
-      }
       const finishOwnerLogin = (profile: OwnerProfile) => {
         try {
           clearPendingRegistrationForEmail(profile.email.trim().toLowerCase())
         } catch {
           /* ignore */
         }
+        try {
+          removeDeletedOwner(profile.userId.trim().toLowerCase())
+        } catch {
+          /* ignore */
+        }
         saveOwnerProfile(profile)
+        void Promise.all([
+          pullOwnerListingsFromCloud(profile.userId.trim()),
+          pullOwnerProfileFromCloud(profile.userId.trim()),
+        ])
         onClose()
         const blocked = getAdminOwnerMeta(profile.userId).blocked
         navigate(blocked ? '/owner/messages' : '/owner', { replace: true })
       }
 
-      const handleRemoteOwnerLoginFailure = (remote: OwnerRemoteLoginResult) => {
+      const handleRemoteOwnerLoginFailure = (loginEm: string, remote: OwnerRemoteLoginResult) => {
         if (remote.ok) return
+        if (remote.error === 'not_found' && isEmailInDeletedOwners(loginEm)) {
+          setLoginErr(t('auth.loginAccountDeleted'))
+          return
+        }
         if (remote.error === 'no_password_stored') {
           setLoginErr(t('auth.loginPasswordNotOnServer'))
           return
@@ -136,7 +147,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
             finishOwnerLogin(remoteAfterLocalMismatch.profile)
             return
           }
-          handleRemoteOwnerLoginFailure(remoteAfterLocalMismatch)
+          handleRemoteOwnerLoginFailure(em, remoteAfterLocalMismatch)
           return
         }
 
@@ -159,7 +170,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
           })
           return
         }
-        handleRemoteOwnerLoginFailure(remoteNoLocalHash)
+        handleRemoteOwnerLoginFailure(em, remoteNoLocalHash)
         return
       }
 
@@ -177,7 +188,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         finishOwnerLogin(remote.profile)
         return
       }
-      handleRemoteOwnerLoginFailure(remote)
+      handleRemoteOwnerLoginFailure(em, remote)
     })()
   }
 

@@ -5,15 +5,14 @@ import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
 import { listingTitle as listingTitleT } from '../../utils/listingTitle'
 import { isAdminSession } from '../../utils/adminSession'
-import { getAllOwnerListingRows, getOwnerProfileByUserId } from '../../utils/ownerSession'
 import {
-  clearAdminReviewUnread,
-  listAllReviewListingIds,
-  loadReviewsForListing,
-  saveReviewsForListing,
-  type StoredReview,
-} from '../../utils/reviewStorage'
-import { formatDateDots } from '../../utils/ownerSession'
+  formatDateDots,
+  getAllOwnerListingRows,
+  getOwnerProfileByUserId,
+} from '../../utils/ownerSession'
+import { clearAdminReviewUnread, saveReviewsForListing, type StoredReview } from '../../utils/reviewStorage'
+
+type ReviewBucket = { listingId: string; reviews: StoredReview[] }
 
 function ownerLabelForListing(listingId: string): string {
   const row = getAllOwnerListingRows().find((x) => x.publicListingId === listingId)
@@ -27,8 +26,23 @@ export function AdminReviewsPage() {
   const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
   const [openListingId, setOpenListingId] = useState<string | null>(null)
+  const [items, setItems] = useState<ReviewBucket[]>([])
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+
+  const reload = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin-listing-reviews', { credentials: 'include' })
+      const j = (await r.json()) as { ok?: boolean; items?: ReviewBucket[] }
+      if (r.ok && j.ok && Array.isArray(j.items)) {
+        setItems(j.items)
+        return
+      }
+    } catch {
+      /* ignore */
+    }
+    setItems([])
+  }, [])
 
   useEffect(() => {
     clearAdminReviewUnread()
@@ -36,29 +50,55 @@ export function AdminReviewsPage() {
   }, [bump])
 
   useEffect(() => {
+    void reload()
+  }, [reload, epoch])
+
+  useEffect(() => {
     const on = () => bump()
     window.addEventListener('rentadria-reviews-updated', on)
     return () => window.removeEventListener('rentadria-reviews-updated', on)
   }, [bump])
 
-  const listingIds = useMemo(() => {
-    void epoch
-    return listAllReviewListingIds().filter((id) => loadReviewsForListing(id).length > 0)
-  }, [epoch])
+  const persistReviews = async (listingId: string, next: StoredReview[]) => {
+    try {
+      const r = await fetch('/api/admin-listing-reviews', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, reviews: next }),
+      })
+      if (r.ok) {
+        saveReviewsForListing(listingId, next)
+        setItems((prev) => {
+          const rest = prev.filter((x) => x.listingId !== listingId)
+          if (next.length === 0) return rest
+          return [...rest, { listingId, reviews: next }]
+        })
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   const patchReview = (listingId: string, reviewId: string, patch: Partial<StoredReview>) => {
-    const rows = loadReviewsForListing(listingId)
+    const bucket = items.find((x) => x.listingId === listingId)
+    const rows = bucket?.reviews ?? []
     const next = rows.map((r) => (r.id === reviewId ? { ...r, ...patch } : r))
-    saveReviewsForListing(listingId, next)
-    bump()
+    void persistReviews(listingId, next)
   }
 
   const removeReview = (listingId: string, reviewId: string) => {
     if (!window.confirm(t('admin.reviews.confirmDelete'))) return
-    const rows = loadReviewsForListing(listingId).filter((r) => r.id !== reviewId)
-    saveReviewsForListing(listingId, rows)
-    bump()
+    const bucket = items.find((x) => x.listingId === listingId)
+    const rows = bucket?.reviews ?? []
+    const next = rows.filter((r) => r.id !== reviewId)
+    void persistReviews(listingId, next)
   }
+
+  const listingIds = useMemo(
+    () => items.filter((x) => x.reviews.length > 0).map((x) => x.listingId),
+    [items],
+  )
 
   if (!isAdminSession()) return null
 
@@ -94,7 +134,7 @@ export function AdminReviewsPage() {
               listingIds.map((lid) => {
                 const listing = getListingById(lid)
                 const title = listing ? listingTitleT(listing, t) : lid
-                const reviews = loadReviewsForListing(lid)
+                const reviews = items.find((x) => x.listingId === lid)?.reviews ?? []
                 const expanded = openListingId === lid
                 return (
                   <Fragment key={lid}>

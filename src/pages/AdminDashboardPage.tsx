@@ -7,9 +7,11 @@ import { Header } from '../components/Header'
 import type { ListingCategory } from '../types'
 import { fetchAdminLogin, fetchAdminLogout } from '../lib/adminAuthApi'
 import { isAdminSession, setAdminSession } from '../utils/adminSession'
+import { fetchAdminDashboardStats } from '../lib/fetchAdminStats'
 import {
-  countListings,
+  countCatalogListings,
   countOwnerAccounts,
+  countOwnerListingRows,
   countReportRows,
   countReviewBuckets,
 } from '../utils/adminStats'
@@ -108,6 +110,37 @@ export function AdminDashboardPage() {
   const [badgeReviews, setBadgeReviews] = useState(0)
   const [badgeMessages, setBadgeMessages] = useState(0)
   const [badgeDeletedOwners, setBadgeDeletedOwners] = useState(0)
+  const [serverDash, setServerDash] = useState<{
+    owners: number | null
+    listings: number | null
+    reviews: number | null
+    reports: number | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!authed) {
+      setServerDash(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const j = await fetchAdminDashboardStats()
+      if (cancelled) return
+      if (!j) {
+        setServerDash(null)
+        return
+      }
+      setServerDash({
+        owners: typeof j.ownersRegistered === 'number' ? j.ownersRegistered : null,
+        listings: typeof j.ownerListings === 'number' ? j.ownerListings : null,
+        reviews: typeof j.reviewBuckets === 'number' ? j.reviewBuckets : null,
+        reports: typeof j.reportsSubmitted === 'number' ? j.reportsSubmitted : null,
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authed])
 
   useEffect(() => {
     const sync = () => {
@@ -143,13 +176,17 @@ export function AdminDashboardPage() {
 
   const stats = useMemo(
     () => ({
-      listings: countListings(),
-      reviews: countReviewBuckets(),
-      owners: countOwnerAccounts(),
-      reports: countReportRows(),
+      ownerListingRows: serverDash?.listings ?? countOwnerListingRows(),
+      catalogListings: countCatalogListings(),
+      reviews: serverDash?.reviews ?? countReviewBuckets(),
+      owners: serverDash?.owners ?? countOwnerAccounts(),
+      reports: serverDash?.reports ?? countReportRows(),
     }),
-    [authed],
+    [authed, serverDash],
   )
+
+  const serverBacked = (k: 'owners' | 'listings' | 'reviews' | 'reports') =>
+    serverDash != null && typeof serverDash[k] === 'number'
 
   const login = async (e: FormEvent) => {
     e.preventDefault()
@@ -311,6 +348,7 @@ export function AdminDashboardPage() {
                   <header className="ra-admin-head">
                     <h1 className="ra-admin-title">{t('admin.pageTitle')}</h1>
                     <p className="ra-admin-subtitle">{t('admin.subtitle')}</p>
+                    <p className="ra-admin-subtitle ra-admin-subtitle--muted">{t('admin.statsNote')}</p>
                   </header>
 
                   <div className="ra-admin-cards">
@@ -318,29 +356,43 @@ export function AdminDashboardPage() {
                       <span className="ra-admin-card__ico" aria-hidden>
                         📄
                       </span>
-                      <strong>{stats.listings}</strong>
-                      <span>{t('admin.cardListings')}</span>
+                      <strong>{stats.ownerListingRows}</strong>
+                      <span className="ra-admin-card__label">{t('admin.cardListings')}</span>
+                      <span className="ra-admin-card__hint">
+                        {serverBacked('listings')
+                          ? t('admin.cardHintServer')
+                          : t('admin.cardListingsHint', { n: stats.catalogListings })}
+                      </span>
                     </div>
                     <div className="ra-admin-card ra-admin-card--reviews">
                       <span className="ra-admin-card__ico" aria-hidden>
                         ⭐
                       </span>
                       <strong>{stats.reviews}</strong>
-                      <span>{t('admin.cardReviews')}</span>
+                      <span className="ra-admin-card__label">{t('admin.cardReviews')}</span>
+                      <span className="ra-admin-card__hint">
+                        {serverBacked('reviews') ? t('admin.cardHintServer') : t('admin.cardReviewsHint')}
+                      </span>
                     </div>
                     <div className="ra-admin-card ra-admin-card--owners">
                       <span className="ra-admin-card__ico" aria-hidden>
                         👤
                       </span>
                       <strong>{stats.owners}</strong>
-                      <span>{t('admin.cardOwners')}</span>
+                      <span className="ra-admin-card__label">{t('admin.cardOwners')}</span>
+                      <span className="ra-admin-card__hint">
+                        {serverBacked('owners') ? t('admin.cardOwnersHintServer') : t('admin.cardOwnersHintLocal')}
+                      </span>
                     </div>
                     <div className="ra-admin-card ra-admin-card--reports">
                       <span className="ra-admin-card__ico" aria-hidden>
                         ⚠️
                       </span>
                       <strong>{stats.reports}</strong>
-                      <span>{t('admin.cardReports')}</span>
+                      <span className="ra-admin-card__label">{t('admin.cardReports')}</span>
+                      <span className="ra-admin-card__hint">
+                        {serverBacked('reports') ? t('admin.cardHintServer') : t('admin.cardReportsHint')}
+                      </span>
                     </div>
                   </div>
 

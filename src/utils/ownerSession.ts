@@ -112,7 +112,7 @@ export function getEffectiveUnlockedCategories(profile: OwnerProfile): ListingCa
 }
 
 export function activateOwnerSubscription(profile: OwnerProfile, plan: SubscriptionPlan): void {
-  saveOwnerProfile({
+  const next = normalizeOwnerProfileForSession({
     ...profile,
     plan,
     subscriptionActive: true,
@@ -120,14 +120,18 @@ export function activateOwnerSubscription(profile: OwnerProfile, plan: Subscript
     basicCategoryChoice: plan === 'basic' ? null : undefined,
     promoCategoryScope: undefined,
   })
+  saveOwnerProfile(next)
+  queueCloudOwnerProfilePush(next)
 }
 
 export function saveBasicCategoryChoice(profile: OwnerProfile, cat: ListingCategory): void {
   if (profile.plan !== 'basic' || !profile.subscriptionActive) return
-  saveOwnerProfile({
+  const next = normalizeOwnerProfileForSession({
     ...profile,
     basicCategoryChoice: cat,
   })
+  saveOwnerProfile(next)
+  queueCloudOwnerProfilePush(next)
 }
 
 /** Max active listings per category for owner table (demo limits). */
@@ -184,6 +188,7 @@ export function upsertOwnerAccommodationListingRow(opts: {
       }
       m[opts.userId] = arr
       saveListingsMap(m)
+      queueCloudListingPush(arr[i]!)
       return { ok: true, rowId: opts.existingRowId }
     }
   }
@@ -210,6 +215,7 @@ export function upsertOwnerAccommodationListingRow(opts: {
   })
   m[opts.userId] = arr
   saveListingsMap(m)
+  queueCloudListingPush(arr[arr.length - 1]!)
   return { ok: true, rowId: id }
 }
 
@@ -245,6 +251,7 @@ export function upsertOwnerCarListingRow(opts: {
       }
       m[opts.userId] = arr
       saveListingsMap(m)
+      queueCloudListingPush(arr[i]!)
       return { ok: true, rowId: opts.existingRowId }
     }
   }
@@ -271,6 +278,7 @@ export function upsertOwnerCarListingRow(opts: {
   })
   m[opts.userId] = arr
   saveListingsMap(m)
+  queueCloudListingPush(arr[arr.length - 1]!)
   return { ok: true, rowId: id }
 }
 
@@ -305,6 +313,7 @@ export function upsertOwnerMotorcycleListingRow(opts: {
       }
       m[opts.userId] = arr
       saveListingsMap(m)
+      queueCloudListingPush(arr[i]!)
       return { ok: true, rowId: opts.existingRowId }
     }
   }
@@ -331,6 +340,7 @@ export function upsertOwnerMotorcycleListingRow(opts: {
   })
   m[opts.userId] = arr
   saveListingsMap(m)
+  queueCloudListingPush(arr[arr.length - 1]!)
   return { ok: true, rowId: id }
 }
 
@@ -380,91 +390,112 @@ export function normalizeOwnerProfileForSession(p: OwnerProfile): OwnerProfile {
   return next
 }
 
+function parseOwnerProfileRecord(p: Partial<OwnerProfile> & Record<string, unknown>): OwnerProfile | null {
+  const uidRaw = typeof p.userId === 'string' ? p.userId.trim().toLowerCase() : ''
+  const emailRaw = typeof p.email === 'string' ? p.email.trim().toLowerCase() : ''
+  const userId = uidRaw || emailRaw
+  const email = emailRaw || uidRaw
+  if (!userId || !email) return null
+
+  const displayName =
+    typeof p.displayName === 'string' && p.displayName.trim()
+      ? p.displayName
+      : (email.split('@')[0] ?? '—')
+  const registeredAt =
+    typeof p.registeredAt === 'string' ? p.registeredAt : new Date().toISOString()
+  const validUntil = typeof p.validUntil === 'string' ? p.validUntil : addOneYearIso()
+
+  let storedPlan: SubscriptionPlan | null = null
+  if (isSubscriptionPlan(p.plan as string)) {
+    storedPlan = p.plan as SubscriptionPlan
+  }
+
+  const explicitSubscriptionFlag = typeof p.subscriptionActive === 'boolean'
+  const subscriptionActive = explicitSubscriptionFlag ? p.subscriptionActive! : storedPlan != null
+
+  let basicCategoryChoice: ListingCategory | null | undefined
+  if (
+    p.basicCategoryChoice === 'accommodation' ||
+    p.basicCategoryChoice === 'car' ||
+    p.basicCategoryChoice === 'motorcycle'
+  ) {
+    basicCategoryChoice = p.basicCategoryChoice
+  } else {
+    basicCategoryChoice = undefined
+  }
+
+  const phone = typeof p.phone === 'string' ? p.phone : undefined
+  const avatarDataUrl =
+    p.avatarDataUrl === null
+      ? null
+      : typeof p.avatarDataUrl === 'string'
+        ? p.avatarDataUrl
+        : undefined
+  const passwordHash = typeof p.passwordHash === 'string' ? p.passwordHash : undefined
+
+  let countryId: SearchCountryId | undefined
+  if (
+    typeof p.countryId === 'string' &&
+    (SEARCH_COUNTRY_IDS as readonly string[]).includes(p.countryId)
+  ) {
+    countryId = p.countryId as SearchCountryId
+  }
+
+  let promoCategoryScope: ListingCategory[] | null | undefined
+  if (p.promoCategoryScope === null) {
+    promoCategoryScope = null
+  } else if (Array.isArray(p.promoCategoryScope)) {
+    const valid: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
+    const picked = p.promoCategoryScope.filter((x): x is ListingCategory =>
+      valid.includes(x as ListingCategory),
+    )
+    if (picked.length > 0) promoCategoryScope = picked
+  }
+
+  const draft: OwnerProfile = {
+    userId,
+    email,
+    displayName,
+    plan: storedPlan,
+    subscriptionActive,
+    basicCategoryChoice:
+      storedPlan === 'basic'
+        ? basicCategoryChoice === undefined
+          ? null
+          : basicCategoryChoice
+        : undefined,
+    registeredAt,
+    validUntil,
+    phone,
+    avatarDataUrl,
+    passwordHash,
+    countryId,
+    promoCategoryScope,
+  }
+  return normalizeOwnerProfileForSession(draft)
+}
+
+/** JSON iz GET /api/owner-profile (isti oblik kao u localStorage profilu). */
+export function ownerProfileFromCloudPayload(p: Record<string, unknown>): OwnerProfile | null {
+  return parseOwnerProfileRecord(p as Partial<OwnerProfile> & Record<string, unknown>)
+}
+
 export function getOwnerProfile(): OwnerProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
     if (!raw) return null
     const p = JSON.parse(raw) as Partial<OwnerProfile> & Record<string, unknown>
-    if (typeof p.userId !== 'string' || typeof p.email !== 'string') return null
-
-    const displayName =
-      typeof p.displayName === 'string' && p.displayName.trim()
-        ? p.displayName
-        : (p.email.split('@')[0] ?? '—')
-    const registeredAt =
-      typeof p.registeredAt === 'string' ? p.registeredAt : new Date().toISOString()
-    const validUntil =
-      typeof p.validUntil === 'string' ? p.validUntil : addOneYearIso()
-
-    let storedPlan: SubscriptionPlan | null = null
-    if (isSubscriptionPlan(p.plan as string)) {
-      storedPlan = p.plan as SubscriptionPlan
-    }
-
-    const explicitSubscriptionFlag = typeof p.subscriptionActive === 'boolean'
-    const subscriptionActive = explicitSubscriptionFlag ? p.subscriptionActive! : storedPlan != null
-
-    let basicCategoryChoice: ListingCategory | null | undefined
-    if (
-      p.basicCategoryChoice === 'accommodation' ||
-      p.basicCategoryChoice === 'car' ||
-      p.basicCategoryChoice === 'motorcycle'
-    ) {
-      basicCategoryChoice = p.basicCategoryChoice
-    } else {
-      basicCategoryChoice = undefined
-    }
-
-    const phone = typeof p.phone === 'string' ? p.phone : undefined
-    const avatarDataUrl =
-      p.avatarDataUrl === null
-        ? null
-        : typeof p.avatarDataUrl === 'string'
-          ? p.avatarDataUrl
-          : undefined
-    const passwordHash = typeof p.passwordHash === 'string' ? p.passwordHash : undefined
-
-    let countryId: SearchCountryId | undefined
-    if (
-      typeof p.countryId === 'string' &&
-      (SEARCH_COUNTRY_IDS as readonly string[]).includes(p.countryId)
-    ) {
-      countryId = p.countryId as SearchCountryId
-    }
-
-    let promoCategoryScope: ListingCategory[] | undefined
-    if (Array.isArray(p.promoCategoryScope)) {
-      const valid: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
-      const picked = p.promoCategoryScope.filter((x): x is ListingCategory =>
-        valid.includes(x as ListingCategory),
-      )
-      if (picked.length > 0) promoCategoryScope = picked
-    }
-
-    const draft: OwnerProfile = {
-      userId: p.userId,
-      email: p.email,
-      displayName,
-      plan: storedPlan,
-      subscriptionActive,
-      basicCategoryChoice:
-        storedPlan === 'basic'
-          ? basicCategoryChoice === undefined
-            ? null
-            : basicCategoryChoice
-          : undefined,
-      registeredAt,
-      validUntil,
-      phone,
-      avatarDataUrl,
-      passwordHash,
-      countryId,
-      promoCategoryScope,
-    }
-    return normalizeOwnerProfileForSession(draft)
+    return parseOwnerProfileRecord(p)
   } catch {
     return null
   }
+}
+
+export function queueCloudOwnerProfilePush(profile: OwnerProfile): void {
+  if (typeof window === 'undefined') return
+  void import('../lib/ownerProfileCloud')
+    .then(({ pushOwnerProfileToCloud }) => pushOwnerProfileToCloud(profile))
+    .catch(() => {})
 }
 
 function loadOwnerProfilesMap(): Record<string, OwnerProfile> {
@@ -640,6 +671,11 @@ export function saveOwnerProfile(p: OwnerProfile): void {
 
 export function clearOwnerSession(): void {
   try {
+    void fetch('/api/owner-logout', { method: 'POST', credentials: 'include' })
+  } catch {
+    /* ignore */
+  }
+  try {
     const raw = localStorage.getItem(PROFILE_KEY)
     if (raw) {
       const p = JSON.parse(raw) as { userId?: string }
@@ -668,6 +704,33 @@ function saveListingsMap(m: Record<string, OwnerListingRow[]>) {
   localStorage.setItem(LISTINGS_KEY, JSON.stringify(m))
 }
 
+function queueCloudListingPush(row: OwnerListingRow): void {
+  if (typeof window === 'undefined') return
+  void import('../lib/ownerCloudSync')
+    .then(({ pushOwnerListingToCloud }) => pushOwnerListingToCloud(row))
+    .catch(() => {})
+}
+
+function queueCloudListingDelete(userId: string, rowId: string): void {
+  if (typeof window === 'undefined') return
+  void import('../lib/ownerCloudSync')
+    .then(({ deleteOwnerListingFromCloud }) => deleteOwnerListingFromCloud(userId, rowId))
+    .catch(() => {})
+}
+
+/** Zamjena redova za jednog vlasnika (npr. nakon pull sa servera). */
+export function replaceOwnerListingsForUser(userId: string, rows: OwnerListingRow[]): void {
+  const m = loadListingsMap()
+  const uid = userId.trim()
+  m[uid] = rows.map((r) => ({ ...r, userId: uid }))
+  saveListingsMap(m)
+  try {
+    window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Svi redovi svih korisnika (za javnu pretragu / spajanje s oglasima). */
 export function getAllOwnerListingRows(): OwnerListingRow[] {
   const m = loadListingsMap()
@@ -694,6 +757,7 @@ export function incrementContactClickForListing(listingId: string): void {
     arr[i] = { ...r, contactClicksMonth: (r.contactClicksMonth ?? 0) + 1 }
     m[uid] = arr
     saveListingsMap(m)
+    queueCloudListingPush(arr[i]!)
     recordAdminContactClick(uid)
     try {
       window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
@@ -716,6 +780,7 @@ export function incrementListingViewForListing(listingId: string): void {
     arr[i] = { ...r, viewsMonth: (r.viewsMonth ?? 0) + 1 }
     m[uid] = arr
     saveListingsMap(m)
+    queueCloudListingPush(arr[i]!)
     try {
       window.dispatchEvent(new Event('rentadria-owner-listings-updated'))
     } catch {
@@ -791,6 +856,8 @@ export function seedOwnerListingsIfEmpty(profile: OwnerProfile) {
     },
   ]
   saveListingsMap(m)
+  const seeded = m[profile.userId]?.[0]
+  if (seeded) queueCloudListingPush(seeded)
   setListingInquiryNotifyEmail('a1', profile.email)
 }
 
@@ -800,6 +867,7 @@ export function deleteOwnerListing(userId: string, listingId: string) {
   if (!arr) return
   m[userId] = arr.filter((x) => x.id !== listingId)
   saveListingsMap(m)
+  queueCloudListingDelete(userId, listingId)
 }
 
 export function displayFirstName(full: string): string {

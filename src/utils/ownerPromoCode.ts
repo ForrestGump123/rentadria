@@ -6,7 +6,7 @@ import {
   validatePromoRecordForOwner,
 } from './adminPromoCodes'
 import { resolvePromoRecord } from './promoResolve'
-import { getEffectiveUnlockedCategories, saveOwnerProfile } from './ownerSession'
+import { getEffectiveUnlockedCategories, queueCloudOwnerProfilePush, saveOwnerProfile } from './ownerSession'
 
 const STORAGE_KEY = 'rentadria_owner_promo_code_v1'
 
@@ -140,6 +140,7 @@ export async function savePromoCode(
     }
     const upgraded = applyPromoSubscriptionToProfile(profile, record)
     saveOwnerProfile(upgraded)
+    queueCloudOwnerProfilePush(upgraded)
   }
 
   const m = load()

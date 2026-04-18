@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { fileToResizedJpegDataUrl } from '../../utils/imageDataUrl'
 import { sha256Hex } from '../../utils/passwordHash'
 import { isValidRegisterPassword } from '../../utils/passwordValidation'
-import { saveOwnerProfile, type OwnerProfile } from '../../utils/ownerSession'
+import { queueCloudOwnerProfilePush, saveOwnerProfile, type OwnerProfile } from '../../utils/ownerSession'
 
 type Props = {
   profile: OwnerProfile
@@ -131,6 +131,7 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
         passwordHash: nextHash,
       }
       saveOwnerProfile(next)
+      queueCloudOwnerProfilePush(next)
       refreshProfile()
       setOldPw1('')
       setOldPw2('')

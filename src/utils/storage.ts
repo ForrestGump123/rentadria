@@ -30,9 +30,22 @@ export function clearAdminReportsUnread(): void {
 }
 
 export function saveReport(payload: Record<string, string>) {
+  const at = new Date().toISOString()
   const prev = JSON.parse(localStorage.getItem(REPORTS) || '[]') as Record<string, string>[]
-  prev.push({ ...payload, at: new Date().toISOString() })
+  prev.push({ ...payload, at })
   localStorage.setItem(REPORTS, JSON.stringify(prev))
+  void fetch('/api/report-submit', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      listingId: payload.listingId ?? '',
+      reason: payload.reason ?? '',
+      first: payload.first ?? '',
+      last: payload.last ?? '',
+      email: payload.email ?? '',
+    }),
+  }).catch(() => {})
   bumpAdminReportsUnread()
   try {
     window.dispatchEvent(new Event('rentadria-reports-updated'))

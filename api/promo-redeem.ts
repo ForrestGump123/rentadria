@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     plan: plan ?? null,
     unlockedCategories,
   })
-  if (!v.ok) {
+  if (v.ok === false) {
     res.status(400).json({ ok: false, reason: v.reason })
     return
   }
