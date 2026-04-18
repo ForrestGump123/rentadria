@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { send429 } from '../server/lib/apiSafe.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
+import { addOneYearIsoFrom, registrationGetsFreePro } from '../server/lib/registrationPromo.js'
 import { upsertRegisteredOwnerFromVerify } from '../server/lib/registeredOwnersDb.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { verifyVerifyToken } from '../server/lib/verifyJwt.js'
@@ -34,7 +35,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!['basic', 'pro', 'agency'].includes(plan)) plan = 'basic'
 
     const registeredAt = new Date().toISOString()
-    void upsertRegisteredOwnerFromVerify({ ...payload, plan }, registeredAt)
+    const profileOut = await upsertRegisteredOwnerFromVerify({ ...payload, plan }, registeredAt)
+
+    let subscriptionPlan = profileOut?.plan ?? null
+    let subscriptionActive = profileOut?.subscriptionActive ?? false
+    let validUntilOut = profileOut?.validUntil ?? ''
+    const registeredAtOut = profileOut?.registeredAt ?? registeredAt
+
+    if (!profileOut) {
+      const regDate = new Date(registeredAt)
+      if (registrationGetsFreePro(regDate)) {
+        subscriptionPlan = 'pro'
+        subscriptionActive = true
+        validUntilOut = addOneYearIsoFrom(regDate)
+      }
+    }
 
     res.status(200).json({
       ok: true,
@@ -45,6 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       phone: payload.phone,
       countryId: payload.countryId,
       promoCode: payload.promoCode,
+      subscriptionPlan,
+      subscriptionActive,
+      validUntil: validUntilOut,
+      basicCategoryChoice: profileOut?.basicCategoryChoice ?? null,
+      registeredAt: registeredAtOut,
     })
   } catch (e) {
     const name = e && typeof e === 'object' && 'code' in e ? String((e as { code?: string }).code) : ''

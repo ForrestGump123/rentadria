@@ -27,6 +27,25 @@ import { shortOwnerId } from '../../utils/ownerDisplayId'
 import { sha256Hex } from '../../utils/passwordHash'
 import { type CountryFilterState, filterByCountrySet } from '../../utils/subscriptionAdmin'
 
+function applyServerAdminMeta(userId: string, raw: Record<string, unknown>) {
+  const d = getAdminOwnerMeta(userId)
+  setAdminOwnerMeta(userId, {
+    ...d,
+    xmlImportUrl: typeof raw.xmlImportUrl === 'string' ? raw.xmlImportUrl : d.xmlImportUrl,
+    xmlFieldMapping:
+      typeof raw.xmlFieldMapping === 'object' && raw.xmlFieldMapping !== null && !Array.isArray(raw.xmlFieldMapping)
+        ? (raw.xmlFieldMapping as Record<string, string>)
+        : d.xmlFieldMapping,
+    extraListingsAcc: Math.max(0, Number(raw.extraListingsAcc ?? d.extraListingsAcc) || 0),
+    extraListingsCar: Math.max(0, Number(raw.extraListingsCar ?? d.extraListingsCar) || 0),
+    extraListingsMoto: Math.max(0, Number(raw.extraListingsMoto ?? d.extraListingsMoto) || 0),
+    extraCatAcc: typeof raw.extraCatAcc === 'boolean' ? raw.extraCatAcc : d.extraCatAcc,
+    extraCatCar: typeof raw.extraCatCar === 'boolean' ? raw.extraCatCar : d.extraCatCar,
+    extraCatMoto: typeof raw.extraCatMoto === 'boolean' ? raw.extraCatMoto : d.extraCatMoto,
+    blocked: typeof raw.blocked === 'boolean' ? raw.blocked : d.blocked,
+  })
+}
+
 export function AdminOwnersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -45,11 +64,13 @@ export function AdminOwnersPage() {
       try {
         const r = await fetch('/api/admin-owners', { credentials: 'include' })
         if (!r.ok || cancelled) return
-        const j = (await r.json()) as { ok?: boolean; owners?: OwnerProfile[] }
+        const j = (await r.json()) as { ok?: boolean; owners?: (OwnerProfile & { adminMeta?: Record<string, unknown> })[] }
         if (!j.ok || !Array.isArray(j.owners) || cancelled) return
         for (const o of j.owners) {
-          if (!o?.userId || getOwnerProfileByUserId(o.userId)) continue
-          saveOwnerProfileForAdmin(o.userId, o)
+          if (!o?.userId) continue
+          const { adminMeta, ...profileRest } = o
+          saveOwnerProfileForAdmin(profileRest.userId, profileRest)
+          if (adminMeta && typeof adminMeta === 'object') applyServerAdminMeta(o.userId, adminMeta)
         }
         bump()
       } catch {
@@ -110,6 +131,44 @@ export function AdminOwnersPage() {
     }
     saveOwnerProfileForAdmin(next.userId, next)
     setAdminOwnerMeta(next.userId, editMeta)
+
+    try {
+      const r = await fetch('/api/admin-owner-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          userId: next.userId,
+          displayName: next.displayName,
+          email: next.email,
+          phone: next.phone ?? null,
+          countryId: next.countryId ?? null,
+          passwordHash: next.passwordHash ?? null,
+          plan: next.plan,
+          subscriptionActive: next.subscriptionActive ?? false,
+          validUntil: next.validUntil?.trim() ? next.validUntil.trim() : null,
+          basicCategoryChoice: next.basicCategoryChoice ?? null,
+          adminMeta: {
+            xmlImportUrl: editMeta.xmlImportUrl,
+            xmlFieldMapping: editMeta.xmlFieldMapping,
+            extraListingsAcc: editMeta.extraListingsAcc,
+            extraListingsCar: editMeta.extraListingsCar,
+            extraListingsMoto: editMeta.extraListingsMoto,
+            extraCatAcc: editMeta.extraCatAcc,
+            extraCatCar: editMeta.extraCatCar,
+            extraCatMoto: editMeta.extraCatMoto,
+            blocked: editMeta.blocked,
+          },
+        }),
+      })
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { error?: string }
+        window.alert(t('admin.owners.serverSaveError', { detail: j.error ?? String(r.status) }))
+      }
+    } catch {
+      window.alert(t('admin.owners.serverSaveError', { detail: 'network' }))
+    }
+
     setEditProfile(null)
     setEditMeta(null)
     bump()
@@ -313,6 +372,38 @@ export function AdminOwnersPage() {
               />
               <span>{t('admin.owners.fldSubActive')}</span>
             </label>
+            <label className="ra-fld">
+              <span>{t('admin.owners.fldValidUntil')}</span>
+              <input
+                type="text"
+                value={editProfile.validUntil ?? ''}
+                onChange={(e) => setEditProfile({ ...editProfile, validUntil: e.target.value.trim() })}
+                placeholder="2030-12-31 ili ISO datum"
+                autoComplete="off"
+              />
+            </label>
+            <p className="ra-admin-owners__mini-hint">{t('admin.owners.fldValidUntilHint')}</p>
+            {editProfile.plan === 'basic' && (
+              <label className="ra-fld">
+                <span>{t('admin.owners.fldBasicCategory')}</span>
+                <select
+                  value={editProfile.basicCategoryChoice ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setEditProfile({
+                      ...editProfile,
+                      basicCategoryChoice:
+                        v === '' ? null : (v as 'accommodation' | 'car' | 'motorcycle'),
+                    })
+                  }}
+                >
+                  <option value="">{t('admin.owners.basicCatUnset')}</option>
+                  <option value="accommodation">{t('nav.accommodation')}</option>
+                  <option value="car">{t('nav.car')}</option>
+                  <option value="motorcycle">{t('nav.motorcycle')}</option>
+                </select>
+              </label>
+            )}
             <h3 className="ra-admin-owners__h3">{t('admin.owners.planExtras')}</h3>
             <div className="ra-admin-owners__extras">
               <label>

@@ -1,5 +1,10 @@
 import { sha256Hex } from './passwordHash'
-import { findOwnerProfileByEmail, saveOwnerProfile, type OwnerProfile } from './ownerSession'
+import {
+  addOneYearIso,
+  findOwnerProfileByEmail,
+  saveOwnerProfile,
+  type OwnerProfile,
+} from './ownerSession'
 
 /**
  * Samo `npm run dev`: ako su u `.env.local` postavljeni VITE_LOCAL_OWNER_*,
@@ -12,16 +17,18 @@ export async function runLocalDevOwnerSeed(): Promise<void> {
   const email = import.meta.env.VITE_LOCAL_OWNER_EMAIL?.trim().toLowerCase()
   const password = import.meta.env.VITE_LOCAL_OWNER_PASSWORD
   if (!email || !password) return
-  if (findOwnerProfileByEmail(email)) return
+  const force = import.meta.env.VITE_LOCAL_OWNER_FORCE === '1'
+  if (!force && findOwnerProfileByEmail(email)) return
 
+  /** Pro + aktivna pretplata da se odmah vidi pun vlasnički panel (bez onboardinga). */
   const profile: OwnerProfile = {
     userId: email,
     email,
-    displayName: email.split('@')[0] || 'Owner',
-    plan: null,
-    subscriptionActive: false,
+    displayName: import.meta.env.VITE_LOCAL_OWNER_NAME?.trim() || email.split('@')[0] || 'Owner',
+    plan: 'pro',
+    subscriptionActive: true,
     registeredAt: new Date().toISOString(),
-    validUntil: '',
+    validUntil: addOneYearIso(),
     passwordHash: await sha256Hex(password),
   }
   saveOwnerProfile(profile)

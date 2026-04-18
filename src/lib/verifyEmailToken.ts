@@ -6,6 +6,12 @@ export type VerifyEmailSuccess = {
   phone?: string
   countryId?: string
   promoCode?: string
+  /** Sa servera nakon verifikacije (Supabase) */
+  subscriptionPlan?: string | null
+  subscriptionActive?: boolean
+  validUntil?: string
+  basicCategoryChoice?: string | null
+  registeredAt?: string
 }
 
 export async function verifyEmailToken(token: string): Promise<VerifyEmailSuccess> {
@@ -24,6 +30,11 @@ export async function verifyEmailToken(token: string): Promise<VerifyEmailSucces
     phone?: string
     countryId?: string
     promoCode?: string
+    subscriptionPlan?: string | null
+    subscriptionActive?: boolean
+    validUntil?: string
+    basicCategoryChoice?: string | null
+    registeredAt?: string
     error?: string
   }
   try {
@@ -47,5 +58,10 @@ export async function verifyEmailToken(token: string): Promise<VerifyEmailSucces
     phone: typeof data.phone === 'string' ? data.phone : undefined,
     countryId: typeof data.countryId === 'string' ? data.countryId : undefined,
     promoCode: typeof data.promoCode === 'string' ? data.promoCode : undefined,
+    subscriptionPlan: data.subscriptionPlan,
+    subscriptionActive: data.subscriptionActive,
+    validUntil: typeof data.validUntil === 'string' ? data.validUntil : undefined,
+    basicCategoryChoice: data.basicCategoryChoice ?? undefined,
+    registeredAt: typeof data.registeredAt === 'string' ? data.registeredAt : undefined,
   }
 }

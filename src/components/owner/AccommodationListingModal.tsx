@@ -1,6 +1,15 @@
 import L from 'leaflet'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { MapContainer, Marker, TileLayer, Circle, useMap } from 'react-leaflet'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { SEARCH_COUNTRY_IDS, type SearchCountryId } from '../../data/cities/countryIds'
 import { loadCitiesForCountry } from '../../data/cities/loadCities'
@@ -237,6 +246,7 @@ export function AccommodationListingModal({
   const { t } = useTranslation()
   const listId = useId()
   const [tab, setTab] = useState<TabId>('basic')
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const [receivedAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [expiresAt] = useState(() => {
@@ -373,6 +383,148 @@ export function AccommodationListingModal({
 
   const [imageUrlsText, setImageUrlsText] = useState('')
   const [images, setImages] = useState<{ id: string; label: string }[]>([])
+  const [thumbReorderFrom, setThumbReorderFrom] = useState<number | null>(null)
+  const [thumbReorderHover, setThumbReorderHover] = useState<number | null>(null)
+  const thumbReorderFromRef = useRef<number | null>(null)
+  const thumbReorderHoverRef = useRef<number | null>(null)
+  const thumbTouchReorderRef = useRef<{
+    timer: ReturnType<typeof setTimeout> | null
+    mode: 'idle' | 'pending' | 'drag'
+    startX: number
+    startY: number
+    pendingIdx: number | null
+  }>({ timer: null, mode: 'idle', startX: 0, startY: 0, pendingIdx: null })
+
+  const thumbDragDocListenersRef = useRef<{
+    move: (e: TouchEvent) => void
+    end: (e: TouchEvent) => void
+  } | null>(null)
+
+  const detachThumbDragDocumentListeners = () => {
+    const L = thumbDragDocListenersRef.current
+    if (!L) return
+    document.removeEventListener('touchmove', L.move, { capture: true })
+    document.removeEventListener('touchend', L.end, { capture: true })
+    document.removeEventListener('touchcancel', L.end, { capture: true })
+    thumbDragDocListenersRef.current = null
+  }
+
+  const clearThumbReorderTimer = () => {
+    const st = thumbTouchReorderRef.current
+    if (st.timer) {
+      clearTimeout(st.timer)
+      st.timer = null
+    }
+  }
+
+  const finishThumbTouchReorder = () => {
+    detachThumbDragDocumentListeners()
+    clearThumbReorderTimer()
+    const st = thumbTouchReorderRef.current
+    if (st.mode === 'drag') {
+      const from = thumbReorderFromRef.current
+      const to = thumbReorderHoverRef.current
+      if (from != null && to != null && from !== to) {
+        setImages((prev) => {
+          const n = [...prev]
+          const [item] = n.splice(from, 1)
+          n.splice(to, 0, item)
+          return n
+        })
+      }
+    }
+    st.mode = 'idle'
+    st.pendingIdx = null
+    thumbReorderFromRef.current = null
+    thumbReorderHoverRef.current = null
+    setThumbReorderFrom(null)
+    setThumbReorderHover(null)
+  }
+
+  /** Dugi pritisak → nativni document touchmove (passive: false) da skrol ne „pokrade“ gest. */
+  const onThumbTouchStart = (i: number, e: React.TouchEvent<HTMLLIElement>) => {
+    if (e.touches.length !== 1) return
+    const t = e.touches[0]
+    clearThumbReorderTimer()
+    detachThumbDragDocumentListeners()
+    const st = thumbTouchReorderRef.current
+    st.mode = 'pending'
+    st.pendingIdx = i
+    st.startX = t.clientX
+    st.startY = t.clientY
+    st.timer = window.setTimeout(() => {
+      st.timer = null
+      const idx = st.pendingIdx
+      if (idx == null || st.mode !== 'pending') return
+      st.mode = 'drag'
+      thumbReorderFromRef.current = idx
+      thumbReorderHoverRef.current = idx
+      setThumbReorderFrom(idx)
+      setThumbReorderHover(idx)
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(25)
+
+      detachThumbDragDocumentListeners()
+      const onMove = (ev: TouchEvent) => {
+        if (thumbTouchReorderRef.current.mode !== 'drag') return
+        if (ev.touches.length === 0) return
+        const p = ev.touches[0]
+        ev.preventDefault()
+        const el = document.elementFromPoint(p.clientX, p.clientY)
+        const li = el?.closest('[data-thumb-i]') as HTMLElement | null
+        if (!li) return
+        const j = Number(li.dataset.thumbI)
+        if (Number.isNaN(j)) return
+        thumbReorderHoverRef.current = j
+        setThumbReorderHover(j)
+      }
+      const onEnd = (ev: TouchEvent) => {
+        if (thumbTouchReorderRef.current.mode !== 'drag') {
+          detachThumbDragDocumentListeners()
+          return
+        }
+        const ch = ev.changedTouches[0]
+        if (ch) {
+          const el = document.elementFromPoint(ch.clientX, ch.clientY)
+          const li = el?.closest('[data-thumb-i]') as HTMLElement | null
+          if (li) {
+            const j = Number(li.dataset.thumbI)
+            if (!Number.isNaN(j)) {
+              thumbReorderHoverRef.current = j
+              setThumbReorderHover(j)
+            }
+          }
+        }
+        detachThumbDragDocumentListeners()
+        finishThumbTouchReorder()
+      }
+      document.addEventListener('touchmove', onMove, { passive: false, capture: true })
+      document.addEventListener('touchend', onEnd, { capture: true })
+      document.addEventListener('touchcancel', onEnd, { capture: true })
+      thumbDragDocListenersRef.current = { move: onMove, end: onEnd }
+    }, 420)
+  }
+
+  const onThumbTouchMove = (e: React.TouchEvent<HTMLLIElement>) => {
+    const st = thumbTouchReorderRef.current
+    const t = e.touches[0]
+    if (!t) return
+    if (st.mode !== 'pending' || !st.timer) return
+    const dx = t.clientX - st.startX
+    const dy = t.clientY - st.startY
+    if (Math.hypot(dx, dy) > 48) {
+      clearThumbReorderTimer()
+      st.mode = 'idle'
+      st.pendingIdx = null
+    }
+  }
+
+  const onThumbLiTouchEndOrCancel = () => {
+    const st = thumbTouchReorderRef.current
+    if (st.mode !== 'pending') return
+    clearThumbReorderTimer()
+    st.mode = 'idle'
+    st.pendingIdx = null
+  }
 
   const [exportSocial, setExportSocial] = useState(false)
   const [linkedContactIds, setLinkedContactIds] = useState<string[]>(() => ['owner-1'])
@@ -385,10 +537,36 @@ export function AccommodationListingModal({
   const maxContacts = maxContactsForPlan(profile.plan ?? 'basic')
   const showContactCats = profile.plan === 'pro' || profile.plan === 'agency'
 
+  /**
+   * HTML5 drag na <li> remeti touch na pravim telefonima. `(pointer: coarse)` u Chrome
+   * DevTools-u često ostane false (miš), pa je ranije ostajalo draggable=true.
+   * `maxTouchPoints === 0` ≈ desktop bez touch ekrana.
+   */
+  const allowHtml5ThumbDrag = typeof navigator !== 'undefined' && navigator.maxTouchPoints === 0
+
+  useEffect(() => {
+    if (!open) {
+      detachThumbDragDocumentListeners()
+      clearThumbReorderTimer()
+      thumbTouchReorderRef.current.mode = 'idle'
+      thumbTouchReorderRef.current.pendingIdx = null
+      setThumbReorderFrom(null)
+      setThumbReorderHover(null)
+    }
+  }, [open])
+
+  useEffect(() => {
+    return () => detachThumbDragDocumentListeners()
+  }, [])
+
   useEffect(() => {
     if (!open) return
     setTab('basic')
   }, [open, formCategory])
+
+  useEffect(() => {
+    if (!open) setHelpOpen(false)
+  }, [open])
 
   useEffect(() => {
     if (!countryId) {
@@ -995,6 +1173,10 @@ export function AccommodationListingModal({
     const i = tabOrder.indexOf(tab)
     if (i < tabOrder.length - 1) setTab(tabOrder[i + 1]!)
   }
+  const goPrevTab = () => {
+    const i = tabOrder.indexOf(tab)
+    if (i > 0) setTab(tabOrder[i - 1]!)
+  }
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'basic', label: t('owner.listing.tabBasic') },
@@ -1008,34 +1190,57 @@ export function AccommodationListingModal({
     <div className="ra-modal ra-modal--owner-listing" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="ra-modal__panel ra-owner-listing" onClick={(e) => e.stopPropagation()}>
         <header className="ra-owner-listing__head">
-          <h2 id="owner-listing-title">
-            {formCategory === 'car'
-              ? t('owner.listing.modalTitleCar')
-              : formCategory === 'motorcycle'
-                ? t('owner.listing.modalTitleMoto')
-                : t('owner.listing.modalTitle')}
-          </h2>
-          <button type="button" className="ra-modal__close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          <div className="ra-owner-listing__head-top">
+            <div className="ra-owner-listing__brand">
+              <img
+                src={`${import.meta.env.BASE_URL}rentadria-logo.png`}
+                alt=""
+                className="ra-owner-listing__logo-img"
+                width={36}
+                height={36}
+                decoding="async"
+              />
+              <h2 id="owner-listing-title" className="ra-owner-listing__title">
+                {formCategory === 'car'
+                  ? t('owner.listing.modalTitleCar')
+                  : formCategory === 'motorcycle'
+                    ? t('owner.listing.modalTitleMoto')
+                    : t('owner.listing.modalTitle')}
+              </h2>
+            </div>
+            <button type="button" className="ra-modal__close" onClick={onClose} aria-label="Close">
+              ×
+            </button>
+          </div>
+          <nav
+            role="tablist"
+            aria-label={t('owner.listing.tabMenuAria')}
+            className="ra-owner-listing__tab-strip"
+          >
+            {tabs.map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                role="tab"
+                id={`owner-listing-tab-${x.id}`}
+                aria-selected={tab === x.id}
+                aria-controls="owner-listing-panel"
+                className={`ra-owner-listing__tab-chip ${tab === x.id ? 'is-active' : ''}`}
+                onClick={() => setTab(x.id)}
+              >
+                {x.label}
+              </button>
+            ))}
+          </nav>
         </header>
 
-        <nav className="ra-owner-listing__tabs" role="tablist" aria-labelledby="owner-listing-title">
-          {tabs.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === x.id}
-              className={`ra-owner-listing__tab ${tab === x.id ? 'is-active' : ''}`}
-              onClick={() => setTab(x.id)}
-            >
-              {x.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="ra-owner-listing__body">
+        <div className="ra-owner-listing__main-wrap">
+          <div
+            id="owner-listing-panel"
+            className="ra-owner-listing__body"
+            role="tabpanel"
+            aria-labelledby={`owner-listing-tab-${tab}`}
+          >
           {tab === 'basic' && (
             <div className="ra-owner-listing__basic ra-owner-listing__basic--split-scroll">
               <p className="ra-owner-listing__note">{t('owner.listing.emailNotice')}</p>
@@ -1833,6 +2038,9 @@ export function AccommodationListingModal({
 
                 <aside className="ra-owner-listing__main-split-right" aria-label={t('owner.listing.tabBasic')}>
                   <p className="ra-owner-listing__req">{t('owner.listing.titleDescRequired')}</p>
+                  <p className="ra-owner-listing__hint ra-owner-listing__hint--auto-translate">
+                    {t('owner.listing.autoTranslateHint')}
+                  </p>
                   <div className="ra-owner-listing__lang-btns">
                     {LISTING_LANG_IDS.map((l) => (
                       <button
@@ -1878,7 +2086,13 @@ export function AccommodationListingModal({
                         scheduleTranslate()
                       }}
                       onBlur={onDescBlur}
-                      placeholder={t('owner.listing.phDesc')}
+                      placeholder={
+                        formCategory === 'car'
+                          ? t('owner.listing.phDescCar')
+                          : formCategory === 'motorcycle'
+                            ? t('owner.listing.phDescMoto')
+                            : t('owner.listing.phDesc')
+                      }
                     />
                     {translating && (
                       <span className="ra-owner-listing__translating">{t('owner.listing.translating')}</span>
@@ -1943,7 +2157,7 @@ export function AccommodationListingModal({
                 </span>
                 <span className="ra-owner-listing__hint">{t('owner.listing.socialConsentHint')}</span>
               </label>
-              <div className="ra-owner-table-wrap">
+              <div className="ra-owner-table-wrap ra-owner-listing__table-scroll">
                 <table className="ra-owner-table">
                   <thead>
                     <tr>
@@ -2100,19 +2314,49 @@ export function AccommodationListingModal({
               <p className="ra-owner-listing__hint">{t('owner.listing.imagesDrag')}</p>
               <ul className="ra-owner-listing__thumbs">
                 {images.map((im, i) => (
-                  <li key={im.id} draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', String(i))} onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
-                    e.preventDefault()
-                    const from = Number(e.dataTransfer.getData('text/plain'))
-                    if (Number.isNaN(from)) return
-                    setImages((prev) => {
-                      const n = [...prev]
-                      const [item] = n.splice(from, 1)
-                      n.splice(i, 0, item)
-                      return n
-                    })
-                  }}>
-                    <img src={im.label} alt="" />
-                    <button type="button" className="ra-owner-listing__thumb-x" onClick={() => setImages((p) => p.filter((x) => x.id !== im.id))}>
+                  <li
+                    key={im.id}
+                    data-thumb-i={i}
+                    draggable={allowHtml5ThumbDrag}
+                    className={`${thumbReorderFrom === i ? 'is-thumb-reorder-pick' : ''} ${thumbReorderHover === i && thumbReorderFrom !== null ? 'is-thumb-reorder-hover' : ''}`}
+                    onDragStart={(e) => {
+                      if (!allowHtml5ThumbDrag) return
+                      e.dataTransfer.setData('text/plain', String(i))
+                    }}
+                    onDragOver={(e) => {
+                      if (!allowHtml5ThumbDrag) return
+                      e.preventDefault()
+                    }}
+                    onDrop={(e) => {
+                      if (!allowHtml5ThumbDrag) return
+                      e.preventDefault()
+                      const from = Number(e.dataTransfer.getData('text/plain'))
+                      if (Number.isNaN(from)) return
+                      setImages((prev) => {
+                        const n = [...prev]
+                        const [item] = n.splice(from, 1)
+                        n.splice(i, 0, item)
+                        return n
+                      })
+                    }}
+                    onTouchStart={(e) => onThumbTouchStart(i, e)}
+                    onTouchMove={onThumbTouchMove}
+                    onTouchEnd={onThumbLiTouchEndOrCancel}
+                    onTouchCancel={onThumbLiTouchEndOrCancel}
+                  >
+                    <img
+                      src={im.label}
+                      alt=""
+                      draggable={false}
+                      onContextMenu={(e) => e.preventDefault()}
+                    />
+                    <button
+                      type="button"
+                      className="ra-owner-listing__thumb-x"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onClick={() => setImages((p) => p.filter((x) => x.id !== im.id))}
+                    >
                       ×
                     </button>
                   </li>
@@ -2220,12 +2464,21 @@ export function AccommodationListingModal({
             </div>
           )}
         </div>
+        </div>
 
         <footer className="ra-owner-listing__foot">
-          <button type="button" className="ra-link-btn" onClick={() => window.alert(t('owner.soon'))}>
+          <button type="button" className="ra-link-btn" onClick={() => setHelpOpen(true)}>
             {t('owner.listing.help')}
           </button>
           <div className="ra-owner-listing__foot-btns">
+            <button
+              type="button"
+              className="ra-btn ra-btn--ghost"
+              disabled={tab === 'basic'}
+              onClick={goPrevTab}
+            >
+              {t('owner.listing.back')}
+            </button>
             <button type="button" className="ra-btn ra-btn--primary" onClick={goNextTab}>
               {t('owner.listing.next')}
             </button>
@@ -2305,59 +2558,96 @@ export function AccommodationListingModal({
         </div>
       ) : null}
 
-      <ContactPersonModal
-        open={contactModalOpen}
-        initial={contactEdit}
-        showCategoryCheckboxes={showContactCats}
-        onClose={() => {
-          setContactModalOpen(false)
-          setContactEdit(null)
-          setEditingContactId(null)
-        }}
-        onSave={(d) => {
-          if (editingContactId) {
-            setContacts((prev) =>
-              prev.map((c) =>
-                c.id === editingContactId
-                  ? {
-                      ...c,
-                      firstName: d.firstName,
-                      lastName: d.lastName,
-                      phone: d.phone,
-                      email: d.email,
-                      viber: d.viber,
-                      whatsapp: d.whatsapp,
-                      telegram: d.telegram,
-                      address: d.address,
-                      categories: d.categories,
-                    }
-                  : c,
-              ),
-            )
-          } else {
-            const nid = `c-${Date.now()}`
-            setContacts((prev) => [
-              ...prev,
-              {
-                id: nid,
-                firstName: d.firstName,
-                lastName: d.lastName,
-                type: 'contact',
-                phone: d.phone,
-                email: d.email,
-                viber: d.viber,
-                whatsapp: d.whatsapp,
-                telegram: d.telegram,
-                address: d.address,
-                categories: d.categories,
-                phoneScope: 'this_listing',
-                showAvatarOnAllListings: false,
-              },
-            ])
-            setLinkedContactIds((prev) => [...prev, nid])
-          }
-        }}
-      />
+      {helpOpen ? (
+        <div
+          className="ra-modal ra-modal--owner-help"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="owner-listing-help-title"
+          onClick={(e) => {
+            e.stopPropagation()
+            setHelpOpen(false)
+          }}
+        >
+          <div className="ra-modal__panel ra-owner-help-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="ra-modal__close" onClick={() => setHelpOpen(false)} aria-label="Close">
+              ×
+            </button>
+            <h2 id="owner-listing-help-title" className="ra-owner-help-modal__title">
+              {t('owner.listing.helpModalTitle')}
+            </h2>
+            <p className="ra-owner-help-modal__intro">{t('owner.listing.helpModalIntro')}</p>
+            {tabs.map((x) => (
+              <section key={x.id} className="ra-owner-help-modal__section">
+                <h3>{x.label}</h3>
+                <p>{t(`owner.listing.helpTab.${x.id}`)}</p>
+              </section>
+            ))}
+            <div className="ra-owner-help-modal__actions">
+              <button type="button" className="ra-btn ra-btn--primary" onClick={() => setHelpOpen(false)}>
+                {t('owner.listing.helpModalOk')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {createPortal(
+        <ContactPersonModal
+          open={contactModalOpen}
+          initial={contactEdit}
+          showCategoryCheckboxes={showContactCats}
+          onClose={() => {
+            setContactModalOpen(false)
+            setContactEdit(null)
+            setEditingContactId(null)
+          }}
+          onSave={(d) => {
+            if (editingContactId) {
+              setContacts((prev) =>
+                prev.map((c) =>
+                  c.id === editingContactId
+                    ? {
+                        ...c,
+                        firstName: d.firstName,
+                        lastName: d.lastName,
+                        phone: d.phone,
+                        email: d.email,
+                        viber: d.viber,
+                        whatsapp: d.whatsapp,
+                        telegram: d.telegram,
+                        address: d.address,
+                        categories: d.categories,
+                      }
+                    : c,
+                ),
+              )
+            } else {
+              const nid = `c-${Date.now()}`
+              setContacts((prev) => [
+                ...prev,
+                {
+                  id: nid,
+                  firstName: d.firstName,
+                  lastName: d.lastName,
+                  type: 'contact',
+                  phone: d.phone,
+                  email: d.email,
+                  viber: d.viber,
+                  whatsapp: d.whatsapp,
+                  telegram: d.telegram,
+                  address: d.address,
+                  categories: d.categories,
+                  phoneScope: 'this_listing',
+                  showAvatarOnAllListings: false,
+                },
+              ])
+              setLinkedContactIds((prev) => [...prev, nid])
+            }
+          }}
+        />,
+        document.body,
+      )}
     </div>
   )
 }

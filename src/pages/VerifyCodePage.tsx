@@ -6,7 +6,10 @@ import type { SearchCountryId } from '../data/cities/countryIds'
 import { SEARCH_COUNTRY_IDS } from '../data/cities/countryIds'
 import { Footer } from '../components/Footer'
 import { verifyEmailToken } from '../lib/verifyEmailToken'
+import type { SubscriptionPlan } from '../types/plan'
+import { isSubscriptionPlan } from '../types/plan'
 import { takePendingRegistration } from '../utils/pendingRegistration'
+import { addOneYearIsoFrom, registrationGetsFreePro } from '../utils/registrationPromo'
 import { savePromoCode } from '../utils/ownerPromoCode'
 import { getOwnerProfile, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 
@@ -35,17 +38,43 @@ export function VerifyCodePage() {
             data.countryId && (SEARCH_COUNTRY_IDS as readonly string[]).includes(data.countryId)
               ? (data.countryId as SearchCountryId)
               : undefined
+          const registeredAtIso = data.registeredAt ?? new Date().toISOString()
+
+          let plan: SubscriptionPlan | null = null
+          let subscriptionActive = false
+          let validUntil = ''
+
+          if ('subscriptionPlan' in data) {
+            const sp = data.subscriptionPlan
+            plan = sp != null && isSubscriptionPlan(sp) ? sp : null
+            subscriptionActive = Boolean(data.subscriptionActive)
+            validUntil = typeof data.validUntil === 'string' ? data.validUntil : ''
+          } else {
+            const regDate = new Date(registeredAtIso)
+            if (registrationGetsFreePro(regDate)) {
+              plan = 'pro'
+              subscriptionActive = true
+              validUntil = addOneYearIsoFrom(regDate)
+            }
+          }
+
+          let basicCategoryChoice: OwnerProfile['basicCategoryChoice'] = undefined
+          const bc = data.basicCategoryChoice
+          if (bc === 'accommodation' || bc === 'car' || bc === 'motorcycle') basicCategoryChoice = bc
+          else if (bc === null) basicCategoryChoice = null
+
           const profile: OwnerProfile = {
             userId: data.email,
             email: data.email,
             displayName: data.name.trim() || data.email.split('@')[0],
-            plan: null,
-            subscriptionActive: false,
-            registeredAt: new Date().toISOString(),
-            validUntil: '',
+            plan,
+            subscriptionActive,
+            registeredAt: registeredAtIso,
+            validUntil,
             phone: data.phone ?? pending?.phone,
             countryId: countryFromToken ?? pending?.countryId,
             passwordHash: data.passwordHash ?? pending?.passwordHash,
+            basicCategoryChoice,
           }
           saveOwnerProfile(profile)
           const p = getOwnerProfile()
@@ -142,6 +171,7 @@ export function VerifyCodePage() {
       <main className="ra-main ra-verify-main">
         <h1>{t('verify.title')}</h1>
         <p className="ra-verify-hint">{t('verify.checkEmailInstruction', { email: email || '—' })}</p>
+        <p className="ra-verify-hint">{t('verify.anyDevice')}</p>
         <p className="ra-verify-hint">{t('verify.checkEmailSpam')}</p>
         <p className="ra-verify-back">
           <Link to="/">{t('verify.back')}</Link>

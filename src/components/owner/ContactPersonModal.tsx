@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../../types'
 
@@ -54,8 +55,6 @@ export function ContactPersonModal({ open, initial, showCategoryCheckboxes, onCl
     )
   }, [open, initial])
 
-  if (!open) return null
-
   const toggleCat = (c: ListingCategory) => {
     setD((prev) => {
       const has = prev.categories.includes(c)
@@ -64,8 +63,10 @@ export function ContactPersonModal({ open, initial, showCategoryCheckboxes, onCl
     })
   }
 
-  return (
-    <div className="ra-modal" role="dialog" aria-modal="true" onClick={onClose}>
+  if (!open) return null
+
+  const modal = (
+    <div className="ra-modal ra-modal--owner-contact-nested" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="ra-modal__panel ra-owner-contact-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="ra-modal__close" onClick={onClose} aria-label="Close">
           ×
@@ -148,4 +149,6 @@ export function ContactPersonModal({ open, initial, showCategoryCheckboxes, onCl
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }
