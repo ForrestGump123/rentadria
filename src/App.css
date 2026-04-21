@@ -8599,13 +8599,31 @@ button.ra-owner-settings__plan-btn--current {
     overflow-y: hidden;
   }
 
+  /*
+   * Pun ekran, ali visina mora biti ograničena na viewport — inače flex-panel
+   * raste s cijelim sadržajem (max-height: none), .ra-owner-listing__body ne dobije
+   * min-height: 0 / scrollport i Chrome na Androidu „lomi“ vertikalni skrol.
+   */
   .ra-modal--owner-listing .ra-modal__panel.ra-owner-listing {
     max-width: 100%;
     width: 100%;
-    max-height: none;
-    min-height: 100dvh;
+    box-sizing: border-box;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    min-height: 0;
     margin: 0;
     border-radius: 0;
+  }
+
+  .ra-modal--owner-listing .ra-owner-listing__main-wrap {
+    min-height: 0;
+  }
+
+  .ra-modal--owner-listing .ra-owner-listing__body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 
   .ra-owner-listing__head {
