@@ -8594,36 +8594,61 @@ button.ra-owner-settings__plan-btn--current {
     border-radius: 12px;
   }
 
-  .ra-modal--owner-listing {
+  /*
+   * Chrome Android: ugniježđeni flex + overflow-y na .ra-owner-listing__body često
+   * ne formira pouzdan scrollport. Overlay kao flex kolona, jedan skrol na panelu.
+   */
+  .ra-modal.ra-modal--owner-listing {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     padding: 0;
-    overflow-y: hidden;
+    overflow: hidden;
+    min-height: 0;
   }
 
-  /*
-   * Pun ekran, ali visina mora biti ograničena na viewport — inače flex-panel
-   * raste s cijelim sadržajem (max-height: none), .ra-owner-listing__body ne dobije
-   * min-height: 0 / scrollport i Chrome na Androidu „lomi“ vertikalni skrol.
-   */
   .ra-modal--owner-listing .ra-modal__panel.ra-owner-listing {
     max-width: 100%;
     width: 100%;
-    box-sizing: border-box;
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100vh;
-    max-height: 100dvh;
+    flex: 1 1 auto;
     min-height: 0;
+    max-height: none;
+    height: auto;
     margin: 0;
     border-radius: 0;
+    box-sizing: border-box;
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 
   .ra-modal--owner-listing .ra-owner-listing__main-wrap {
+    display: block;
     min-height: 0;
+    overflow: visible;
   }
 
   .ra-modal--owner-listing .ra-owner-listing__body {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    overflow: visible !important;
+    flex: none !important;
+    min-height: 0;
+  }
+
+  .ra-modal--owner-listing .ra-owner-listing__head {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    background: #0f172a;
+  }
+
+  /* pan-x samo: Android često ne proslijedi vertikalni skrol roditelju kad gest počne na tim zonama */
+  .ra-modal--owner-listing .ra-owner-listing__tab-strip,
+  .ra-modal--owner-listing .ra-owner-listing__tab-chips,
+  .ra-modal--owner-listing .ra-owner-listing__table-scroll {
+    touch-action: pan-x pan-y;
   }
 
   .ra-owner-listing__head {

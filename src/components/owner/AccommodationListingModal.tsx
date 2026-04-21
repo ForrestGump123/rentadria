@@ -568,6 +568,26 @@ export function AccommodationListingModal({
     if (!open) setHelpOpen(false)
   }, [open])
 
+  /** Jedan scroll na panelu + bez skrola stranice — Chrome Android ispod modala. */
+  useEffect(() => {
+    if (!open) return
+    const html = document.documentElement
+    const body = document.body
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+    }
+    html.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prev.htmlOverflow
+      html.style.overscrollBehavior = prev.htmlOverscroll
+      body.style.overflow = prev.bodyOverflow
+    }
+  }, [open])
+
   useEffect(() => {
     if (!countryId) {
       setCities([])
