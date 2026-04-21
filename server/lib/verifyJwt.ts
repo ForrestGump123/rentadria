@@ -13,6 +13,10 @@ export type VerifyTokenPayload = {
   promoCode?: string
 }
 
+type OwnerLoginTokenPayload = {
+  email: string
+}
+
 function getSecret(): Uint8Array {
   const s = process.env.JWT_SECRET
   if (s && s.length >= 16) return new TextEncoder().encode(s)
@@ -67,6 +71,30 @@ export async function verifyVerifyToken(token: string): Promise<VerifyTokenPaylo
       ? payload.promoCode.trim().slice(0, 64)
       : undefined
   return { email: em, name, plan, passwordHash, phone, countryId, promoCode }
+}
+
+/** Passwordless login link token (email-only). */
+export async function signOwnerLoginLinkToken(email: string): Promise<string> {
+  const secret = getSecret()
+  const em = email.trim().toLowerCase()
+  return new SignJWT({ typ: 'owner_login' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(em)
+    .setIssuedAt()
+    .setExpirationTime('30m')
+    .sign(secret)
+}
+
+/** Vraća email (sub) ili null. */
+export async function verifyOwnerLoginLinkToken(token: string): Promise<OwnerLoginTokenPayload | null> {
+  try {
+    const secret = getSecret()
+    const { payload } = await jwtVerify(token, secret)
+    if (payload.typ !== 'owner_login' || typeof payload.sub !== 'string' || !payload.sub.trim()) return null
+    return { email: payload.sub.trim().toLowerCase() }
+  } catch {
+    return null
+  }
 }
 
 /** Kratkotrajan token nakon verify-email za razmjenu u HttpOnly owner sesiju (bez ponovnog unosa lozinke). */

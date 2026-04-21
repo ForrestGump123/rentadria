@@ -22,7 +22,7 @@
   "crons": [
     {
       "path": "/api/social-process-queue",
-      "schedule": "0 0 * * *"
+      "schedule": "*/15 * * * *"
     }
   ],
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]

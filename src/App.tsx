@@ -11,6 +11,7 @@ import { PricingPage } from './pages/PricingPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 import { VerifyCodePage } from './pages/VerifyCodePage'
+import { OwnerLoginLinkPage } from './pages/OwnerLoginLinkPage'
 import { OwnerDashboardPage } from './pages/OwnerDashboardPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/listing/:id" element={<ListingPage />} />
         <Route path="/verify" element={<VerifyCodePage />} />
+        <Route path="/owner-login" element={<OwnerLoginLinkPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/faq" element={<FaqPage />} />

@@ -20,6 +20,7 @@ import { fetchAdminLogin } from '../lib/adminAuthApi'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
 import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
 import { fetchOwnerRemoteLogin, type OwnerRemoteLoginResult } from '../lib/ownerAuthApi'
+import { requestOwnerLoginLink } from '../lib/ownerLoginLink'
 import { setAdminSession } from '../utils/adminSession'
 import { sendVerificationEmail } from '../lib/sendVerificationEmail'
 import {
@@ -60,11 +61,13 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
   const [submitted, setSubmitted] = useState(false)
   const [sending, setSending] = useState(false)
   const [loginErr, setLoginErr] = useState<string | null>(null)
+  const [loginLinkSent, setLoginLinkSent] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setSubmitted(false)
     setLoginErr(null)
+    setLoginLinkSent(false)
     setEmail('')
     setPassword('')
     setShowPassword(false)
@@ -82,6 +85,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
     e.preventDefault()
     setSubmitted(true)
     setLoginErr(null)
+    setLoginLinkSent(false)
     if (!isValidEmail(email) || !password.trim()) return
     const em = email.trim().toLowerCase()
 
@@ -189,6 +193,21 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         return
       }
       handleRemoteOwnerLoginFailure(em, remote)
+    })()
+  }
+
+  const sendLoginLink = () => {
+    setSubmitted(true)
+    setLoginErr(null)
+    setLoginLinkSent(false)
+    if (!isValidEmail(email)) return
+    void (async () => {
+      const r = await requestOwnerLoginLink(email.trim())
+      if (r.ok) {
+        setLoginLinkSent(true)
+        return
+      }
+      setLoginErr(t('auth.loginLinkSendError'))
     })()
   }
 
@@ -387,7 +406,18 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
             </span>
           )}
           {mode === 'login' && loginErr && <span className="ra-fld__err">{loginErr}</span>}
+          {mode === 'login' && !loginErr && loginLinkSent && (
+            <span className="ra-fld__hint">{t('auth.loginLinkSent')}</span>
+          )}
         </label>
+
+        {mode === 'login' && (
+          <p className="ra-auth__verify-note">
+            <button type="button" className="ra-link-btn" onClick={sendLoginLink}>
+              {t('auth.loginLinkSend')}
+            </button>
+          </p>
+        )}
 
         {mode === 'register' && (
           <label className="ra-fld">
