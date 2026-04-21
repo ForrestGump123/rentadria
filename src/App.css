@@ -5531,6 +5531,7 @@ button.ra-owner-settings__plan-btn--current {
   max-width: min(1480px, 98vw);
   width: 100%;
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -5755,6 +5756,8 @@ button.ra-owner-settings__plan-btn--current {
   flex: 1;
   min-height: 0;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Basic tab: jedan skrol na .main-split → poluga uz desnu ivicu; desno sticky */
@@ -5792,6 +5795,8 @@ button.ra-owner-settings__plan-btn--current {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   padding-bottom: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .ra-owner-listing__basic--split-scroll .ra-owner-listing__main-split-left {
@@ -5813,8 +5818,11 @@ button.ra-owner-settings__plan-btn--current {
   overflow-y: auto;
   overscroll-behavior: contain;
   max-height: calc(100vh - 9.25rem);
+  max-height: calc(100dvh - 9.25rem);
   box-shadow: 0 4px 22px rgba(0, 0, 0, 0.28);
   padding: 0.95rem 1.1rem 1.1rem;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 @media (min-width: 961px) {

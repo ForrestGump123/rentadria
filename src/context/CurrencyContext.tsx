@@ -46,10 +46,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const r = await fetch('https://api.frankfurter.app/latest?from=EUR&to=ALL')
+        const r = await fetch('/api/fx-eur-all')
         if (!r.ok) throw new Error('rates')
-        const j = (await r.json()) as { rates?: { ALL?: number } }
-        if (!cancelled && typeof j.rates?.ALL === 'number') setEurToAll(j.rates.ALL)
+        const j = (await r.json()) as { ok?: boolean; eurToAll?: number }
+        if (!cancelled && j.ok && typeof j.eurToAll === 'number') setEurToAll(j.eurToAll)
       } catch {
         if (!cancelled) setEurToAll(100)
       }
