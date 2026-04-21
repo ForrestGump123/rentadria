@@ -5536,6 +5536,8 @@ button.ra-owner-settings__plan-btn--current {
   display: flex;
   flex-direction: column;
   margin: 0.5rem auto;
+  /* Don't restrict gestures; allow pinch-zoom everywhere. */
+  touch-action: auto;
 }
 
 .ra-owner-listing__head {
@@ -5757,7 +5759,6 @@ button.ra-owner-settings__plan-btn--current {
   min-height: 0;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
 }
 
 /* Basic tab: jedan skrol na .main-split → poluga uz desnu ivicu; desno sticky */
@@ -5796,7 +5797,6 @@ button.ra-owner-settings__plan-btn--current {
   scrollbar-gutter: stable;
   padding-bottom: 0.75rem;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
 }
 
 .ra-owner-listing__basic--split-scroll .ra-owner-listing__main-split-left {
@@ -5822,7 +5822,6 @@ button.ra-owner-settings__plan-btn--current {
   box-shadow: 0 4px 22px rgba(0, 0, 0, 0.28);
   padding: 0.95rem 1.1rem 1.1rem;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
 }
 
 @media (min-width: 961px) {
