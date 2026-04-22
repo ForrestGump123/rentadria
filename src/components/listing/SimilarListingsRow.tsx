@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useCurrency } from '../../context/CurrencyContext'
@@ -22,6 +22,7 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
   const dragActiveRef = useRef(false)
   const touchRef = useRef(false)
   const halfWidthRef = useRef(0)
+  const [autoEnabled, setAutoEnabled] = useState(true)
   const dragState = useRef({
     active: false,
     startX: 0,
@@ -44,12 +45,20 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => {
-      updateHalfWidth()
-    })
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => updateHalfWidth())
     ro.observe(el)
     return () => ro.disconnect()
   }, [updateHalfWidth])
+
+  useEffect(() => {
+    // Auto-scroll is fun on desktop, but on Android Chrome it can be a stability/perf killer.
+    // Disable on touch/coarse pointers and when user requests reduced motion.
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const coarse = window.matchMedia('(pointer: coarse)').matches
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setAutoEnabled(!(coarse || reduce))
+  }, [])
 
   useEffect(() => {
     scrollRef.current && (scrollRef.current.scrollLeft = 0)
@@ -68,11 +77,18 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
   }, [items])
 
   useEffect(() => {
+    if (!autoEnabled) return
     let raf = 0
     const tick = () => {
       const el = scrollRef.current
       const half = halfWidthRef.current
-      if (el && half > 4 && !dragActiveRef.current && !touchRef.current) {
+      if (
+        el &&
+        half > 4 &&
+        !dragActiveRef.current &&
+        !touchRef.current &&
+        (typeof document === 'undefined' || document.visibilityState === 'visible')
+      ) {
         el.scrollLeft += AUTO_SCROLL_PX
         if (el.scrollLeft >= half - 1) el.scrollLeft = 0
       }
@@ -80,7 +96,7 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [items.length])
+  }, [items.length, autoEnabled])
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     const el = scrollRef.current
