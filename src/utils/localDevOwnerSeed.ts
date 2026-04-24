@@ -1,10 +1,6 @@
 import { sha256Hex } from './passwordHash'
-import {
-  addOneYearIso,
-  findOwnerProfileByEmail,
-  saveOwnerProfile,
-  type OwnerProfile,
-} from './ownerSession'
+import { PROMO_FREE_PRO_END_MS } from './registrationPromo'
+import { findOwnerProfileByEmail, saveOwnerProfile, type OwnerProfile } from './ownerSession'
 
 /**
  * Samo `npm run dev`: ako su u `.env.local` postavljeni VITE_LOCAL_OWNER_*,
@@ -28,7 +24,7 @@ export async function runLocalDevOwnerSeed(): Promise<void> {
     plan: 'pro',
     subscriptionActive: true,
     registeredAt: new Date().toISOString(),
-    validUntil: addOneYearIso(),
+    validUntil: new Date(PROMO_FREE_PRO_END_MS).toISOString(),
     passwordHash: await sha256Hex(password),
   }
   saveOwnerProfile(profile)

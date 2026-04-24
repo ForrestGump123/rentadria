@@ -55,6 +55,7 @@ import { isAdminSession } from '../../utils/adminSession'
 import { fetchDraft, saveDraft } from '../../lib/listingDraftApi'
 import { setListingInquiryNotifyEmail } from '../../utils/visitorInquiries'
 import { formatDateDayMonthYear } from '../../utils/dateDisplay'
+import { subscriptionValidUntilYmd } from '../../utils/registrationPromo'
 import { translateListingFields } from '../../utils/ownerTranslate'
 import { fileToResizedJpegDataUrl } from '../../utils/imageDataUrl'
 import { fileToWebpBlob, webpBlobToObjectUrl } from '../../utils/webpFromFile'
@@ -251,11 +252,10 @@ export function AccommodationListingModal({
   const [helpOpen, setHelpOpen] = useState(false)
 
   const [receivedAt] = useState(() => new Date().toISOString().slice(0, 10))
-  const [expiresAt] = useState(() => {
-    const d = new Date()
-    d.setFullYear(d.getFullYear() + 1)
-    return d.toISOString().slice(0, 10)
-  })
+  const subscriptionEndYmd = useMemo(
+    () => subscriptionValidUntilYmd(profile.validUntil),
+    [profile.validUntil],
+  )
 
   const [activeLang, setActiveLang] = useState<ListingLangId>('cnr')
   const [titles, setTitles] = useState<Record<string, string>>(() =>
@@ -1121,7 +1121,7 @@ export function AccommodationListingModal({
             existingRowId: savedDashboardRowIdRef.current,
             title: titleForRow,
             receivedAtYmd: receivedAt,
-            expiresAtYmd: expiresAt,
+            expiresAtYmd: subscriptionEndYmd,
           })
         : formCategory === 'motorcycle'
           ? upsertOwnerMotorcycleListingRow({
@@ -1130,7 +1130,7 @@ export function AccommodationListingModal({
               existingRowId: savedDashboardRowIdRef.current,
               title: titleForRow,
               receivedAtYmd: receivedAt,
-              expiresAtYmd: expiresAt,
+              expiresAtYmd: subscriptionEndYmd,
             })
           : upsertOwnerAccommodationListingRow({
               userId: profile.userId,
@@ -1138,7 +1138,7 @@ export function AccommodationListingModal({
               existingRowId: savedDashboardRowIdRef.current,
               title: titleForRow,
               receivedAtYmd: receivedAt,
-              expiresAtYmd: expiresAt,
+              expiresAtYmd: subscriptionEndYmd,
             })
 
     if (!result.ok) {
@@ -1325,7 +1325,7 @@ export function AccommodationListingModal({
                     </label>
                     <label className="ra-fld">
                       <span>{t('owner.listing.subExpires')}</span>
-                      <input readOnly value={formatDateDayMonthYear(expiresAt)} />
+                      <input readOnly value={formatDateDayMonthYear(subscriptionEndYmd)} />
                     </label>
                   </div>
 
