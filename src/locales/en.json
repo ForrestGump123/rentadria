@@ -318,7 +318,8 @@
       "replyLabel": "Reply",
       "replyPlaceholder": "Write a reply…",
       "replySend": "Send reply",
-      "errNeedSubjectBody": "Enter a subject and message before sending to admin."
+      "errNeedSubjectBody": "Enter a subject and message before sending to admin.",
+      "errSend": "Message was not sent. Check the connection, Supabase migrations, and try again."
     },
     "adsPage": {
       "title": "Advertising",
@@ -1192,7 +1193,8 @@
       "roleOwner": "Owner",
       "replyLabel": "Reply to owner",
       "replyPlaceholder": "Write a reply…",
-      "replySend": "Send reply"
+      "replySend": "Send reply",
+      "sendError": "Reply was not sent. Check Supabase, admin login, and try again."
     },
     "inquiries": {
       "pageTitle": "Visitor inquiries",

@@ -28,7 +28,7 @@ import {
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
 import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
-import { pullOwnerNotificationsToLocal } from '../utils/ownerNotifications'
+import { pullOwnerNotificationsToLocal, unreadOwnerNotificationsCount } from '../utils/ownerNotifications'
 import { getUnreadThreadCountForOwner } from '../utils/ownerAdminMessages'
 import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
 import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
@@ -47,6 +47,7 @@ export function OwnerDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [sessionEpoch, setSessionEpoch] = useState(0)
+  const [profileCloudEpoch, setProfileCloudEpoch] = useState(0)
   const [listVersion, setListVersion] = useState(0)
   const [activeCat, setActiveCat] = useState<ListingCategory>('accommodation')
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false)
@@ -58,6 +59,7 @@ export function OwnerDashboardPage() {
   const [inquiryEpoch, setInquiryEpoch] = useState(0)
   const [inquiryUnread, setInquiryUnread] = useState(0)
   const [msgUnread, setMsgUnread] = useState(0)
+  const [ownerNotifUnread, setOwnerNotifUnread] = useState(0)
   const [mobileOwnerNavOpen, setMobileOwnerNavOpen] = useState(false)
 
   useEffect(() => {
@@ -87,19 +89,23 @@ export function OwnerDashboardPage() {
 
   const profile = useMemo(() => {
     void sessionEpoch
+    void profileCloudEpoch
     return isLoggedIn() ? getOwnerProfile() : null
-  }, [sessionEpoch])
+  }, [sessionEpoch, profileCloudEpoch])
 
   useEffect(() => {
     if (!profile?.userId) return
     let cancelled = false
     void (async () => {
-      const [listOk] = await Promise.all([
+      const [listOk, profileOk] = await Promise.all([
         pullOwnerListingsFromCloud(profile.userId),
         pullOwnerProfileFromCloud(profile.userId),
         pullOwnerNotificationsToLocal(80),
       ])
-      if (!cancelled && listOk) setListVersion((v) => v + 1)
+      if (!cancelled) {
+        if (profileOk) setProfileCloudEpoch((e) => e + 1)
+        if (listOk) setListVersion((v) => v + 1)
+      }
     })()
     return () => {
       cancelled = true
@@ -126,6 +132,22 @@ export function OwnerDashboardPage() {
     syncMsg()
     window.addEventListener('rentadria-owner-messages-unread-changed', syncMsg)
     return () => window.removeEventListener('rentadria-owner-messages-unread-changed', syncMsg)
+  }, [profile])
+
+  useEffect(() => {
+    const syncNotifications = () => {
+      if (profile) setOwnerNotifUnread(unreadOwnerNotificationsCount())
+    }
+    syncNotifications()
+    window.addEventListener('rentadria-owner-notifications-updated', syncNotifications)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'rentadria_owner_notifications_v1') syncNotifications()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('rentadria-owner-notifications-updated', syncNotifications)
+      window.removeEventListener('storage', onStorage)
+    }
   }, [profile])
 
   const reload = useCallback(() => setListVersion((v) => v + 1), [])
@@ -172,7 +194,8 @@ export function OwnerDashboardPage() {
     return getSavedPromoCode(profile) ? 0 : 1
   }, [profile, sessionEpoch])
 
-  const ownerOverviewBadge = inquiryUnread + msgUnread + codeNavBadge
+  const ownerMessagesBadge = msgUnread + ownerNotifUnread
+  const ownerOverviewBadge = inquiryUnread + ownerMessagesBadge + codeNavBadge
 
   const onDelete = useCallback(
     (row: OwnerListingRow) => {
@@ -264,9 +287,9 @@ export function OwnerDashboardPage() {
                 ✉️
               </span>
               {t('owner.nav.messages')}
-              {msgUnread > 0 && (
-                <span className="ra-owner-nav__badge" aria-label={String(msgUnread)}>
-                  {msgUnread > 99 ? '99+' : msgUnread}
+              {ownerMessagesBadge > 0 && (
+                <span className="ra-owner-nav__badge" aria-label={String(ownerMessagesBadge)}>
+                  {ownerMessagesBadge > 99 ? '99+' : ownerMessagesBadge}
                 </span>
               )}
             </NavLink>
@@ -305,9 +328,9 @@ export function OwnerDashboardPage() {
                   ✉️
                 </span>
                 {t('owner.nav.messages')}
-                {msgUnread > 0 && (
-                  <span className="ra-owner-nav__badge" aria-label={String(msgUnread)}>
-                    {msgUnread > 99 ? '99+' : msgUnread}
+                {ownerMessagesBadge > 0 && (
+                  <span className="ra-owner-nav__badge" aria-label={String(ownerMessagesBadge)}>
+                    {ownerMessagesBadge > 99 ? '99+' : ownerMessagesBadge}
                   </span>
                 )}
               </NavLink>

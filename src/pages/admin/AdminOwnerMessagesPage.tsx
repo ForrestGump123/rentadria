@@ -35,25 +35,43 @@ export function AdminOwnerMessagesPage() {
   }, [epoch])
 
   useEffect(() => {
-    void pullThreadsForAdmin().then((ok) => {
-      setLoadError(!ok)
-      bump()
-    })
+    let stopped = false
+    const pull = () => {
+      void pullThreadsForAdmin().then((ok) => {
+        if (stopped) return
+        setLoadError(!ok)
+        bump()
+      })
+    }
+    pull()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') pull()
+    }, 30_000)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
   }, [bump])
 
-  const onSendReply = () => {
+  const onSendReply = async () => {
     if (!openThreadId) return
-    void appendThreadMessage({
+    if (!replyDraft.trim()) return
+    const ok = await appendThreadMessage({
       threadId: openThreadId,
       from: 'admin',
       body: replyDraft,
     })
+    if (!ok) {
+      window.alert(t('admin.ownerMessages.sendError'))
+      return
+    }
     setReplyDraft('')
-    void (async () => {
-      const msgs = await getThreadMessagesAdmin(openThreadId)
-      if (msgs) setOpenMessages({ threadId: openThreadId, msgs })
+    const msgs = await getThreadMessagesAdmin(openThreadId)
+    if (msgs) setOpenMessages({ threadId: openThreadId, msgs })
+    void pullThreadsForAdmin().then((ok) => {
+      setLoadError(!ok)
       bump()
-    })()
+    })
   }
 
   return (
@@ -158,7 +176,7 @@ export function AdminOwnerMessagesPage() {
                 placeholder={t('admin.ownerMessages.replyPlaceholder')}
               />
             </label>
-            <button type="button" className="ra-btn ra-btn--primary" onClick={onSendReply}>
+            <button type="button" className="ra-btn ra-btn--primary" onClick={() => void onSendReply()}>
               {t('admin.ownerMessages.replySend')}
             </button>
           </div>

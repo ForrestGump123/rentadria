@@ -16,7 +16,7 @@ import {
   countReviewBuckets,
 } from '../utils/adminStats'
 import { listDeletedOwners } from '../utils/deletedOwnersStore'
-import { getUnreadThreadCountForAdmin } from '../utils/ownerAdminMessages'
+import { getUnreadThreadCountForAdmin, pullThreadsForAdmin } from '../utils/ownerAdminMessages'
 import { getAdminReviewUnreadCount } from '../utils/reviewStorage'
 import { getAdminReportsUnreadCount } from '../utils/storage'
 import { getAdminVisitorInquiryUnreadCount } from '../utils/visitorInquiries'
@@ -160,6 +160,24 @@ export function AdminDashboardPage() {
     ] as const
     names.forEach((n) => window.addEventListener(n, sync))
     return () => names.forEach((n) => window.removeEventListener(n, sync))
+  }, [authed])
+
+  useEffect(() => {
+    if (!authed) return
+    let stopped = false
+    const pull = () => {
+      void pullThreadsForAdmin().then(() => {
+        if (!stopped) setBadgeMessages(getUnreadThreadCountForAdmin())
+      })
+    }
+    pull()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') pull()
+    }, 30_000)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
   }, [authed])
 
   const navBadgeCount = (navId: string) => {

@@ -73,6 +73,42 @@ function parsePromoCategoryScope(
 
 const PROMO_GLOBAL_PRO_UNTIL_ISO = new Date(PROMO_FREE_PRO_END_MS).toISOString()
 
+/**
+ * Isti smisao kao `022_free_pro_until_2027.sql`: ako migracija nije pokrenuta na produkciji,
+ * vlasnik i dalje vidi ispravan kraj promo Pro-a (31.12.2027) na GET /api/owner-profile i pri prijavi.
+ * Ne dira agencije, `plan_override`, obrisane naloge niti one čiji je `valid_until` već na/poslije kraja promocije.
+ */
+function applyFreeProPromoOwnerView(
+  base: RegisteredOwnerApiRow | null,
+  raw: Record<string, unknown>,
+): RegisteredOwnerApiRow | null {
+  if (!base) return null
+  if (base.plan === 'agency') return base
+
+  const am = raw.admin_meta
+  if (am && typeof am === 'object' && !Array.isArray(am)) {
+    if ((am as Record<string, unknown>).plan_override === true) return base
+  }
+
+  const del = raw.deleted_at
+  if (del != null && String(del).trim() !== '') return base
+
+  const reg = new Date(base.registeredAt)
+  if (Number.isNaN(reg.getTime()) || !registrationGetsFreePro(reg)) return base
+
+  const vuStr = base.validUntil?.trim() ?? ''
+  const vuMs = vuStr ? new Date(vuStr).getTime() : 0
+  if (vuStr && Number.isNaN(vuMs)) return base
+  if (!Number.isNaN(vuMs) && vuMs >= PROMO_FREE_PRO_END_MS) return base
+
+  return {
+    ...base,
+    plan: 'pro',
+    subscriptionActive: true,
+    validUntil: PROMO_GLOBAL_PRO_UNTIL_ISO,
+  }
+}
+
 export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | null {
   const userId = typeof r.user_id === 'string' ? r.user_id.trim().toLowerCase() : ''
   if (!userId) return null
@@ -236,7 +272,7 @@ export async function upsertRegisteredOwnerFromVerify(
 
   const { data: after } = await supabase.from(TABLE).select('*').eq('user_id', userId).maybeSingle()
   if (!after || typeof after !== 'object') return null
-  return rowToApi(after as Record<string, unknown>)
+  return applyFreeProPromoOwnerView(rowToApi(after as Record<string, unknown>), after as Record<string, unknown>)
 }
 
 export type AdminOwnerUpdateInput = {
@@ -275,7 +311,8 @@ export async function getRegisteredOwnerProfile(userId: string): Promise<Registe
   const uid = userId.trim().toLowerCase()
   const { data, error } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
   if (error || !data || typeof data !== 'object') return null
-  return rowToApi(data as Record<string, unknown>)
+  const raw = data as Record<string, unknown>
+  return applyFreeProPromoOwnerView(rowToApi(raw), raw)
 }
 
 export async function patchRegisteredOwnerSelf(
@@ -342,7 +379,8 @@ export async function patchRegisteredOwnerSelf(
   }
 
   if (Object.keys(updates).length <= 1) {
-    const p = rowToApi(existing as Record<string, unknown>)
+    const exRaw = existing as Record<string, unknown>
+    const p = applyFreeProPromoOwnerView(rowToApi(exRaw), exRaw)
     return p ? { ok: true, profile: p } : { ok: false, error: 'not_found' }
   }
 
@@ -351,7 +389,8 @@ export async function patchRegisteredOwnerSelf(
 
   const { data: after } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
   if (!after || typeof after !== 'object') return { ok: false, error: 'not_found' }
-  const profile = rowToApi(after as Record<string, unknown>)
+  const afterRaw = after as Record<string, unknown>
+  const profile = applyFreeProPromoOwnerView(rowToApi(afterRaw), afterRaw)
   if (!profile) return { ok: false, error: 'not_found' }
   return { ok: true, profile }
 }
@@ -498,7 +537,7 @@ export async function loginRegisteredOwner(email: string, passwordPlain: string)
   const b = Buffer.from(stored, 'utf8')
   if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, reason: 'bad_password' }
 
-  const profile = rowToApi(rec)
+  const profile = applyFreeProPromoOwnerView(rowToApi(rec), rec)
   if (!profile) return { ok: false, reason: 'not_found' }
   return { ok: true, profile }
 }

@@ -26,6 +26,8 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
   const [remindAt, setRemindAt] = useState('')
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [replySending, setReplySending] = useState(false)
   const [openMessages, setOpenMessages] = useState<{ threadId: string; msgs: { id: string; from: 'owner' | 'admin'; body: string; at: string }[] } | null>(null)
   const inflight = useRef(false)
 
@@ -113,32 +115,52 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
     return listThreadsForOwner()
   }, [epoch])
 
-  const onSendAdmin = () => {
+  const onSendAdmin = async () => {
     if (!subject.trim() || !body.trim()) {
       window.alert(t('owner.messagesPage.errNeedSubjectBody'))
       return
     }
-    void createOwnerThread({
-      ownerUserId,
-      ownerEmail,
-      subject,
-      body,
-    })
-    setSubject('')
-    setBody('')
-    bump()
+    setSending(true)
+    try {
+      const ok = await createOwnerThread({
+        ownerUserId,
+        ownerEmail,
+        subject,
+        body,
+      })
+      if (!ok) {
+        window.alert(t('owner.messagesPage.errSend'))
+        return
+      }
+      setSubject('')
+      setBody('')
+      setRemindAt('')
+      await pullAll()
+    } finally {
+      setSending(false)
+    }
   }
 
-  const onSendReply = () => {
+  const onSendReply = async () => {
     if (!openThreadId) return
-    void appendThreadMessage({
-      threadId: openThreadId,
-      from: 'owner',
-      body: replyDraft,
-      actingOwnerUserId: ownerUserId,
-    })
-    setReplyDraft('')
-    void pullAll()
+    if (!replyDraft.trim()) return
+    setReplySending(true)
+    try {
+      const ok = await appendThreadMessage({
+        threadId: openThreadId,
+        from: 'owner',
+        body: replyDraft,
+        actingOwnerUserId: ownerUserId,
+      })
+      if (!ok) {
+        window.alert(t('owner.messagesPage.errSend'))
+        return
+      }
+      setReplyDraft('')
+      await pullAll()
+    } finally {
+      setReplySending(false)
+    }
   }
 
   return (
@@ -184,7 +206,7 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
           />
         </label>
         <div className="ra-owner-messages__actions">
-          <button type="button" className="ra-btn ra-btn--primary" onClick={onSendAdmin}>
+          <button type="button" className="ra-btn ra-btn--primary" disabled={sending} onClick={() => void onSendAdmin()}>
             {t('owner.messagesPage.btnAdmin')}
           </button>
         </div>
@@ -323,7 +345,7 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
                 placeholder={t('owner.messagesPage.replyPlaceholder')}
               />
             </label>
-            <button type="button" className="ra-btn ra-btn--primary" onClick={onSendReply}>
+            <button type="button" className="ra-btn ra-btn--primary" disabled={replySending} onClick={() => void onSendReply()}>
               {t('owner.messagesPage.replySend')}
             </button>
           </div>

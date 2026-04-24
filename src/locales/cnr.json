@@ -318,7 +318,8 @@
       "replyLabel": "Odgovor",
       "replyPlaceholder": "Napišite odgovor…",
       "replySend": "Pošalji odgovor",
-      "errNeedSubjectBody": "Unesite naslov i tekst poruke prije slanja adminu."
+      "errNeedSubjectBody": "Unesite naslov i tekst poruke prije slanja adminu.",
+      "errSend": "Poruka nije poslana. Provjerite vezu, Supabase migracije i pokušajte ponovo."
     },
     "adsPage": {
       "title": "Reklame",
@@ -1192,7 +1193,8 @@
       "roleOwner": "Vlasnik",
       "replyLabel": "Odgovor vlasniku",
       "replyPlaceholder": "Napišite odgovor…",
-      "replySend": "Pošalji odgovor"
+      "replySend": "Pošalji odgovor",
+      "sendError": "Odgovor nije poslan. Provjerite Supabase, admin prijavu i pokušajte ponovo."
     },
     "inquiries": {
       "pageTitle": "Upiti posjetilaca",
