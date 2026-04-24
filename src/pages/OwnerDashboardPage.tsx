@@ -29,7 +29,7 @@ import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
 import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
 import { pullOwnerNotificationsToLocal, unreadOwnerNotificationsCount } from '../utils/ownerNotifications'
-import { getUnreadThreadCountForOwner } from '../utils/ownerAdminMessages'
+import { getUnreadThreadCountForOwner, pullThreadsForOwner } from '../utils/ownerAdminMessages'
 import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
 import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
 import { OwnerSettingsPage } from './owner/OwnerSettingsPage'
@@ -97,20 +97,44 @@ export function OwnerDashboardPage() {
     if (!profile?.userId) return
     let cancelled = false
     void (async () => {
-      const [listOk, profileOk] = await Promise.all([
+      const [listOk, profileOk, notificationsOk, threadsOk] = await Promise.all([
         pullOwnerListingsFromCloud(profile.userId),
         pullOwnerProfileFromCloud(profile.userId),
         pullOwnerNotificationsToLocal(80),
+        pullThreadsForOwner(),
       ])
       if (!cancelled) {
         if (profileOk) setProfileCloudEpoch((e) => e + 1)
         if (listOk) setListVersion((v) => v + 1)
+        if (notificationsOk) setOwnerNotifUnread(unreadOwnerNotificationsCount())
+        if (threadsOk) setMsgUnread(getUnreadThreadCountForOwner())
       }
     })()
     return () => {
       cancelled = true
     }
   }, [profile?.userId, sessionEpoch])
+
+  useEffect(() => {
+    if (!profile?.userId) return
+    let stopped = false
+    const pullBadges = () => {
+      void Promise.all([pullOwnerNotificationsToLocal(80), pullThreadsForOwner()]).then(
+        ([notificationsOk, threadsOk]) => {
+          if (stopped) return
+          if (notificationsOk) setOwnerNotifUnread(unreadOwnerNotificationsCount())
+          if (threadsOk) setMsgUnread(getUnreadThreadCountForOwner())
+        },
+      )
+    }
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') pullBadges()
+    }, 30_000)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [profile?.userId])
 
   useEffect(() => {
     const syncUnread = () => {
@@ -196,6 +220,12 @@ export function OwnerDashboardPage() {
 
   const ownerMessagesBadge = msgUnread + ownerNotifUnread
   const ownerOverviewBadge = inquiryUnread + ownerMessagesBadge + codeNavBadge
+  const renderOwnerPanelBadge = () =>
+    ownerOverviewBadge > 0 ? (
+      <span className="ra-owner-nav__badge" aria-label={String(ownerOverviewBadge)}>
+        {ownerOverviewBadge > 99 ? '99+' : ownerOverviewBadge}
+      </span>
+    ) : null
 
   const onDelete = useCallback(
     (row: OwnerListingRow) => {
@@ -287,11 +317,7 @@ export function OwnerDashboardPage() {
                 ✉️
               </span>
               {t('owner.nav.messages')}
-              {ownerMessagesBadge > 0 && (
-                <span className="ra-owner-nav__badge" aria-label={String(ownerMessagesBadge)}>
-                  {ownerMessagesBadge > 99 ? '99+' : ownerMessagesBadge}
-                </span>
-              )}
+              {renderOwnerPanelBadge()}
             </NavLink>
           ) : (
             <>
@@ -300,11 +326,7 @@ export function OwnerDashboardPage() {
                   📊
                 </span>
                 {t('owner.nav.overview')}
-                {ownerOverviewBadge > 0 && (
-                  <span className="ra-owner-nav__badge" aria-label={String(ownerOverviewBadge)}>
-                    {ownerOverviewBadge > 99 ? '99+' : ownerOverviewBadge}
-                  </span>
-                )}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -314,11 +336,7 @@ export function OwnerDashboardPage() {
                   💬
                 </span>
                 {t('owner.nav.inquiries')}
-                {inquiryUnread > 0 && (
-                  <span className="ra-owner-nav__badge" aria-label={String(inquiryUnread)}>
-                    {inquiryUnread > 99 ? '99+' : inquiryUnread}
-                  </span>
-                )}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -328,11 +346,7 @@ export function OwnerDashboardPage() {
                   ✉️
                 </span>
                 {t('owner.nav.messages')}
-                {ownerMessagesBadge > 0 && (
-                  <span className="ra-owner-nav__badge" aria-label={String(ownerMessagesBadge)}>
-                    {ownerMessagesBadge > 99 ? '99+' : ownerMessagesBadge}
-                  </span>
-                )}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -342,6 +356,7 @@ export function OwnerDashboardPage() {
                   📣
                 </span>
                 {t('owner.nav.ads')}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -351,6 +366,7 @@ export function OwnerDashboardPage() {
                   💭
                 </span>
                 {t('owner.nav.forum')}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -360,11 +376,7 @@ export function OwnerDashboardPage() {
                   🏷️
                 </span>
                 {t('owner.nav.enterCode')}
-                {codeNavBadge > 0 && (
-                  <span className="ra-owner-nav__badge" aria-label={String(codeNavBadge)}>
-                    {codeNavBadge}
-                  </span>
-                )}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -374,6 +386,7 @@ export function OwnerDashboardPage() {
                   ⚙️
                 </span>
                 {t('owner.nav.settings')}
+                {renderOwnerPanelBadge()}
               </NavLink>
               <NavLink
                 className={({ isActive }) => `ra-owner-nav__link ${isActive ? 'is-active' : ''}`}
@@ -383,6 +396,7 @@ export function OwnerDashboardPage() {
                   👤
                 </span>
                 {t('owner.nav.editProfile')}
+                {renderOwnerPanelBadge()}
               </NavLink>
             </>
           )}

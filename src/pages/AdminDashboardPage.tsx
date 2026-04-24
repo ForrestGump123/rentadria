@@ -180,15 +180,36 @@ export function AdminDashboardPage() {
     }
   }, [authed])
 
+  const adminPanelBadge =
+    badgeInquiries + badgeReports + badgeReviews + badgeMessages + badgeDeletedOwners
+
   const navBadgeCount = (navId: string) => {
-    if (navId === 'overview') {
-      return badgeInquiries + badgeReports + badgeReviews + badgeMessages + badgeDeletedOwners
+    if (
+      navId === 'overview' ||
+      navId === 'visits' ||
+      navId === 'engagement' ||
+      navId === 'listings' ||
+      navId === 'owners' ||
+      navId === 'deletedOwners' ||
+      navId === 'inquiries' ||
+      navId === 'reports' ||
+      navId === 'reviews' ||
+      navId === 'users' ||
+      navId === 'images' ||
+      navId === 'staff' ||
+      navId === 'ownerMessages' ||
+      navId === 'promo' ||
+      navId === 'expiring' ||
+      navId === 'paused' ||
+      navId === 'banners' ||
+      navId === 'pricing' ||
+      navId === 'terms' ||
+      navId === 'privacy' ||
+      navId === 'faq' ||
+      navId === 'import'
+    ) {
+      return adminPanelBadge
     }
-    if (navId === 'inquiries') return badgeInquiries
-    if (navId === 'reports') return badgeReports
-    if (navId === 'reviews') return badgeReviews
-    if (navId === 'ownerMessages') return badgeMessages
-    if (navId === 'deletedOwners') return badgeDeletedOwners
     return 0
   }
 
