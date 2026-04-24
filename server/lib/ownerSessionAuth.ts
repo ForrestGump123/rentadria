@@ -1,6 +1,7 @@
 /**
  * HttpOnly cookie session for owners (same-origin API calls after login / verify exchange).
- * Env: OWNER_SESSION_SECRET (min 32) or JWT_SECRET (min 32) as fallback.
+ * Env: OWNER_SESSION_SECRET (min 32), JWT_SECRET (min 32), or SUPABASE_SERVICE_ROLE_KEY
+ * as server-only fallback.
  */
 import { SignJWT, jwtVerify } from 'jose'
 
@@ -9,12 +10,16 @@ export const OWNER_COOKIE_NAME = 'ra_owner_session'
 function getOwnerSessionSecret(): Uint8Array {
   const a = process.env.OWNER_SESSION_SECRET?.trim()
   const b = process.env.JWT_SECRET?.trim()
-  const s = (a && a.length >= 32 ? a : '') || (b && b.length >= 32 ? b : '')
+  const c = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  const s =
+    (a && a.length >= 32 ? a : '') ||
+    (b && b.length >= 32 ? b : '') ||
+    (c && c.length >= 32 ? c : '')
   if (s) return new TextEncoder().encode(s)
   if (process.env.VERCEL_ENV !== 'production' && process.env.NODE_ENV !== 'production') {
     return new TextEncoder().encode('dev-owner-session-secret-min-32-chars!!')
   }
-  throw new Error('OWNER_SESSION_SECRET or JWT_SECRET (min 32 chars) required for owner session')
+  throw new Error('OWNER_SESSION_SECRET, JWT_SECRET, or SUPABASE_SERVICE_ROLE_KEY required for owner session')
 }
 
 export async function signOwnerSessionJwt(userId: string): Promise<string> {
