@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       adminMeta,
     })
 
-    if (!result.ok) {
+    if (result.ok === false) {
       res.status(result.error === 'no_backend' ? 503 : 400).json({ ok: false, error: result.error ?? 'update_failed' })
       return
     }

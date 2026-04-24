@@ -125,6 +125,10 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
           setLoginErr(t('auth.loginRemoteUnavailable'))
           return
         }
+        if (remote.error === 'session_unavailable') {
+          setLoginErr(t('auth.loginSessionUnavailable'))
+          return
+        }
         setLoginErr(t('auth.loginPasswordWrong'))
       }
 
@@ -139,7 +143,19 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         if (existing.passwordHash) {
           const h = await sha256Hex(password)
           if (h === existing.passwordHash) {
-            finishOwnerLogin(existing)
+            const remoteAfterLocalMatch = await fetchOwnerRemoteLogin(em, password)
+            if (remoteAfterLocalMatch.ok) {
+              finishOwnerLogin(remoteAfterLocalMatch.profile)
+              return
+            }
+            if (
+              remoteAfterLocalMatch.error === 'backend_unavailable' ||
+              remoteAfterLocalMatch.error === 'no_password_stored'
+            ) {
+              finishOwnerLogin(existing)
+              return
+            }
+            handleRemoteOwnerLoginFailure(em, remoteAfterLocalMatch)
             return
           }
           /*

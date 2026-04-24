@@ -10,6 +10,7 @@ export type OwnerRemoteLoginResult =
         | 'not_found'
         | 'no_password_stored'
         | 'backend_unavailable'
+        | 'session_unavailable'
     }
 
 /** Prijava vlasnika preko servera (Supabase) kad lokalni profil ne postoji na ovom uređaju. */
@@ -32,6 +33,9 @@ export async function fetchOwnerRemoteLogin(email: string, password: string): Pr
     }
     if (r.status === 503 && j.error === 'owner_backend_unavailable') {
       return { ok: false, error: 'backend_unavailable' }
+    }
+    if (r.status === 503 && j.error === 'owner_session_unavailable') {
+      return { ok: false, error: 'session_unavailable' }
     }
     if (r.status === 404 && j.error === 'owner_not_found') {
       return { ok: false, error: 'not_found' }

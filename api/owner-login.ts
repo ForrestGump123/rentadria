@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const result = await loginRegisteredOwner(email, password)
-    if (!result.ok) {
+    if (result.ok === false) {
       switch (result.reason) {
         case 'no_backend':
           res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
@@ -58,7 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const tok = await signOwnerSessionJwt(result.profile.userId)
       res.setHeader('Set-Cookie', ownerSessionCookieHeader(tok, 7 * 24 * 60 * 60, secureCookie()))
     } catch {
-      /* OWNER_SESSION_SECRET / JWT_SECRET nedovoljno dug — prijava i dalje vraća profil */
+      res.status(503).json({ ok: false, error: 'owner_session_unavailable' })
+      return
     }
     res.status(200).json({ ok: true, profile: result.profile })
   } catch {

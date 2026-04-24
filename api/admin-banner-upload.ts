@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const out = await uploadAdminBannerFromDataUrl(imageDataUrl)
-    if (!out.ok) {
+    if (out.ok === false) {
       res.status(400).json({ ok: false, error: out.error })
       return
     }

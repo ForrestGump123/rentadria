@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const r = await uploadOwnerAvatarFromDataUrl(ownerUid, dataUrl)
-  if (!r.ok) {
+  if (r.ok === false) {
     res.status(r.error === 'no_backend' ? 503 : 400).json({ ok: false, error: r.error })
     return
   }
