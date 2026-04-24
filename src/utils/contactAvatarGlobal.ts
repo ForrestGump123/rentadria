@@ -23,14 +23,32 @@ function save(m: MapShape) {
   localStorage.setItem(KEY, JSON.stringify(m))
 }
 
+function isStoredAvatarRef(v: string): boolean {
+  const t = v.trim()
+  return (
+    t.startsWith('data:image/') ||
+    t.startsWith('https://') ||
+    t.startsWith('http://')
+  )
+}
+
 export function getContactAvatarGlobal(ownerUserId: string, contactId: string): string | null {
   const v = load()[ownerUserId]?.[contactId]?.trim()
-  if (!v || !v.startsWith('data:image/')) return null
+  if (!v || !isStoredAvatarRef(v)) return null
   return v
 }
 
 /** Poziva se nakon snimanja nacrta (modal) da se globalna mapa poklopi s kontaktima. */
-export function syncContactAvatarGlobals(ownerUserId: string, contacts: { id: string; type: string; showAvatarOnAllListings?: boolean; avatarDataUrl?: string | null }[]): void {
+export function syncContactAvatarGlobals(
+  ownerUserId: string,
+  contacts: {
+    id: string
+    type: string
+    showAvatarOnAllListings?: boolean
+    avatarDataUrl?: string | null
+    avatarUrl?: string | null
+  }[],
+): void {
   try {
     const m = load()
     const contactIds = new Set(contacts.filter((c) => c.type === 'contact').map((c) => c.id))
@@ -38,8 +56,9 @@ export function syncContactAvatarGlobals(ownerUserId: string, contacts: { id: st
 
     for (const c of contacts) {
       if (c.type !== 'contact') continue
-      if (c.showAvatarOnAllListings && c.avatarDataUrl?.trim()) {
-        nextUser[c.id] = c.avatarDataUrl.trim()
+      const av = (c.avatarUrl?.trim() || c.avatarDataUrl?.trim()) ?? ''
+      if (c.showAvatarOnAllListings && av && isStoredAvatarRef(av)) {
+        nextUser[c.id] = av
       } else {
         delete nextUser[c.id]
       }

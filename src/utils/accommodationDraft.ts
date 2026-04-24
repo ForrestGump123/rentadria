@@ -103,6 +103,8 @@ export type DraftContactRow = {
   phoneScope: 'this_listing' | 'all_listings'
   /** Slika kontakta (data URL), za prikaz pored imena na oglasu. */
   avatarDataUrl?: string | null
+  /** Nakon uploada na storage — draft ostaje mali (bez megabase64). */
+  avatarUrl?: string | null
   /** Kada je uključeno, slika se vidi na svim oglasima (vlasnik: profil; kontakt: globalna mapa). */
   showAvatarOnAllListings?: boolean
 }
@@ -182,7 +184,7 @@ export function isAccommodationDraftListingId(id: string): boolean {
 
 /**
  * Red-specifični nacrt i globalni `rentadria_listing_draft_accommodation` mogu biti kratko
- * razdvojeni (npr. slika kontakta samo u globalnom dok nije ponovo Sačuvaj). Spoji avatarDataUrl.
+ * razdvojeni (npr. slika kontakta samo u globalnom dok nije ponovo Sačuvaj). Spoji avatarDataUrl / avatarUrl.
  */
 function mergeDraftContactsAvatarFallback(
   primary: AccommodationListingDraft,
@@ -194,15 +196,20 @@ function mergeDraftContactsAvatarFallback(
   const contacts = primary.contacts.map((c) => {
     const f = fb.get(c.id)
     if (!f) return c
-    const hasP = Boolean(c.avatarDataUrl?.trim())
-    const hasF = Boolean(f.avatarDataUrl?.trim())
+    const hasP = Boolean(c.avatarDataUrl?.trim()) || Boolean(c.avatarUrl?.trim())
+    const hasF = Boolean(f.avatarDataUrl?.trim()) || Boolean(f.avatarUrl?.trim())
     const pAll = c.showAvatarOnAllListings
     const fAll = f.showAvatarOnAllListings
     const mergeAll =
       pAll === undefined && fAll !== undefined ? { showAvatarOnAllListings: fAll } : {}
     if (!hasP && hasF) {
       changed = true
-      return { ...c, avatarDataUrl: f.avatarDataUrl, ...mergeAll }
+      return {
+        ...c,
+        avatarDataUrl: f.avatarDataUrl ?? null,
+        avatarUrl: f.avatarUrl ?? null,
+        ...mergeAll,
+      }
     }
     if (Object.keys(mergeAll).length) {
       changed = true
@@ -556,7 +563,7 @@ function draftContactToOwner(
     phones,
     telegram: tg,
   }
-  const rowAv = row.avatarDataUrl?.trim() ? row.avatarDataUrl.trim() : ''
+  const rowAv = (row.avatarUrl?.trim() || row.avatarDataUrl?.trim() || '').trim()
   const allListings = row.showAvatarOnAllListings === true
 
   if (row.type === 'owner') {

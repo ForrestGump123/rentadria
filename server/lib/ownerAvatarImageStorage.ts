@@ -81,3 +81,56 @@ export async function uploadOwnerAvatarFromDataUrl(
   return { ok: true, publicUrl }
 }
 
+/**
+ * Slika kontakta na oglasu — isti public bucket kao profil (`owner-avatars`), stabilna putanja
+ * po vlasniku + id kontakta (`upsert`) da draft na serveru ne nosi megabase64.
+ */
+export async function uploadContactAvatarFromDataUrl(
+  ownerUserId: string,
+  contactId: string,
+  dataUrl: string,
+): Promise<{ ok: true; publicUrl: string } | { ok: false; error: string }> {
+  const raw = dataUrl.trim()
+  const m = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i.exec(raw)
+  if (!m) return { ok: false, error: 'invalid_data_url' }
+
+  let buf: Buffer
+  try {
+    buf = Buffer.from(m[2], 'base64')
+  } catch {
+    return { ok: false, error: 'invalid_base64' }
+  }
+  const MAX_IN = 6 * 1024 * 1024
+  if (buf.length > MAX_IN) return { ok: false, error: 'image_too_large' }
+
+  let webp: Buffer
+  try {
+    webp = await sharp(buf)
+      .rotate()
+      .resize({ width: 512, height: 512, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 86 })
+      .toBuffer()
+  } catch {
+    return { ok: false, error: 'image_decode_failed' }
+  }
+
+  const sb = getSupabaseAdmin()
+  if (!sb) return { ok: false, error: 'no_backend' }
+
+  const bucket = ownerAvatarsBucket()
+  const safeOwner = ownerUserId.trim().toLowerCase().replace(/[^a-z0-9@._-]+/g, '_').slice(0, 80) || 'owner'
+  const safeContact = contactId.trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 80) || 'contact'
+  const path = `public/${safeOwner}/contact-${safeContact}.webp`
+
+  const { error: upErr } = await sb.storage.from(bucket).upload(path, webp, {
+    contentType: 'image/webp',
+    upsert: true,
+  })
+  if (upErr) return { ok: false, error: upErr.message }
+
+  const { data } = sb.storage.from(bucket).getPublicUrl(path)
+  const publicUrl = data.publicUrl
+  if (!publicUrl) return { ok: false, error: 'no_public_url' }
+  return { ok: true, publicUrl }
+}
+

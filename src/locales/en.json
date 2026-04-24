@@ -626,6 +626,7 @@
       "contactPhotoTitle": "Contact photo",
       "contactPhotoHint": "Shown next to the name in the listing contact block.",
       "contactPhotoPick": "Choose image",
+      "contactPhotoUploading": "Uploading…",
       "contactPhotoRemove": "Remove image",
       "contactPhotoClose": "Close",
       "contactPhotoOwnerDisabled": "For the owner row, use the profile photo under Edit profile.",

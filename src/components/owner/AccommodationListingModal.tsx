@@ -80,6 +80,10 @@ function asListingCategoryArray(raw: unknown): ListingCategory[] {
   return raw.filter((x): x is ListingCategory => x === 'accommodation' || x === 'car' || x === 'motorcycle')
 }
 
+function contactRowAvatarSrc(c: { avatarUrl?: string | null; avatarDataUrl?: string | null }): string {
+  return (c.avatarUrl?.trim() || c.avatarDataUrl?.trim() || '').trim()
+}
+
 function MapFlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
   useEffect(() => {
@@ -106,6 +110,8 @@ export type ContactRow = {
   phoneScope: ContactPhoneScope
   /** Slika za ovaj kontakt (ne za red „Vlasnik“ — koristi se profil). */
   avatarDataUrl?: string | null
+  /** Javni URL nakon uploada (Supabase `owner-avatars`). */
+  avatarUrl?: string | null
   /** Vlasnik: profilna slika na svim oglasima; kontakt: ista slika na svim oglasima (globalno). */
   showAvatarOnAllListings?: boolean
 }
@@ -377,7 +383,12 @@ export function AccommodationListingModal({
   const [contactEdit, setContactEdit] = useState<ContactDraft | null>(null)
   const [editingContactId, setEditingContactId] = useState<string | null>(null)
   const [contactPhotoContactId, setContactPhotoContactId] = useState<string | null>(null)
+  const [contactPhotoBusy, setContactPhotoBusy] = useState(false)
   const contactPhotoFileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!contactPhotoContactId) setContactPhotoBusy(false)
+  }, [contactPhotoContactId])
   const flushDraftRef = useRef<(contactsOverride?: ContactRow[]) => void>(() => {})
   const savedDashboardRowIdRef = useRef<string | null>(null)
   const editingOwnerRowIdRef = useRef<string | null>(editingOwnerRowId)
@@ -939,23 +950,45 @@ export function AccommodationListingModal({
       const f = files?.[0]
       if (!f || !contactPhotoContactId) return
       if (!f.type.startsWith('image/')) return
+      setContactPhotoBusy(true)
       try {
         const dataUrl = await fileToResizedJpegDataUrl(f, 400)
         if (dataUrl.length > 1_200_000) {
           window.alert(t('owner.profilePage.errAvatarTooLarge'))
           return
         }
+        let publicUrl: string | null = null
+        try {
+          const res = await fetch('/api/owner-contact-avatar-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ contactId: contactPhotoContactId, dataUrl }),
+          })
+          const j = (await res.json().catch(() => ({}))) as { ok?: boolean; publicUrl?: string }
+          if (res.ok && j?.ok === true && typeof j.publicUrl === 'string' && j.publicUrl.trim()) {
+            publicUrl = j.publicUrl.trim()
+          }
+        } catch {
+          /* offline / no API — ostaje data URL */
+        }
         setContacts((prev) => {
           const next = prev.map((row) =>
-            row.id === contactPhotoContactId ? { ...row, avatarDataUrl: dataUrl } : row,
+            row.id === contactPhotoContactId
+              ? publicUrl
+                ? { ...row, avatarUrl: publicUrl, avatarDataUrl: null }
+                : { ...row, avatarUrl: null, avatarDataUrl: dataUrl }
+              : row,
           )
           queueMicrotask(() => flushDraftRef.current(next))
           return next
         })
       } catch {
         window.alert(t('owner.profilePage.errAvatarRead'))
+      } finally {
+        setContactPhotoBusy(false)
+        if (contactPhotoFileRef.current) contactPhotoFileRef.current.value = ''
       }
-      if (contactPhotoFileRef.current) contactPhotoFileRef.current.value = ''
     },
     [contactPhotoContactId, t],
   )
@@ -964,7 +997,7 @@ export function AccommodationListingModal({
     if (!contactPhotoContactId) return
     setContacts((prev) => {
       const next = prev.map((row) =>
-        row.id === contactPhotoContactId ? { ...row, avatarDataUrl: null } : row,
+        row.id === contactPhotoContactId ? { ...row, avatarDataUrl: null, avatarUrl: null } : row,
       )
       queueMicrotask(() => flushDraftRef.current(next))
       return next
@@ -2349,7 +2382,7 @@ export function AccommodationListingModal({
                                 setContactPhotoContactId(c.id)
                               }}
                             >
-                              {c.avatarDataUrl ? t('owner.listing.editContactPhoto') : t('owner.listing.addContactPhoto')}
+                              {contactRowAvatarSrc(c) ? t('owner.listing.editContactPhoto') : t('owner.listing.addContactPhoto')}
                             </button>
                           </div>
                         </td>
@@ -2586,9 +2619,9 @@ export function AccommodationListingModal({
             </h2>
             <p className="ra-contact-photo-modal__hint">{t('owner.listing.contactPhotoHint')}</p>
             <div className="ra-contact-photo-modal__preview">
-              {contactPhotoRow?.avatarDataUrl ? (
+              {contactPhotoRow && contactRowAvatarSrc(contactPhotoRow) ? (
                 <img
-                  src={contactPhotoRow.avatarDataUrl}
+                  src={contactRowAvatarSrc(contactPhotoRow)}
                   alt=""
                   className="ra-contact-photo-modal__img"
                   width={120}
@@ -2602,12 +2635,18 @@ export function AccommodationListingModal({
               <button
                 type="button"
                 className="ra-btn ra-btn--ghost"
+                disabled={contactPhotoBusy}
                 onClick={() => contactPhotoFileRef.current?.click()}
               >
-                {t('owner.listing.contactPhotoPick')}
+                {contactPhotoBusy ? t('owner.listing.contactPhotoUploading') : t('owner.listing.contactPhotoPick')}
               </button>
-              {contactPhotoRow?.avatarDataUrl ? (
-                <button type="button" className="ra-btn ra-btn--ghost" onClick={clearContactPhoto}>
+              {contactPhotoRow && contactRowAvatarSrc(contactPhotoRow) ? (
+                <button
+                  type="button"
+                  className="ra-btn ra-btn--ghost"
+                  disabled={contactPhotoBusy}
+                  onClick={clearContactPhoto}
+                >
                   {t('owner.listing.contactPhotoRemove')}
                 </button>
               ) : null}
