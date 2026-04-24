@@ -43,10 +43,10 @@ export function OwnerAdsPage({ profile }: Props) {
     return () => window.removeEventListener('rentadria-owner-ads-updated', on)
   }, [bump])
 
-  const nextStart = useMemo(
-    () => computeNextSlotStart(profile.userId, category),
-    [profile.userId, category, epoch],
-  )
+  const nextStart = useMemo(() => {
+    void epoch
+    return computeNextSlotStart(profile.userId, category)
+  }, [profile.userId, category, epoch])
 
   const slotLabel = useMemo(
     () => formatAdSlotDate(nextStart, i18n.language === 'en' ? 'en-GB' : 'sr-Latn-ME'),
@@ -100,6 +100,9 @@ export function OwnerAdsPage({ profile }: Props) {
         <>
           <p className="ra-owner-ads__intro">
             {t('owner.adsPage.introBody', { cooldown: AD_COOLDOWN_DAYS })}
+          </p>
+          <p className="ra-owner-ads__intro ra-owner-ads__intro--popup">
+            {t('owner.adsPage.popupNote')}
           </p>
           <button type="button" className="ra-btn ra-btn--primary ra-owner-ads__cta" onClick={() => setStep('form')}>
             {t('owner.adsPage.btnIntro')}

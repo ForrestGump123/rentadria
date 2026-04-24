@@ -17,7 +17,12 @@ export function adminBannerToListing(b: AdminBannerItem, category: ListingCatego
     titleSlot: 0,
     location: b.description.trim() || '—',
     priceLabel: '',
-    image: b.imageDataUrl?.trim() ? b.imageDataUrl : LISTING_IMAGE_FALLBACK,
+    image: (() => {
+      const u = b.imageUrl?.trim()
+      if (u) return u
+      const d = b.imageDataUrl?.trim()
+      return d || LISTING_IMAGE_FALLBACK
+    })(),
     createdAt: new Date().toISOString(),
   }
 }

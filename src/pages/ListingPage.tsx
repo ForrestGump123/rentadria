@@ -28,7 +28,8 @@ import {
   saveReviewsForListing,
   type StoredReview,
 } from '../utils/reviewStorage'
-import { incrementContactClickForListing, incrementListingViewForListing } from '../utils/ownerSession'
+import { hydrateListingGalleryFromServer } from '../utils/listingGalleryAdmin'
+const JSON_HDR = { 'Content-Type': 'application/json' } as const
 import { listingTitle as listingTitleT } from '../utils/listingTitle'
 import { downloadElementAsPdf } from '../utils/pdfListing'
 import { isLoggedIn, setLoggedIn } from '../utils/storage'
@@ -99,11 +100,14 @@ export function ListingPage() {
   }, [listing, t, i18n.language])
   const similar = useMemo(() => (listing ? getSimilarListings(listing) : []), [listing])
 
+  const [galleryEpoch, setGalleryEpoch] = useState(0)
+
   const galleryResolved = useMemo(() => {
+    void galleryEpoch
     if (!listing || !detail) return []
     const base = detail.gallery.map(listingImageUrl)
     return getEffectiveGallery(listing.id, base)
-  }, [listing, detail])
+  }, [listing, detail, galleryEpoch])
 
   const [tab, setTab] = useState<'desc' | 'chars' | 'prices'>('desc')
   const [showContact, setShowContact] = useState(false)
@@ -136,14 +140,11 @@ export function ListingPage() {
 
   useEffect(() => {
     if (!listing?.id) return
-    try {
-      const key = `ra_listing_view_once:${listing.id}`
-      if (sessionStorage.getItem(key)) return
-      sessionStorage.setItem(key, '1')
-      incrementListingViewForListing(listing.id)
-    } catch {
-      incrementListingViewForListing(listing.id)
-    }
+    void fetch('/api/track-listing-view', {
+      method: 'POST',
+      headers: JSON_HDR,
+      body: JSON.stringify({ listingId: listing.id }),
+    }).catch(() => {})
   }, [listing?.id])
 
   useEffect(() => {
@@ -174,11 +175,17 @@ export function ListingPage() {
     }
     hydrate()
     window.addEventListener('rentadria-reviews-updated', syncLocal)
-    window.addEventListener('rentadria-listing-gallery-admin-changed', syncLocal)
     return () => {
       window.removeEventListener('rentadria-reviews-updated', syncLocal)
-      window.removeEventListener('rentadria-listing-gallery-admin-changed', syncLocal)
     }
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const bump = () => setGalleryEpoch((e) => e + 1)
+    void hydrateListingGalleryFromServer(id)
+    window.addEventListener('rentadria-listing-gallery-admin-changed', bump)
+    return () => window.removeEventListener('rentadria-listing-gallery-admin-changed', bump)
   }, [id])
 
   const share = useCallback(async () => {
@@ -227,7 +234,11 @@ export function ListingPage() {
         setContactLoading(false)
       }
     }
-    incrementContactClickForListing(listing.id)
+    void fetch('/api/track-contact-click', {
+      method: 'POST',
+      headers: JSON_HDR,
+      body: JSON.stringify({ listingId: listing.id }),
+    }).catch(() => {})
     setShowContact(true)
   }, [listing, revealedContacts, showContact, t, i18n.language])
 

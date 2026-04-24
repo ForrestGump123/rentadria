@@ -1,11 +1,9 @@
-const REPORTS = 'rentadria_reports'
 const LOGGED = 'rentadria_logged_in'
-const ADMIN_REPORTS_UNREAD_KEY = 'rentadria_admin_reports_unread_v1'
+let unreadReports = 0
 
 export function bumpAdminReportsUnread(): void {
   try {
-    const n = Math.max(0, Number(localStorage.getItem(ADMIN_REPORTS_UNREAD_KEY) || '0')) + 1
-    localStorage.setItem(ADMIN_REPORTS_UNREAD_KEY, String(n))
+    unreadReports = Math.max(0, unreadReports) + 1
     window.dispatchEvent(new Event('rentadria-admin-reports-unread-changed'))
   } catch {
     /* ignore */
@@ -13,16 +11,12 @@ export function bumpAdminReportsUnread(): void {
 }
 
 export function getAdminReportsUnreadCount(): number {
-  try {
-    return Math.max(0, Number(localStorage.getItem(ADMIN_REPORTS_UNREAD_KEY) || '0'))
-  } catch {
-    return 0
-  }
+  return Math.max(0, unreadReports)
 }
 
 export function clearAdminReportsUnread(): void {
   try {
-    localStorage.removeItem(ADMIN_REPORTS_UNREAD_KEY)
+    unreadReports = 0
     window.dispatchEvent(new Event('rentadria-admin-reports-unread-changed'))
   } catch {
     /* ignore */
@@ -30,10 +24,6 @@ export function clearAdminReportsUnread(): void {
 }
 
 export function saveReport(payload: Record<string, string>) {
-  const at = new Date().toISOString()
-  const prev = JSON.parse(localStorage.getItem(REPORTS) || '[]') as Record<string, string>[]
-  prev.push({ ...payload, at })
-  localStorage.setItem(REPORTS, JSON.stringify(prev))
   void fetch('/api/report-submit', {
     method: 'POST',
     credentials: 'include',
@@ -51,16 +41,6 @@ export function saveReport(payload: Record<string, string>) {
     window.dispatchEvent(new Event('rentadria-reports-updated'))
   } catch {
     /* ignore */
-  }
-}
-
-export function loadAllReports(): (Record<string, string> & { at?: string })[] {
-  try {
-    const raw = localStorage.getItem(REPORTS) || '[]'
-    const prev = JSON.parse(raw) as unknown
-    return Array.isArray(prev) ? (prev as (Record<string, string> & { at?: string })[]) : []
-  } catch {
-    return []
   }
 }
 

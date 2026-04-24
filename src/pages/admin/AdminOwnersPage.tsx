@@ -19,7 +19,6 @@ import {
   getOwnerListings,
   getOwnerProfileByUserId,
   saveOwnerProfileForAdmin,
-  softDeleteOwnerUser,
   type OwnerProfile,
 } from '../../utils/ownerSession'
 import { isAdminSession } from '../../utils/adminSession'
@@ -43,6 +42,7 @@ function applyServerAdminMeta(userId: string, raw: Record<string, unknown>) {
     extraCatCar: typeof raw.extraCatCar === 'boolean' ? raw.extraCatCar : d.extraCatCar,
     extraCatMoto: typeof raw.extraCatMoto === 'boolean' ? raw.extraCatMoto : d.extraCatMoto,
     blocked: typeof raw.blocked === 'boolean' ? raw.blocked : d.blocked,
+    planOverride: typeof raw.plan_override === 'boolean' ? raw.plan_override : d.planOverride,
   })
 }
 
@@ -88,7 +88,7 @@ export function AdminOwnersPage() {
   }, [epoch])
 
   const filtered = useMemo(() => {
-    let list = filterByCountrySet(profiles, countryFilter)
+    const list = filterByCountrySet(profiles, countryFilter)
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter(
@@ -158,6 +158,7 @@ export function AdminOwnersPage() {
             extraCatCar: editMeta.extraCatCar,
             extraCatMoto: editMeta.extraCatMoto,
             blocked: editMeta.blocked,
+            plan_override: Boolean(editMeta.planOverride),
           },
         }),
       })
@@ -176,14 +177,59 @@ export function AdminOwnersPage() {
 
   const toggleBlock = (p: OwnerProfile) => {
     const m = getAdminOwnerMeta(p.userId)
-    setAdminOwnerMeta(p.userId, { ...m, blocked: !m.blocked })
-    bump()
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-owner-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            userId: p.userId,
+            displayName: p.displayName,
+            email: p.email,
+            phone: p.phone ?? null,
+            countryId: p.countryId ?? null,
+            passwordHash: p.passwordHash ?? null,
+            plan: p.plan,
+            subscriptionActive: p.subscriptionActive ?? false,
+            validUntil: p.validUntil?.trim() ? p.validUntil.trim() : null,
+            basicCategoryChoice: p.basicCategoryChoice ?? null,
+            adminMeta: { ...m, blocked: !m.blocked, plan_override: Boolean(m.planOverride) },
+          }),
+        })
+        if (!r.ok) {
+          const j = (await r.json().catch(() => ({}))) as { error?: string }
+          window.alert(t('admin.owners.serverSaveError', { detail: j.error ?? String(r.status) }))
+          return
+        }
+        setAdminOwnerMeta(p.userId, { ...m, blocked: !m.blocked })
+        bump()
+      } catch {
+        window.alert(t('admin.owners.serverSaveError', { detail: 'network' }))
+      }
+    })()
   }
 
   const delOwner = (p: OwnerProfile) => {
     if (!window.confirm(t('admin.owners.confirmSoftDelete'))) return
-    softDeleteOwnerUser(p.userId)
-    bump()
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-deleted-owners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'delete', userId: p.userId }),
+        })
+        const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+        if (!r.ok || !j.ok) {
+          window.alert(t('admin.owners.serverSaveError', { detail: j.error ?? String(r.status) }))
+          return
+        }
+        bump()
+      } catch {
+        window.alert(t('admin.owners.serverSaveError', { detail: 'network' }))
+      }
+    })()
   }
 
   if (!isAdminSession()) {
@@ -405,6 +451,14 @@ export function AdminOwnersPage() {
               </label>
             )}
             <h3 className="ra-admin-owners__h3">{t('admin.owners.planExtras')}</h3>
+            <label className="ra-fld ra-fld--row">
+              <input
+                type="checkbox"
+                checked={Boolean(editMeta.planOverride)}
+                onChange={(e) => setEditMeta({ ...editMeta, planOverride: e.target.checked })}
+              />
+              <span>{t('admin.owners.planOverride')}</span>
+            </label>
             <div className="ra-admin-owners__extras">
               <label>
                 {t('nav.accommodation')}:{' '}

@@ -19,21 +19,26 @@ function migrateLegacyV1(): void {
 
 export function CookieBanner() {
   const { t } = useTranslation()
-  const [visible, setVisible] = useState(false)
-  const [customOpen, setCustomOpen] = useState(false)
-  const [analytics, setAnalytics] = useState(false)
-
-  useEffect(() => {
-    migrateLegacyV1()
+  const [visible, setVisible] = useState(() => {
     try {
-      if (typeof localStorage === 'undefined') return
-      if (!hasCookieDecision()) setVisible(true)
-      const p = readCookiePrefs()
-      if (p) setAnalytics(p.analytics)
+      migrateLegacyV1()
+      if (typeof localStorage === 'undefined') return false
+      return !hasCookieDecision()
     } catch {
-      setVisible(true)
+      return true
     }
-  }, [])
+  })
+  const [customOpen, setCustomOpen] = useState(false)
+  const [analytics, setAnalytics] = useState(() => {
+    try {
+      migrateLegacyV1()
+      if (typeof localStorage === 'undefined') return false
+      const p = readCookiePrefs()
+      return Boolean(p?.analytics)
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     const onOpen = () => {

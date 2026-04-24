@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { fileToResizedJpegDataUrl } from '../../utils/imageDataUrl'
 import { sha256Hex } from '../../utils/passwordHash'
 import { isValidRegisterPassword } from '../../utils/passwordValidation'
-import { queueCloudOwnerProfilePush, saveOwnerProfile, type OwnerProfile } from '../../utils/ownerSession'
+import { changeOwnerPasswordOnCloud, pushOwnerProfileToCloud } from '../../lib/ownerProfileCloud'
+import { type OwnerProfile } from '../../utils/ownerSession'
 
 type Props = {
   profile: OwnerProfile
@@ -47,7 +48,7 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
 
   const [displayName, setDisplayName] = useState(profile.displayName)
   const [phone, setPhone] = useState(profile.phone ?? '')
-  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(profile.avatarDataUrl ?? null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl ?? profile.avatarDataUrl ?? null)
 
   const [oldPw1, setOldPw1] = useState('')
   const [oldPw2, setOldPw2] = useState('')
@@ -63,8 +64,8 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
   useEffect(() => {
     setDisplayName(profile.displayName)
     setPhone(profile.phone ?? '')
-    setAvatarDataUrl(profile.avatarDataUrl ?? null)
-  }, [profile.userId, profile.displayName, profile.phone, profile.avatarDataUrl])
+    setAvatarUrl(profile.avatarUrl ?? profile.avatarDataUrl ?? null)
+  }, [profile.userId, profile.displayName, profile.phone, profile.avatarUrl, profile.avatarDataUrl])
 
   const onPickFile = () => fileRef.current?.click()
 
@@ -78,7 +79,19 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
         setErr(t('owner.profilePage.errAvatarTooLarge'))
         return
       }
-      setAvatarDataUrl(dataUrl)
+      // Upload to server storage → get public URL.
+      const r = await fetch('/api/owner-avatar-upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ dataUrl }),
+      })
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; publicUrl?: string }
+      if (!r.ok || !j.ok || typeof j.publicUrl !== 'string' || !j.publicUrl.trim()) {
+        setErr(t('owner.profilePage.errAvatarUpload'))
+        return
+      }
+      setAvatarUrl(j.publicUrl.trim())
     } catch {
       setErr(t('owner.profilePage.errAvatarRead'))
     }
@@ -103,35 +116,42 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
         setErr(t('owner.profilePage.errNewPasswordRules'))
         return
       }
-      if (profile.passwordHash) {
-        if (o1 !== o2) {
-          setErr(t('owner.profilePage.errOldMismatch'))
-          return
-        }
-        const oldHash = await sha256Hex(o1)
-        if (oldHash !== profile.passwordHash) {
-          setErr(t('owner.profilePage.errOldWrong'))
-          return
-        }
+      if (o1 !== o2) {
+        setErr(t('owner.profilePage.errOldMismatch'))
+        return
       }
     }
 
     setBusy(true)
     try {
-      let nextHash = profile.passwordHash
-      if (nw) {
-        nextHash = await sha256Hex(nw)
-      }
-
       const next: OwnerProfile = {
         ...profile,
         displayName: nameTrim,
         phone: phone.trim() || undefined,
-        avatarDataUrl: avatarDataUrl ?? null,
-        passwordHash: nextHash,
+        avatarUrl: avatarUrl ?? null,
+        avatarDataUrl: null,
       }
-      saveOwnerProfile(next)
-      queueCloudOwnerProfilePush(next)
+      const ok = await pushOwnerProfileToCloud(next)
+      if (!ok) {
+        setErr(t('owner.profilePage.errSave'))
+        return
+      }
+
+      if (nw) {
+        const oldHash = await sha256Hex(o1)
+        const newHash = await sha256Hex(nw)
+        const pw = await changeOwnerPasswordOnCloud({ oldPasswordHash: oldHash, newPasswordHash: newHash })
+        if (!pw.ok) {
+          setErr(
+            pw.reason === 'bad_password'
+              ? t('owner.profilePage.errOldWrong')
+              : pw.reason === 'old_password_required'
+                ? t('owner.profilePage.errOldRequired')
+                : t('owner.profilePage.errSave'),
+          )
+          return
+        }
+      }
       refreshProfile()
       setOldPw1('')
       setOldPw2('')
@@ -188,8 +208,8 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
         <div className="ra-fld">
           <span>{t('owner.profilePage.avatarLabel')}</span>
           <div className="ra-owner-profile__avatar-row">
-            {avatarDataUrl ? (
-              <img src={avatarDataUrl} alt="" className="ra-owner-profile__avatar-preview" width={72} height={72} />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="ra-owner-profile__avatar-preview" width={72} height={72} />
             ) : (
               <div className="ra-owner-profile__avatar-ph" aria-hidden />
             )}
@@ -197,12 +217,12 @@ export function OwnerEditProfilePage({ profile, refreshProfile }: Props) {
               <button type="button" className="ra-btn ra-btn--ghost" onClick={onPickFile}>
                 {t('owner.profilePage.pickImage')}
               </button>
-              {avatarDataUrl ? (
+              {avatarUrl ? (
                 <button
                   type="button"
                   className="ra-btn ra-btn--ghost"
                   onClick={() => {
-                    setAvatarDataUrl(null)
+                    setAvatarUrl(null)
                   }}
                 >
                   {t('owner.profilePage.removeImage')}

@@ -1,19 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  addPrivateNote,
-  addReminderNote,
   appendThreadMessage,
   createOwnerThread,
-  getThread,
   lastMessagePreview,
-  listPrivateNotesForOwner,
-  listRemindersForOwner,
   listThreadsForOwner,
+  getThreadMessagesOwner,
   markThreadSeenByOwner,
+  pullThreadsForOwner,
   type OwnerAdminThread,
 } from '../../utils/ownerAdminMessages'
 import { formatDateDots } from '../../utils/ownerSession'
+import { listOwnerNotifications, markOwnerNotificationRead, pullOwnerNotificationsToLocal } from '../../utils/ownerNotifications'
 
 type Props = {
   ownerUserId: string
@@ -28,57 +26,99 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
   const [remindAt, setRemindAt] = useState('')
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
+  const [openMessages, setOpenMessages] = useState<{ threadId: string; msgs: { id: string; from: 'owner' | 'admin'; body: string; at: string }[] } | null>(null)
+  const inflight = useRef(false)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
     const on = () => bump()
     window.addEventListener('rentadria-owner-messages-updated', on)
+    const onNotif = () => bump()
+    window.addEventListener('rentadria-owner-notifications-updated', onNotif)
     const onStorage = (e: StorageEvent) => {
-      if (
-        e.key === 'rentadria_owner_admin_threads_v1' ||
-        e.key === 'rentadria_owner_private_notes_v1' ||
-        e.key === 'rentadria_owner_reminder_notes_v1'
-      )
-        bump()
+      if (e.key === 'rentadria_owner_notifications_v1') bump()
     }
     window.addEventListener('storage', onStorage)
     return () => {
       window.removeEventListener('rentadria-owner-messages-updated', on)
+      window.removeEventListener('rentadria-owner-notifications-updated', onNotif)
       window.removeEventListener('storage', onStorage)
     }
   }, [bump])
 
-  const threads = useMemo(
-    () => listThreadsForOwner(ownerUserId),
-    [ownerUserId, epoch],
-  )
-  const privateNotes = useMemo(
-    () => listPrivateNotesForOwner(ownerUserId),
-    [ownerUserId, epoch],
-  )
-  const reminders = useMemo(
-    () => listRemindersForOwner(ownerUserId),
-    [ownerUserId, epoch],
-  )
+  useEffect(() => {
+    void pullOwnerNotificationsToLocal(80)
+    void pullThreadsForOwner().then(() => bump())
+  }, [ownerUserId, bump])
 
-  const openThread = useMemo(
-    () => (openThreadId ? getThread(openThreadId) : undefined),
-    [openThreadId, epoch],
-  )
+  const pullAll = useCallback(async () => {
+    if (inflight.current) return
+    inflight.current = true
+    try {
+      await Promise.all([
+        pullOwnerNotificationsToLocal(80),
+        pullThreadsForOwner(),
+      ])
+      if (openThreadId) {
+        const msgs = await getThreadMessagesOwner(openThreadId)
+        if (msgs) setOpenMessages({ threadId: openThreadId, msgs })
+      }
+      bump()
+    } finally {
+      inflight.current = false
+    }
+  }, [openThreadId, bump])
 
-  const onSavePrivate = () => {
-    if (!addPrivateNote(ownerUserId, body)) return
-    setBody('')
-    bump()
-  }
+  useEffect(() => {
+    let timer: number | null = null
+
+    const schedule = () => {
+      if (timer != null) return
+      timer = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') return
+        void pullAll()
+      }, 30_000)
+    }
+
+    const stop = () => {
+      if (timer != null) window.clearInterval(timer)
+      timer = null
+    }
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        schedule()
+        void pullAll()
+      } else {
+        stop()
+      }
+    }
+
+    onVis()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      stop()
+    }
+  }, [pullAll])
+
+  const notifications = useMemo(() => {
+    void epoch
+    return listOwnerNotifications()
+  }, [epoch])
+
+  const threads = useMemo(() => {
+    void epoch
+    return listThreadsForOwner()
+  }, [epoch])
 
   const onSendAdmin = () => {
     if (!subject.trim() || !body.trim()) {
       window.alert(t('owner.messagesPage.errNeedSubjectBody'))
       return
     }
-    createOwnerThread({
+    void createOwnerThread({
       ownerUserId,
       ownerEmail,
       subject,
@@ -89,28 +129,16 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
     bump()
   }
 
-  const onRemind = () => {
-    if (!remindAt.trim()) return
-    const iso = new Date(remindAt)
-    if (Number.isNaN(iso.getTime())) return
-    if (!addReminderNote(ownerUserId, body, iso.toISOString())) return
-    setBody('')
-    setRemindAt('')
-    bump()
-  }
-
   const onSendReply = () => {
     if (!openThreadId) return
-    const next = appendThreadMessage({
+    void appendThreadMessage({
       threadId: openThreadId,
       from: 'owner',
       body: replyDraft,
       actingOwnerUserId: ownerUserId,
     })
-    if (next) {
-      setReplyDraft('')
-      bump()
-    }
+    setReplyDraft('')
+    void pullAll()
   }
 
   return (
@@ -156,14 +184,8 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
           />
         </label>
         <div className="ra-owner-messages__actions">
-          <button type="button" className="ra-btn ra-btn--ghost" onClick={onSavePrivate}>
-            {t('owner.messagesPage.btnSave')}
-          </button>
           <button type="button" className="ra-btn ra-btn--primary" onClick={onSendAdmin}>
             {t('owner.messagesPage.btnAdmin')}
-          </button>
-          <button type="button" className="ra-btn ra-btn--warn" onClick={onRemind}>
-            {t('owner.messagesPage.btnRemind')}
           </button>
         </div>
       </div>
@@ -193,7 +215,12 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
                         onClick={() => {
                           setOpenThreadId(th.id)
                           setReplyDraft('')
-                          markThreadSeenByOwner(th.id)
+                          void markThreadSeenByOwner(th.id)
+                          void (async () => {
+                            const msgs = await getThreadMessagesOwner(th.id)
+                            if (msgs) setOpenMessages({ threadId: th.id, msgs })
+                            bump()
+                          })()
                         }}
                       >
                         {th.subject}
@@ -201,7 +228,7 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
                     </td>
                     <td>{formatDateDots(th.updatedAt)}</td>
                     <td className="ra-owner-table__msg">{lastMessagePreview(th)}</td>
-                    <td>{th.messages.length}</td>
+                    <td>{th.messageCount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -210,59 +237,50 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
         )}
       </div>
 
-      <div className="ra-owner-messages__lists">
-        <div className="ra-owner-messages__list-col">
-          <h4 className="ra-owner-messages__list-h">{t('owner.messagesPage.secPrivate')}</h4>
-          <hr className="ra-owner-messages__rule" />
-          {privateNotes.length === 0 ? (
-            <p className="ra-owner-messages__dash">—</p>
-          ) : (
-            <ul className="ra-owner-messages__note-list">
-              {privateNotes.map((n) => (
-                <li key={n.id}>
-                  <time dateTime={n.at}>{formatDateDots(n.at)}</time>
-                  <p>{n.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="ra-owner-messages__list-col">
-          <h4 className="ra-owner-messages__list-h">{t('owner.messagesPage.secAdminTitles')}</h4>
-          <hr className="ra-owner-messages__rule" />
-          {threads.length === 0 ? (
-            <p className="ra-owner-messages__dash">—</p>
-          ) : (
-            <ul className="ra-owner-messages__compact-list">
-              {threads.map((th) => (
-                <li key={th.id}>
-                  <button type="button" className="ra-owner-messages__mini-link" onClick={() => setOpenThreadId(th.id)}>
-                    {th.subject}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="ra-owner-messages__list-col">
-          <h4 className="ra-owner-messages__list-h">{t('owner.messagesPage.secReminders')}</h4>
-          <hr className="ra-owner-messages__rule" />
-          {reminders.length === 0 ? (
-            <p className="ra-owner-messages__dash">—</p>
-          ) : (
-            <ul className="ra-owner-messages__note-list">
-              {reminders.map((n) => (
-                <li key={n.id}>
-                  <time dateTime={n.remindAt}>{formatDateDots(n.remindAt)}</time>
-                  <p>{n.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <div className="ra-owner-messages__threads">
+        <h3 className="ra-owner-messages__subh">{t('owner.messagesPage.notificationsTitle')}</h3>
+        {notifications.length === 0 ? (
+          <p className="ra-owner-messages__empty">{t('owner.messagesPage.notificationsEmpty')}</p>
+        ) : (
+          <div className="ra-owner-table-wrap">
+            <table className="ra-owner-table ra-owner-table--msg-threads">
+              <thead>
+                <tr>
+                  <th>{t('owner.messagesPage.colUpdated')}</th>
+                  <th>{t('owner.messagesPage.notificationsColTitle')}</th>
+                  <th>{t('owner.messagesPage.notificationsColStatus')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {notifications.map((n) => (
+                  <tr key={n.id}>
+                    <td>{formatDateDots(n.createdAt)}</td>
+                    <td className="ra-owner-table__msg">
+                      <strong>{n.title || '—'}</strong>
+                      <div>{n.body}</div>
+                    </td>
+                    <td>
+                      {n.readAt ? (
+                        <span className="ra-admin-owners__badge">{t('owner.messagesPage.notificationsRead')}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ra-btn ra-btn--sm ra-btn--ghost"
+                          onClick={() => void markOwnerNotificationRead(n.id)}
+                        >
+                          {t('owner.messagesPage.notificationsMarkRead')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {openThread && (
+      {openThreadId && openMessages && openMessages.threadId === openThreadId && (
         <div
           className="ra-modal"
           role="dialog"
@@ -280,10 +298,10 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
               ×
             </button>
             <h3 id="owner-thread-modal-h" className="ra-owner-messages__modal-title">
-              {openThread.subject}
+              {threads.find((t) => t.id === openThreadId)?.subject ?? '—'}
             </h3>
             <div className="ra-owner-messages__history">
-              {openThread.messages.map((m) => (
+              {openMessages.msgs.map((m) => (
                 <div
                   key={m.id}
                   className={`ra-owner-messages__bubble ${m.from === 'admin' ? 'is-admin' : 'is-owner'}`}

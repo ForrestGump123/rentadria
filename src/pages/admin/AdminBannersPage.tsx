@@ -4,14 +4,18 @@ import { useTranslation } from 'react-i18next'
 import { SEARCH_COUNTRY_IDS, SEARCH_COUNTRY_ISO } from '../../data/cities/countryIds'
 import type { SearchCountryId } from '../../data/cities/countryIds'
 import {
-  addBanner,
-  deleteBanner,
   listBanners,
-  updateBanner,
+  replaceBannersFromServer,
   type AdminBannerItem,
   type BannerSlot,
 } from '../../utils/adminBannersStore'
 import { isAdminSession } from '../../utils/adminSession'
+import {
+  deleteAdminBannerOnServer,
+  fetchAdminBanners,
+  uploadAdminBannerImageViaApi,
+  upsertAdminBannerOnServer,
+} from '../../lib/adminBannersApi'
 
 const SLOTS: { id: BannerSlot; icon: string }[] = [
   { id: 'slideshow', icon: '🖼' },
@@ -24,10 +28,15 @@ export function AdminBannersPage() {
   const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
   const [epoch, setEpoch] = useState(0)
+  const [loadError, setLoadError] = useState(false)
   const [slot, setSlot] = useState<BannerSlot>('slideshow')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  /** Nova slika (data URL) prije uploada u Storage. */
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+  /** Postojeći javni URL sa servera (preview bez ponovnog učitavanja cijelog fajla). */
+  const [persistedImageUrl, setPersistedImageUrl] = useState<string | null>(null)
+  const [imageRemoved, setImageRemoved] = useState(false)
   const [countries, setCountries] = useState<Set<SearchCountryId>>(() => new Set(SEARCH_COUNTRY_IDS))
   /** yyyy-mm-dd; prazno = bez ograničenja */
   const [startDate, setStartDate] = useState('')
@@ -41,6 +50,24 @@ export function AdminBannersPage() {
     const on = () => bump()
     window.addEventListener('rentadria-admin-banners-updated', on)
     return () => window.removeEventListener('rentadria-admin-banners-updated', on)
+  }, [bump])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const rows = await fetchAdminBanners()
+      if (cancelled) return
+      if (!rows) {
+        setLoadError(true)
+        return
+      }
+      setLoadError(false)
+      replaceBannersFromServer(rows)
+      bump()
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [bump])
 
   const rows = useMemo(() => {
@@ -88,7 +115,11 @@ export function AdminBannersPage() {
     const f = e.target.files?.[0]
     if (!f || !f.type.startsWith('image/')) return
     const r = new FileReader()
-    r.onload = () => setImageDataUrl(typeof r.result === 'string' ? r.result : null)
+    r.onload = () => {
+      setImageRemoved(false)
+      setPersistedImageUrl(null)
+      setImageDataUrl(typeof r.result === 'string' ? r.result : null)
+    }
     r.readAsDataURL(f)
   }
 
@@ -97,7 +128,11 @@ export function AdminBannersPage() {
     const f = e.dataTransfer.files?.[0]
     if (!f || !f.type.startsWith('image/')) return
     const r = new FileReader()
-    r.onload = () => setImageDataUrl(typeof r.result === 'string' ? r.result : null)
+    r.onload = () => {
+      setImageRemoved(false)
+      setPersistedImageUrl(null)
+      setImageDataUrl(typeof r.result === 'string' ? r.result : null)
+    }
     r.readAsDataURL(f)
   }
 
@@ -106,6 +141,8 @@ export function AdminBannersPage() {
     setTitle('')
     setDescription('')
     setImageDataUrl(null)
+    setPersistedImageUrl(null)
+    setImageRemoved(false)
     setStartDate('')
     setEndDate('')
     setCountries(new Set(SEARCH_COUNTRY_IDS))
@@ -116,7 +153,10 @@ export function AdminBannersPage() {
     setEditingId(b.id)
     setTitle(b.title)
     setDescription(b.description)
-    setImageDataUrl(b.imageDataUrl)
+    const url = b.imageUrl?.trim() || null
+    setPersistedImageUrl(url)
+    setImageDataUrl(url ? null : b.imageDataUrl ?? null)
+    setImageRemoved(false)
     setStartDate(b.startDate?.trim() ?? '')
     setEndDate(b.endDate?.trim() ?? '')
     if (b.countries.length === 0) setCountries(new Set(SEARCH_COUNTRY_IDS))
@@ -137,22 +177,40 @@ export function AdminBannersPage() {
         return
       }
     }
-    const payload = {
-      slot,
-      title: title.trim() || t('admin.banners.untitled'),
-      description: description.trim(),
-      imageDataUrl,
-      countries: countries.size === SEARCH_COUNTRY_IDS.length ? [] : [...countries],
-      startDate: sd || undefined,
-      endDate: ed || undefined,
-    }
-    if (editingId) {
-      updateBanner(editingId, payload)
-    } else {
-      addBanner(payload)
-    }
-    resetForm()
-    bump()
+    void (async () => {
+      let imageUrl: string | undefined
+      if (imageDataUrl?.startsWith('data:image/')) {
+        const uploaded = await uploadAdminBannerImageViaApi(imageDataUrl)
+        if (!uploaded) {
+          window.alert(t('admin.banners.uploadFail'))
+          return
+        }
+        imageUrl = uploaded
+      }
+
+      const r = await upsertAdminBannerOnServer({
+        id: editingId,
+        slot,
+        title: title.trim() || t('admin.banners.untitled'),
+        description: description.trim(),
+        countries: countries.size === SEARCH_COUNTRY_IDS.length ? [] : [...countries],
+        startDate: sd || undefined,
+        endDate: ed || undefined,
+        removeImage: imageRemoved,
+        ...(imageUrl ? { imageUrl } : {}),
+      })
+      if (!r.ok) {
+        const detail =
+          r.error === 'image_too_large' ? t('admin.banners.imageTooLarge') : (r.error ?? 'save_failed')
+        window.alert(t('admin.owners.serverSaveError', { detail }))
+        return
+      }
+      const next = await fetchAdminBanners()
+      if (next) replaceBannersFromServer(next)
+      else window.alert(t('admin.banners.refetchFail'))
+      resetForm()
+      bump()
+    })()
   }
 
   useEffect(() => {
@@ -165,6 +223,8 @@ export function AdminBannersPage() {
 
   if (!isAdminSession()) return null
 
+  const previewSrc = imageRemoved ? null : imageDataUrl || persistedImageUrl
+
   return (
     <div className="ra-admin-banners">
       <Helmet>
@@ -174,7 +234,8 @@ export function AdminBannersPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.nav.banners')}</h1>
         <p className="ra-admin-subtitle">{t('admin.banners.lead')}</p>
-        <p className="ra-admin-banners__note">{t('admin.banners.localNote')}</p>
+        <p className="ra-admin-banners__note">{t('admin.banners.serverNote')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.banners.loadError')}</p> : null}
       </header>
 
       <div className="ra-admin-banners__tabs" role="tablist" aria-label={t('admin.nav.banners')}>
@@ -275,10 +336,19 @@ export function AdminBannersPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={onDropFile}
             >
-              {imageDataUrl ? (
+              {previewSrc ? (
                 <div className="ra-admin-banners__preview-wrap">
-                  <img src={imageDataUrl} alt="" className="ra-admin-banners__preview-img" />
-                  <button type="button" className="ra-btn ra-btn--ghost ra-admin-banners__clear-img" onClick={() => { setImageDataUrl(null); if (fileRef.current) fileRef.current.value = '' }}>
+                  <img src={previewSrc} alt="" className="ra-admin-banners__preview-img" />
+                  <button
+                    type="button"
+                    className="ra-btn ra-btn--ghost ra-admin-banners__clear-img"
+                    onClick={() => {
+                      setImageDataUrl(null)
+                      setPersistedImageUrl(null)
+                      setImageRemoved(true)
+                      if (fileRef.current) fileRef.current.value = ''
+                    }}
+                  >
                     × {t('admin.banners.removeImage')}
                   </button>
                 </div>
@@ -361,8 +431,8 @@ export function AdminBannersPage() {
                       </td>
                       <td>
                         <div className="ra-admin-banners__thumb">
-                          {b.imageDataUrl ? (
-                            <img src={b.imageDataUrl} alt="" />
+                          {b.imageUrl || b.imageDataUrl ? (
+                            <img src={b.imageUrl || b.imageDataUrl || ''} alt="" />
                           ) : (
                             <span className="ra-admin-banners__thumb-ph">—</span>
                           )}
@@ -393,13 +463,21 @@ export function AdminBannersPage() {
                           className="ra-btn ra-btn--sm ra-admin-banners__del"
                           onClick={() => {
                             if (editingId === b.id) resetForm()
-                            deleteBanner(b.id)
-                            setSelectedIds((prev) => {
-                              const n = new Set(prev)
-                              n.delete(b.id)
-                              return n
-                            })
-                            bump()
+                            void (async () => {
+                              const ok = await deleteAdminBannerOnServer(b.id)
+                              if (!ok) {
+                                window.alert(t('admin.owners.serverSaveError', { detail: 'delete_failed' }))
+                                return
+                              }
+                              const next = await fetchAdminBanners()
+                              if (next) replaceBannersFromServer(next)
+                              setSelectedIds((prev) => {
+                                const n = new Set(prev)
+                                n.delete(b.id)
+                                return n
+                              })
+                              bump()
+                            })()
                           }}
                         >
                           {t('admin.banners.delete')}

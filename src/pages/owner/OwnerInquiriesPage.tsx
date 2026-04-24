@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { listingPublicNumberFromId } from '../../data/listingDetail'
 import { formatDateDots } from '../../utils/ownerSession'
 import { telHrefFromPhone } from '../../utils/phoneLink'
-import {
-  clearInquiryUnread,
-  getInquiriesForOwner,
-  type VisitorInquiryRecord,
-} from '../../utils/visitorInquiries'
+import type { VisitorInquiryRecord } from '../../utils/visitorInquiries'
 
 type Props = {
   ownerUserId: string
@@ -18,28 +14,71 @@ export function OwnerInquiriesPage({ ownerUserId }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
+  const [rowsServer, setRowsServer] = useState<VisitorInquiryRecord[]>([])
+  const inflight = useRef(false)
 
   useEffect(() => {
-    clearInquiryUnread(ownerUserId)
+    void fetch('/api/owner-inquiries', { method: 'POST', credentials: 'include' }).catch(() => {})
   }, [ownerUserId])
 
-  useEffect(() => {
-    const bump = () => setEpoch((e) => e + 1)
-    window.addEventListener('rentadria-inquiries-updated', bump)
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'rentadria_inquiries_by_owner_v1') bump()
-    }
-    window.addEventListener('storage', onStorage)
-    return () => {
-      window.removeEventListener('rentadria-inquiries-updated', bump)
-      window.removeEventListener('storage', onStorage)
+  const pull = useCallback(async () => {
+    if (inflight.current) return
+    inflight.current = true
+    try {
+      const r = await fetch('/api/owner-inquiries', { credentials: 'include' })
+      const j = (await r.json()) as { ok?: boolean; inquiries?: VisitorInquiryRecord[] }
+      if (r.ok && j.ok && Array.isArray(j.inquiries)) {
+        setRowsServer(j.inquiries)
+        setEpoch((e) => e + 1)
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      inflight.current = false
     }
   }, [])
 
-  const rows = useMemo(
-    () => getInquiriesForOwner(ownerUserId),
-    [ownerUserId, epoch],
-  )
+  useEffect(() => {
+    void pull()
+  }, [ownerUserId, pull])
+
+  useEffect(() => {
+    let timer: number | null = null
+
+    const schedule = () => {
+      if (timer != null) return
+      timer = window.setInterval(() => {
+        if (document.visibilityState !== 'visible') return
+        void pull()
+      }, 30_000)
+    }
+
+    const stop = () => {
+      if (timer != null) window.clearInterval(timer)
+      timer = null
+    }
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        schedule()
+        void pull()
+      } else {
+        stop()
+      }
+    }
+
+    onVis()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      stop()
+    }
+  }, [pull])
+
+  const rows = useMemo(() => {
+    void epoch
+    return rowsServer
+  }, [epoch, rowsServer])
 
   return (
     <section className="ra-owner-inquiries" aria-labelledby="owner-inquiries-h">

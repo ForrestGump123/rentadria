@@ -5,13 +5,7 @@ import { Logo } from '../Logo'
 import { sendOwnerInquiryEmail } from '../../lib/sendOwnerInquiryEmail'
 import { openMailto } from '../../utils/mailto'
 import { getInquiryNotificationPrefs } from '../../utils/inquiryNotificationPrefs'
-import {
-  appendVisitorInquiry,
-  bumpInquiryUnread,
-  dispatchInquiriesUpdated,
-  getListingInquiryNotifyEmail,
-  resolveOwnerUserIdForListing,
-} from '../../utils/visitorInquiries'
+import { getListingInquiryNotifyEmail, resolveOwnerUserIdForListing } from '../../utils/visitorInquiries'
 
 type InquiryModalProps = {
   open: boolean
@@ -51,25 +45,14 @@ export function InquiryModal({ open, onClose, listingTitle, listingId }: Inquiry
 
     void (async () => {
       if (ownerUserId) {
-        appendVisitorInquiry(ownerUserId, {
-          listingId,
-          listingTitle,
-          first,
-          last,
-          email,
-          phone,
-          period,
-          guests,
-          message,
-        })
-        const prefs = getInquiryNotificationPrefs(ownerUserId)
+        const prefs = getInquiryNotificationPrefs()
         const shouldEmail = prefs.receiveEnabled && prefs.emailChannel
-        const shouldDashboard = prefs.receiveEnabled && prefs.dashboardChannel
 
         if (shouldEmail) {
           try {
             await sendOwnerInquiryEmail({
               toEmail: notifyTo,
+              ownerUserId,
               listingTitle,
               listingId,
               guestFirst: first,
@@ -84,13 +67,9 @@ export function InquiryModal({ open, onClose, listingTitle, listingId }: Inquiry
             openMailto(notifyTo, `Inquiry: ${listingTitle}`, body)
           }
         }
-        if (shouldDashboard) {
-          bumpInquiryUnread(ownerUserId)
-        }
       } else {
         openMailto(notifyTo, `Inquiry: ${listingTitle}`, body)
       }
-      dispatchInquiriesUpdated()
       onClose()
     })()
   }

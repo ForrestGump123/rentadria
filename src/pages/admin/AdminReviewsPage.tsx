@@ -3,23 +3,13 @@ import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
+import { fetchAdminOwnerListingsIndex } from '../../lib/adminListingsApi'
 import { listingTitle as listingTitleT } from '../../utils/listingTitle'
 import { isAdminSession } from '../../utils/adminSession'
-import {
-  formatDateDots,
-  getAllOwnerListingRows,
-  getOwnerProfileByUserId,
-} from '../../utils/ownerSession'
+import { formatDateDots } from '../../utils/ownerSession'
 import { clearAdminReviewUnread, saveReviewsForListing, type StoredReview } from '../../utils/reviewStorage'
 
 type ReviewBucket = { listingId: string; reviews: StoredReview[] }
-
-function ownerLabelForListing(listingId: string): string {
-  const row = getAllOwnerListingRows().find((x) => x.publicListingId === listingId)
-  if (!row) return '—'
-  const p = getOwnerProfileByUserId(row.userId)
-  return p?.email ?? row.userId
-}
 
 export function AdminReviewsPage() {
   const { t } = useTranslation()
@@ -27,6 +17,7 @@ export function AdminReviewsPage() {
   const [epoch, setEpoch] = useState(0)
   const [openListingId, setOpenListingId] = useState<string | null>(null)
   const [items, setItems] = useState<ReviewBucket[]>([])
+  const [ownerByListingId, setOwnerByListingId] = useState<Record<string, string>>({})
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
@@ -52,6 +43,24 @@ export function AdminReviewsPage() {
   useEffect(() => {
     void reload()
   }, [reload, epoch])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const rows = await fetchAdminOwnerListingsIndex()
+      if (cancelled || !rows) return
+      const map: Record<string, string> = {}
+      for (const r of rows) {
+        const pid = r.publicListingId
+        if (!pid) continue
+        map[pid] = r.ownerUserId
+      }
+      setOwnerByListingId(map)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [epoch])
 
   useEffect(() => {
     const on = () => bump()
@@ -149,7 +158,7 @@ export function AdminReviewsPage() {
                         </button>
                         <div className="ra-admin-listings__hint">{lid}</div>
                       </td>
-                      <td>{ownerLabelForListing(lid)}</td>
+                      <td>{ownerByListingId[lid] ?? '—'}</td>
                       <td>{reviews.length}</td>
                       <td className="ra-admin-listings__actions">
                         <button

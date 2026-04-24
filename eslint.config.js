@@ -15,6 +15,12 @@ export default defineConfig([
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    rules: {
+      // This project intentionally uses effects to sync derived UI state
+      // (e.g. reading storage or reacting to route changes).
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+    },
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

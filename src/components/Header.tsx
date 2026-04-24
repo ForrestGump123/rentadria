@@ -89,10 +89,13 @@ export function Header({
 
   useEffect(() => {
     if (!registrationIntent) return
-    setModalPlan(registrationIntent.plan)
-    setAuthMode('register')
-    setAuthOpen(true)
-    onConsumedRegistrationIntent?.()
+    const tid = setTimeout(() => {
+      setModalPlan(registrationIntent.plan)
+      setAuthMode('register')
+      setAuthOpen(true)
+      onConsumedRegistrationIntent?.()
+    }, 0)
+    return () => clearTimeout(tid)
   }, [registrationIntent, onConsumedRegistrationIntent])
 
   useEffect(() => {
@@ -129,7 +132,8 @@ export function Header({
   }, [])
 
   useEffect(() => {
-    setMoreMenuOpen(false)
+    const tid = setTimeout(() => setMoreMenuOpen(false), 0)
+    return () => clearTimeout(tid)
   }, [location.pathname, location.search])
 
   const closeAuth = () => {

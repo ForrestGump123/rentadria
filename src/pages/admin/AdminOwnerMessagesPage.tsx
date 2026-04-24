@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   appendThreadMessage,
-  getThread,
   lastMessagePreview,
   listAllThreadsForAdmin,
   markThreadSeenByAdmin,
+  getThreadMessagesAdmin,
+  pullThreadsForAdmin,
   type OwnerAdminThread,
 } from '../../utils/ownerAdminMessages'
 import { formatDateDots } from '../../utils/ownerSession'
@@ -15,40 +16,44 @@ export function AdminOwnerMessagesPage() {
   const [epoch, setEpoch] = useState(0)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
+  const [openMessages, setOpenMessages] = useState<{ threadId: string; msgs: { id: string; from: 'owner' | 'admin'; body: string; at: string }[] } | null>(null)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     const on = () => bump()
     window.addEventListener('rentadria-owner-messages-updated', on)
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'rentadria_owner_admin_threads_v1') bump()
-    }
-    window.addEventListener('storage', onStorage)
     return () => {
       window.removeEventListener('rentadria-owner-messages-updated', on)
-      window.removeEventListener('storage', onStorage)
     }
   }, [bump])
 
-  const threads = useMemo(() => listAllThreadsForAdmin(), [epoch])
+  const threads = useMemo(() => {
+    void epoch
+    return listAllThreadsForAdmin()
+  }, [epoch])
 
-  const openThread = useMemo(
-    () => (openThreadId ? getThread(openThreadId) : undefined),
-    [openThreadId, epoch],
-  )
+  useEffect(() => {
+    void pullThreadsForAdmin().then((ok) => {
+      setLoadError(!ok)
+      bump()
+    })
+  }, [bump])
 
   const onSendReply = () => {
     if (!openThreadId) return
-    const next = appendThreadMessage({
+    void appendThreadMessage({
       threadId: openThreadId,
       from: 'admin',
       body: replyDraft,
     })
-    if (next) {
-      setReplyDraft('')
+    setReplyDraft('')
+    void (async () => {
+      const msgs = await getThreadMessagesAdmin(openThreadId)
+      if (msgs) setOpenMessages({ threadId: openThreadId, msgs })
       bump()
-    }
+    })()
   }
 
   return (
@@ -58,6 +63,7 @@ export function AdminOwnerMessagesPage() {
           {t('admin.ownerMessages.title')}
         </h2>
         <p className="ra-admin-owner-msg__lead">{t('admin.ownerMessages.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.ownerMessages.loadError')}</p> : null}
       </header>
 
       {threads.length === 0 ? (
@@ -84,7 +90,12 @@ export function AdminOwnerMessagesPage() {
                       onClick={() => {
                         setOpenThreadId(th.id)
                         setReplyDraft('')
-                        markThreadSeenByAdmin(th.id)
+                        void markThreadSeenByAdmin(th.id)
+                        void (async () => {
+                          const msgs = await getThreadMessagesAdmin(th.id)
+                          if (msgs) setOpenMessages({ threadId: th.id, msgs })
+                          bump()
+                        })()
                       }}
                     >
                       {th.subject}
@@ -93,7 +104,7 @@ export function AdminOwnerMessagesPage() {
                   <td>{th.ownerEmail ?? th.ownerUserId}</td>
                   <td>{formatDateDots(th.updatedAt)}</td>
                   <td className="ra-owner-table__msg">{lastMessagePreview(th)}</td>
-                  <td>{th.messages.length}</td>
+                  <td>{th.messageCount}</td>
                 </tr>
               ))}
             </tbody>
@@ -101,7 +112,7 @@ export function AdminOwnerMessagesPage() {
         </div>
       )}
 
-      {openThread && (
+      {openThreadId && openMessages && openMessages.threadId === openThreadId && (
         <div
           className="ra-modal"
           role="dialog"
@@ -119,13 +130,13 @@ export function AdminOwnerMessagesPage() {
               ×
             </button>
             <h3 id="admin-thread-modal-h" className="ra-admin-owner-msg__modal-title">
-              {openThread.subject}
+              {threads.find((t) => t.id === openThreadId)?.subject ?? '—'}
             </h3>
             <p className="ra-admin-owner-msg__owner-line">
-              {t('admin.ownerMessages.threadOwner')}: {openThread.ownerEmail ?? openThread.ownerUserId}
+              {t('admin.ownerMessages.threadOwner')}: {threads.find((t) => t.id === openThreadId)?.ownerEmail ?? '—'}
             </p>
             <div className="ra-owner-messages__history">
-              {openThread.messages.map((m) => (
+              {openMessages.msgs.map((m) => (
                 <div
                   key={m.id}
                   className={`ra-owner-messages__bubble ${m.from === 'admin' ? 'is-admin' : 'is-owner'}`}

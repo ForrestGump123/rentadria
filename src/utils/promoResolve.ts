@@ -1,14 +1,11 @@
 import type { AdminPromoCodeRecord } from './adminPromoCodes'
-import { getAdminPromoByCode } from './adminPromoCodes'
 
 /**
- * Lokalni admin storage, zatim (na Vercelu) `RENTADRIA_ADMIN_PROMO_JSON` na serveru.
+ * Rješavanje koda na serveru (Supabase + opcioni `RENTADRIA_ADMIN_PROMO_JSON` fallback u API-ju).
  */
 export async function resolvePromoRecord(normalized: string): Promise<AdminPromoCodeRecord | undefined> {
   const code = normalized.trim().toUpperCase().replace(/\s+/g, '')
   if (!code) return undefined
-  const local = getAdminPromoByCode(code)
-  if (local) return local
   try {
     const r = await fetch('/api/promo-resolve', {
       method: 'POST',

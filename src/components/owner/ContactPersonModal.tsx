@@ -43,16 +43,19 @@ export function ContactPersonModal({ open, initial, showCategoryCheckboxes, onCl
 
   useEffect(() => {
     if (!open) return
-    setD(
-      initial
-        ? {
-            ...empty,
-            ...initial,
-            categories:
-              initial.categories?.length > 0 ? [...initial.categories] : ['accommodation', 'car', 'motorcycle'],
-          }
-        : { ...empty },
-    )
+    const tid = setTimeout(() => {
+      setD(
+        initial
+          ? {
+              ...empty,
+              ...initial,
+              categories:
+                initial.categories?.length > 0 ? [...initial.categories] : ['accommodation', 'car', 'motorcycle'],
+            }
+          : { ...empty },
+      )
+    }, 0)
+    return () => clearTimeout(tid)
   }, [open, initial])
 
   const toggleCat = (c: ListingCategory) => {

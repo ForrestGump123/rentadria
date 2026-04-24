@@ -1,7 +1,5 @@
 import type { ListingCategory } from '../types'
 
-const KEY = 'rentadria_admin_owner_meta'
-
 export type AdminOwnerMeta = {
   xmlImportUrl?: string
   /** Naše polje → XML tag / putanja (opciono). */
@@ -13,6 +11,8 @@ export type AdminOwnerMeta = {
   extraCatCar: boolean
   extraCatMoto: boolean
   blocked: boolean
+  /** Ako je true, admin plan/istek prepisuje promo global Pro. */
+  planOverride?: boolean
 }
 
 function defaults(): AdminOwnerMeta {
@@ -24,50 +24,64 @@ function defaults(): AdminOwnerMeta {
     extraCatCar: false,
     extraCatMoto: false,
     blocked: false,
+    planOverride: false,
   }
 }
 
-export function loadAdminOwnerMetaMap(): Record<string, AdminOwnerMeta> {
+let inMemory: Record<string, AdminOwnerMeta> = {}
+
+function normalize(v: Partial<AdminOwnerMeta> | null | undefined): AdminOwnerMeta {
+  const d = defaults()
+  const x = v ?? {}
+  return {
+    ...d,
+    ...x,
+    extraListingsAcc: Math.max(0, Number(x.extraListingsAcc) || 0),
+    extraListingsCar: Math.max(0, Number(x.extraListingsCar) || 0),
+    extraListingsMoto: Math.max(0, Number(x.extraListingsMoto) || 0),
+    extraCatAcc: Boolean(x.extraCatAcc),
+    extraCatCar: Boolean(x.extraCatCar),
+    extraCatMoto: Boolean(x.extraCatMoto),
+    blocked: Boolean(x.blocked),
+    planOverride: Boolean(x.planOverride),
+  }
+}
+
+export function replaceAdminOwnerMetaMap(next: Record<string, Partial<AdminOwnerMeta>>): void {
+  const out: Record<string, AdminOwnerMeta> = {}
+  for (const [uid, v] of Object.entries(next ?? {})) {
+    out[uid] = normalize(v)
+  }
+  inMemory = out
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return {}
-    const j = JSON.parse(raw) as Record<string, Partial<AdminOwnerMeta>>
-    const out: Record<string, AdminOwnerMeta> = {}
-    for (const [uid, v] of Object.entries(j)) {
-      const d = defaults()
-      out[uid] = {
-        ...d,
-        ...v,
-        extraListingsAcc: Math.max(0, Number(v.extraListingsAcc) || 0),
-        extraListingsCar: Math.max(0, Number(v.extraListingsCar) || 0),
-        extraListingsMoto: Math.max(0, Number(v.extraListingsMoto) || 0),
-      }
-    }
-    return out
+    window.dispatchEvent(new Event('rentadria-admin-owner-meta-updated'))
   } catch {
-    return {}
+    /* ignore */
   }
-}
-
-function saveAdminOwnerMetaMap(m: Record<string, AdminOwnerMeta>) {
-  localStorage.setItem(KEY, JSON.stringify(m))
 }
 
 export function getAdminOwnerMeta(userId: string): AdminOwnerMeta {
-  const m = loadAdminOwnerMetaMap()
-  return m[userId] ?? defaults()
+  return inMemory[userId] ?? defaults()
 }
 
 export function setAdminOwnerMeta(userId: string, meta: AdminOwnerMeta): void {
-  const m = loadAdminOwnerMetaMap()
-  m[userId] = { ...defaults(), ...meta }
-  saveAdminOwnerMetaMap(m)
+  inMemory = { ...inMemory, [userId]: normalize(meta) }
+  try {
+    window.dispatchEvent(new Event('rentadria-admin-owner-meta-updated'))
+  } catch {
+    /* ignore */
+  }
 }
 
 export function clearAdminOwnerMeta(userId: string): void {
-  const m = loadAdminOwnerMetaMap()
-  delete m[userId]
-  saveAdminOwnerMetaMap(m)
+  const next = { ...inMemory }
+  delete next[userId]
+  inMemory = next
+  try {
+    window.dispatchEvent(new Event('rentadria-admin-owner-meta-updated'))
+  } catch {
+    /* ignore */
+  }
 }
 
 export function extraListingsForCategory(meta: AdminOwnerMeta, category: ListingCategory): number {

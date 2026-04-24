@@ -7,7 +7,7 @@ import {
   resolvePricingLocale,
 } from '../../content/pricingPlans'
 import { isAdminSession } from '../../utils/adminSession'
-import { savePricingOverride } from '../../utils/pricingOverrides'
+import { pullPricingOverride, resetPricingOverride, savePricingOverride, type PricingLocale } from '../../utils/pricingOverrides'
 import { PLAN_IDS, type SubscriptionPlan } from '../../types/plan'
 
 function newEmptyPlan(): PricingPlanDef {
@@ -25,8 +25,10 @@ export function AdminPricingPage() {
   const { t, i18n } = useTranslation()
   const loc = resolvePricingLocale(i18n.language)
   const [epoch, setEpoch] = useState(0)
+  const [loadError, setLoadError] = useState(false)
   const [editing, setEditing] = useState<PricingPlanDef | null>(null)
   const [isNew, setIsNew] = useState(false)
+  const adminOk = isAdminSession()
 
   const plans = useMemo(() => {
     void epoch
@@ -42,8 +44,14 @@ export function AdminPricingPage() {
   }, [bump])
 
   const persistPlans = (next: PricingPlanDef[]) => {
-    savePricingOverride(loc, next)
-    bump()
+    void (async () => {
+      const ok = await savePricingOverride(loc as PricingLocale, next)
+      if (!ok) {
+        window.alert(t('admin.owners.serverSaveError', { detail: 'save_failed' }))
+        return
+      }
+      bump()
+    })()
   }
 
   const onSaveEdit = () => {
@@ -77,16 +85,26 @@ export function AdminPricingPage() {
 
   const onReset = () => {
     if (!window.confirm(t('admin.pricingAdmin.confirmReset'))) return
-    const b = JSON.parse(localStorage.getItem('rentadria_pricing_plans_override_v1') ?? '{}') as Record<
-      string,
-      unknown
-    >
-    delete b[loc]
-    localStorage.setItem('rentadria_pricing_plans_override_v1', JSON.stringify(b))
-    bump()
+    void (async () => {
+      const ok = await resetPricingOverride(loc as PricingLocale)
+      if (!ok) {
+        window.alert(t('admin.owners.serverSaveError', { detail: 'reset_failed' }))
+        return
+      }
+      bump()
+    })()
   }
 
-  if (!isAdminSession()) return null
+  // Ensure server overrides are loaded for this locale (if present).
+  useEffect(() => {
+    if (!adminOk) return
+    void pullPricingOverride(loc as PricingLocale).then((r) => {
+      setLoadError(r === null)
+      bump()
+    })
+  }, [adminOk, loc, bump])
+
+  if (!adminOk) return null
 
   return (
     <div className="ra-admin-pricing-admin">
@@ -97,6 +115,7 @@ export function AdminPricingPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.pricingAdmin.title')}</h1>
         <p className="ra-admin-subtitle">{t('admin.pricingAdmin.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.pricingAdmin.loadError')}</p> : null}
         <div className="ra-admin-pricing-admin__toolbar">
           <button type="button" className="ra-btn ra-btn--primary" onClick={onAddPlan}>
             {t('admin.pricingAdmin.addPlan')}

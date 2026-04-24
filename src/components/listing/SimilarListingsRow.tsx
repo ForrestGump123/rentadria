@@ -22,7 +22,18 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
   const dragActiveRef = useRef(false)
   const touchRef = useRef(false)
   const halfWidthRef = useRef(0)
-  const [autoEnabled, setAutoEnabled] = useState(true)
+  const [autoEnabled] = useState(() => {
+    // Auto-scroll is fun on desktop, but on Android Chrome it can be a stability/perf killer.
+    // Disable on touch/coarse pointers and when user requests reduced motion.
+    try {
+      if (typeof window === 'undefined' || !window.matchMedia) return true
+      const coarse = window.matchMedia('(pointer: coarse)').matches
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      return !(coarse || reduce)
+    } catch {
+      return true
+    }
+  })
   const dragState = useRef({
     active: false,
     startX: 0,
@@ -52,16 +63,9 @@ export function SimilarListingsRow({ items }: SimilarListingsRowProps) {
   }, [updateHalfWidth])
 
   useEffect(() => {
-    // Auto-scroll is fun on desktop, but on Android Chrome it can be a stability/perf killer.
-    // Disable on touch/coarse pointers and when user requests reduced motion.
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    const coarse = window.matchMedia('(pointer: coarse)').matches
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    setAutoEnabled(!(coarse || reduce))
-  }, [])
-
-  useEffect(() => {
-    scrollRef.current && (scrollRef.current.scrollLeft = 0)
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollLeft = 0
   }, [items])
 
   useEffect(() => {

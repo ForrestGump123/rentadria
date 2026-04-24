@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { getSupabaseAdmin } from './supabaseAdmin.js'
-import { addOneYearIsoFrom, registrationGetsFreePro } from './registrationPromo.js'
+import { PROMO_FREE_PRO_END_MS, registrationGetsFreePro } from './registrationPromo.js'
 import type { VerifyTokenPayload } from './verifyJwt.js'
 
 const TABLE = 'rentadria_registered_owners'
@@ -20,7 +20,9 @@ export type RegisteredOwnerApiRow = {
   subscriptionActive: boolean
   basicCategoryChoice?: 'accommodation' | 'car' | 'motorcycle' | null
   avatarDataUrl?: string | null
+  avatarUrl?: string | null
   promoCategoryScope?: ('accommodation' | 'car' | 'motorcycle')[] | null
+  promoCode?: string | null
 }
 
 export type RegisteredOwnerListItem = RegisteredOwnerApiRow & {
@@ -69,6 +71,8 @@ function parsePromoCategoryScope(
   return out.length > 0 ? out : null
 }
 
+const PROMO_GLOBAL_PRO_UNTIL_ISO = new Date(PROMO_FREE_PRO_END_MS).toISOString()
+
 export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | null {
   const userId = typeof r.user_id === 'string' ? r.user_id.trim().toLowerCase() : ''
   if (!userId) return null
@@ -90,11 +94,16 @@ export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | nu
   const subscriptionActive = Boolean(r.subscription_active)
   const validUntil = parseValidUntil(r)
   const bc = parseBasicCat(r)
-  const av = r.avatar_data_url
-  const avatarDataUrl =
-    typeof av === 'string' && av.startsWith('data:image/') ? av : null
+  const avLegacy = r.avatar_data_url
+  const avatarDataUrl = typeof avLegacy === 'string' && avLegacy.startsWith('data:image/') ? avLegacy : null
+  const avUrlRaw = r.avatar_url
+  const avatarUrl = typeof avUrlRaw === 'string' && /^https?:\/\//i.test(avUrlRaw.trim()) ? avUrlRaw.trim() : null
   const promoCategoryScope = parsePromoCategoryScope(r)
-  return {
+  const promoCode =
+    typeof r.promo_code === 'string' && r.promo_code.trim()
+      ? r.promo_code.trim().toUpperCase()
+      : null
+  const base: RegisteredOwnerApiRow = {
     userId,
     email: userId,
     displayName,
@@ -107,8 +116,11 @@ export function rowToApi(r: Record<string, unknown>): RegisteredOwnerApiRow | nu
     subscriptionActive,
     basicCategoryChoice: bc,
     avatarDataUrl,
+    avatarUrl,
     promoCategoryScope,
+    promoCode,
   }
+  return base
 }
 
 function rowToListItem(r: Record<string, unknown>): RegisteredOwnerListItem | null {
@@ -170,7 +182,7 @@ export async function upsertRegisteredOwnerFromVerify(
     if (registrationGetsFreePro(regDate)) {
       plan = 'pro'
       subscriptionActive = true
-      validUntil = addOneYearIsoFrom(regDate)
+      validUntil = PROMO_GLOBAL_PRO_UNTIL_ISO
     } else {
       plan = null
       subscriptionActive = false
@@ -181,7 +193,7 @@ export async function upsertRegisteredOwnerFromVerify(
     if (registrationGetsFreePro(regDate)) {
       plan = 'pro'
       subscriptionActive = true
-      validUntil = addOneYearIsoFrom(regDate)
+      validUntil = PROMO_GLOBAL_PRO_UNTIL_ISO
     } else {
       plan = null
       subscriptionActive = false
@@ -247,10 +259,12 @@ export type OwnerSelfProfilePatch = {
   displayName?: string
   phone?: string | null
   countryId?: string | null
-  avatarDataUrl?: string | null
+  avatarUrl?: string | null
   basicCategoryChoice?: 'accommodation' | 'car' | 'motorcycle' | null
   promoCategoryScope?: ('accommodation' | 'car' | 'motorcycle')[] | null
-  passwordHash?: string | null
+  // Password change: server verifies current hash before update.
+  oldPasswordHash?: string | null
+  newPasswordHash?: string | null
 }
 
 const MAX_AVATAR_DATA_URL_CHARS = 1_400_000
@@ -285,14 +299,14 @@ export async function patchRegisteredOwnerSelf(
     const c = patch.countryId?.trim().toLowerCase() ?? ''
     updates.country_id = c && ALLOWED.has(c) ? c : null
   }
-  if (patch.avatarDataUrl !== undefined) {
-    if (patch.avatarDataUrl === null || patch.avatarDataUrl === '') updates.avatar_data_url = null
-    else if (
-      typeof patch.avatarDataUrl === 'string' &&
-      patch.avatarDataUrl.startsWith('data:image/') &&
-      patch.avatarDataUrl.length <= MAX_AVATAR_DATA_URL_CHARS
-    ) {
-      updates.avatar_data_url = patch.avatarDataUrl
+  if (patch.avatarUrl !== undefined) {
+    const v = patch.avatarUrl
+    if (v === null || v === '') {
+      updates.avatar_url = null
+      updates.avatar_data_url = null
+    } else if (typeof v === 'string' && /^https?:\/\//i.test(v.trim())) {
+      updates.avatar_url = v.trim()
+      updates.avatar_data_url = null
     } else {
       return { ok: false, error: 'invalid_avatar' }
     }
@@ -306,9 +320,25 @@ export async function patchRegisteredOwnerSelf(
         ? null
         : patch.promoCategoryScope
   }
-  if (patch.passwordHash !== undefined && patch.passwordHash !== null) {
-    const h = patch.passwordHash.trim().toLowerCase()
-    if (/^[a-f0-9]{64}$/.test(h)) updates.password_hash = h
+  if (patch.newPasswordHash !== undefined) {
+    const next = (patch.newPasswordHash ?? '').trim().toLowerCase()
+    if (!/^[a-f0-9]{64}$/.test(next)) return { ok: false, error: 'invalid_new_password' }
+
+    const storedRaw =
+      existing && typeof existing === 'object'
+        ? (existing as Record<string, unknown>).password_hash
+        : null
+    const stored = typeof storedRaw === 'string' ? storedRaw.trim().toLowerCase() : ''
+    const hasStored = /^[a-f0-9]{64}$/.test(stored)
+    if (hasStored) {
+      const old = (patch.oldPasswordHash ?? '').trim().toLowerCase()
+      if (!/^[a-f0-9]{64}$/.test(old)) return { ok: false, error: 'old_password_required' }
+      // Constant-time compare.
+      const a = Buffer.from(old, 'utf8')
+      const b = Buffer.from(stored, 'utf8')
+      if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, error: 'bad_password' }
+    }
+    updates.password_hash = next
   }
 
   if (Object.keys(updates).length <= 1) {
@@ -336,6 +366,29 @@ export async function updateRegisteredOwnerByAdmin(input: AdminOwnerUpdateInput)
   const { data: existing } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
   const ex = existing as Record<string, unknown> | null
 
+  const prevPlan = parsePlan(ex ?? {})
+  const prevActive = Boolean(ex?.subscription_active)
+  const prevVu = parseValidUntil(ex ?? {})
+  const planChanged = prevPlan !== input.plan
+  const activeChanged = prevActive !== Boolean(input.subscriptionActive)
+  const vuChanged = (prevVu || null) !== (input.validUntil?.trim() || null)
+
+  const exAdminMeta =
+    ex?.admin_meta && typeof ex.admin_meta === 'object' && !Array.isArray(ex.admin_meta)
+      ? (ex.admin_meta as Record<string, unknown>)
+      : {}
+  const prevOverride = exAdminMeta.plan_override === true
+  const explicitOverrideRaw = (input.adminMeta as Record<string, unknown> | null | undefined)?.plan_override
+  const explicitOverride = typeof explicitOverrideRaw === 'boolean' ? explicitOverrideRaw : undefined
+  const nextOverride = explicitOverride ?? (prevOverride || planChanged || activeChanged || vuChanged)
+
+  const mergedAdminMeta: Record<string, unknown> = {
+    ...exAdminMeta,
+    ...input.adminMeta,
+  }
+  if (nextOverride) mergedAdminMeta.plan_override = true
+  else delete mergedAdminMeta.plan_override
+
   const passwordHashMerged =
     input.passwordHash && /^[a-f0-9]{64}$/i.test(input.passwordHash)
       ? input.passwordHash.toLowerCase()
@@ -354,7 +407,7 @@ export async function updateRegisteredOwnerByAdmin(input: AdminOwnerUpdateInput)
     subscription_active: input.subscriptionActive,
     valid_until: input.validUntil?.trim() || null,
     basic_category_choice: input.basicCategoryChoice,
-    admin_meta: input.adminMeta,
+    admin_meta: mergedAdminMeta,
     updated_at: new Date().toISOString(),
   }
 
@@ -394,6 +447,7 @@ export async function listRegisteredOwnersForAdmin(): Promise<RegisteredOwnerLis
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
+    .is('deleted_at', null)
     .order('registered_at', { ascending: false })
 
   if (error) {

@@ -23,7 +23,7 @@ import { listingPublicNumberFromId } from '../data/listingDetail'
 import i18n from '../i18n'
 import { formatDateDayMonthYear } from './dateDisplay'
 import { getContactAvatarGlobal } from './contactAvatarGlobal'
-import { getOwnerAvatarPublic } from './ownerAvatarPublic'
+import { getOwnerAvatarPublic, pullOwnerAvatarPublic } from './ownerAvatarPublic'
 import { resolveOwnerUserIdForListing } from './visitorInquiries'
 
 const PLACEHOLDER_IMG = 'https://picsum.photos/seed/rentadria-draft-placeholder/800/520'
@@ -522,6 +522,7 @@ function listingOwnerAvatarUrl(publicListingId?: string): string | undefined {
   const uid = resolveOwnerUserIdForDraftDetail(publicListingId)
   if (!uid) return undefined
   const url = getOwnerAvatarPublic(uid)
+  if (!url) void pullOwnerAvatarPublic(uid)
   return url ?? undefined
 }
 
@@ -561,6 +562,7 @@ function draftContactToOwner(
   if (row.type === 'owner') {
     if (allListings && ctx.ownerUserId) {
       const prof = getOwnerAvatarPublic(ctx.ownerUserId)
+      if (!prof) void pullOwnerAvatarPublic(ctx.ownerUserId)
       if (prof) return { ...base, avatarUrl: prof }
     }
     const av = rowAv || ownerAvatarUrl?.trim() || ''

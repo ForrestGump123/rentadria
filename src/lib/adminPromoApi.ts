@@ -1,4 +1,20 @@
 import type { AdminPromoCodeRecord } from '../utils/adminPromoCodes'
+import type { OwnerProfile } from '../utils/ownerSession'
+import { fetchAdminOwnersProfiles } from './adminOwnersApi'
+
+export type AdminOwnerPickRow = Pick<OwnerProfile, 'userId' | 'displayName' | 'email' | 'phone'>
+
+/** Članovi za ograničenje koda (Supabase, isti endpoint kao Vlasnici). */
+export async function fetchAdminOwnerPickList(): Promise<AdminOwnerPickRow[] | null> {
+  const owners = await fetchAdminOwnersProfiles()
+  if (owners === null) return null
+  return owners.map((o) => ({
+    userId: o.userId,
+    displayName: o.displayName,
+    email: o.email,
+    phone: o.phone,
+  }))
+}
 
 /** Lista kodova iz Supabase (admin cookie). */
 export async function fetchAdminPromoList(): Promise<AdminPromoCodeRecord[] | null> {

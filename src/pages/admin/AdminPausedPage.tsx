@@ -1,16 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
-import { isAdminSession } from '../../utils/adminSession'
-import { isOwnerDeleted } from '../../utils/deletedOwnersStore'
 import {
-  addOneYearIso,
-  adminDeleteOwnerUser,
-  getAllOwnerProfilesForAdmin,
-  type OwnerProfile,
-  saveOwnerProfileForAdmin,
-} from '../../utils/ownerSession'
+  fetchAdminOwnersProfiles,
+  postAdminOwnerUpdate,
+  sendAdminOwnerEmail,
+  softDeleteOwnerOnServer,
+} from '../../lib/adminOwnersApi'
+import { isAdminSession } from '../../utils/adminSession'
+import { addOneYearIso, formatDateDots, type OwnerProfile } from '../../utils/ownerSession'
 import {
   type CountryFilterState,
   filterByCountrySet,
@@ -31,44 +30,84 @@ function daysSinceExpiry(p: OwnerProfile): number {
 
 export function AdminPausedPage() {
   const { t } = useTranslation()
-  const [epoch, setEpoch] = useState(0)
+  const [profiles, setProfiles] = useState<OwnerProfile[]>([])
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState<CountryFilterState>('all')
   const [contactModal, setContactModal] = useState<OwnerProfile | null>(null)
 
-  const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const reload = useCallback(async () => {
+    const list = await fetchAdminOwnersProfiles()
+    if (list === null) {
+      setLoadError(true)
+      setProfiles([])
+      return
+    }
+    setLoadError(false)
+    setProfiles(list)
+  }, [])
+
+  useEffect(() => {
+    void reload()
+  }, [reload])
 
   const rows = useMemo(() => {
-    void epoch
-    const list = getAllOwnerProfilesForAdmin().filter(
-      (p) => !isOwnerDeleted(p.userId) && p.plan != null && isSubscriptionDateExpired(p),
-    )
+    const list = profiles.filter((p) => p.plan != null && isSubscriptionDateExpired(p))
     return filterByCountrySet(list, country)
       .filter((p) => matchesOwnerSearch(p, search))
       .map((p) => ({ p, days: daysSinceExpiry(p) }))
       .sort((a, b) => b.days - a.days)
-  }, [epoch, country, search])
+  }, [profiles, country, search])
 
   const onRenew = (p: OwnerProfile) => {
     if (!window.confirm(t('admin.paused.confirmRenew'))) return
-    saveOwnerProfileForAdmin(p.userId, {
-      ...p,
-      validUntil: addOneYearIso(),
-      subscriptionActive: true,
-    })
-    bump()
+    void (async () => {
+      const res = await postAdminOwnerUpdate({
+        userId: p.userId,
+        displayName: p.displayName,
+        email: p.email,
+        phone: p.phone ?? null,
+        countryId: p.countryId ?? null,
+        passwordHash: p.passwordHash ?? null,
+        plan: p.plan,
+        subscriptionActive: true,
+        validUntil: addOneYearIso(),
+        basicCategoryChoice: p.basicCategoryChoice ?? null,
+        adminMeta: {},
+      })
+      if (!res.ok) window.alert(t('admin.paused.renewError', { detail: res.error ?? '?' }))
+      await reload()
+    })()
   }
 
   const onDelete = (p: OwnerProfile) => {
-    if (!window.confirm(t('admin.paused.confirmDelete'))) return
-    adminDeleteOwnerUser(p.userId)
-    bump()
+    if (!window.confirm(t('admin.owners.confirmSoftDelete'))) return
+    void (async () => {
+      const res = await softDeleteOwnerOnServer(p.userId)
+      if (!res.ok) {
+        window.alert(t('admin.paused.deleteError', { detail: res.error ?? '?' }))
+        return
+      }
+      await reload()
+    })()
   }
 
   const onAutoContact = (p: OwnerProfile) => {
-    const subj = encodeURIComponent(t('admin.paused.mailSubject', { name: p.displayName }))
-    const body = encodeURIComponent(t('admin.paused.mailBody', { name: p.displayName }))
-    window.location.href = `mailto:${encodeURIComponent(p.email)}?subject=${subj}&body=${body}`
+    void (async () => {
+      const subject = t('admin.paused.mailSubject', { name: p.displayName })
+      const message = t('admin.paused.mailBody', {
+        name: p.displayName,
+        date: formatDateDots(p.validUntil),
+      })
+      const ok = await sendAdminOwnerEmail({
+        toEmail: p.email,
+        toName: p.displayName,
+        subject,
+        message,
+      })
+      if (ok) window.alert(t('admin.paused.emailSent'))
+      else window.alert(t('admin.paused.emailFail'))
+    })()
   }
 
   if (!isAdminSession()) return null
@@ -82,6 +121,7 @@ export function AdminPausedPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.nav.paused')}</h1>
         <p className="ra-admin-subtitle">{t('admin.paused.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.paused.loadError')}</p> : null}
       </header>
 
       <div className="ra-admin-toolbar ra-admin-expiring__toolbar">
@@ -141,9 +181,11 @@ export function AdminPausedPage() {
       </div>
 
       {contactModal && (
-        <div className="ra-modal" role="dialog" aria-modal onClick={() => setContactModal(null)}>
+        <div className="ra-modal" role="dialog" aria-modal aria-labelledby="paused-contact-h" onClick={() => setContactModal(null)}>
           <div className="ra-modal__panel ra-admin-owners__modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="ra-modal__title">{t('admin.expiring.contactTitle')}</h2>
+            <h2 id="paused-contact-h" className="ra-modal__title">
+              {t('admin.expiring.contactTitle')}
+            </h2>
             <p>
               <strong>{contactModal.displayName}</strong>
             </p>

@@ -74,9 +74,8 @@ export function HeroSlideshow({
   const current = safe.length ? safe[index % safe.length] : undefined
   const h = `hero.${category}` as const
 
-  useEffect(() => {
-    if (current) setHeroSrc(listingImageUrl(current.image))
-  }, [current])
+  const currentSrc = current ? listingImageUrl(current.image) : ''
+  const displayedSrc = heroSrc || currentSrc
 
   useEffect(() => {
     if (safe.length <= 1) return
@@ -87,7 +86,11 @@ export function HeroSlideshow({
   }, [safe.length, intervalMs])
 
   useEffect(() => {
-    setIndex(0)
+    const tid = setTimeout(() => {
+      setIndex(0)
+      setHeroSrc('')
+    }, 0)
+    return () => clearTimeout(tid)
   }, [slides, category])
 
   if (!current) {
@@ -130,7 +133,7 @@ export function HeroSlideshow({
       <div className="ra-hero__media">
         <div className="ra-hero__media-visual" aria-hidden>
           <img
-            src={heroSrc || listingImageUrl(current.image)}
+            src={displayedSrc}
             alt=""
             className="ra-hero__img"
             loading="eager"

@@ -1,15 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
+import { fetchAdminOwnersProfiles, sendAdminOwnerEmail, softDeleteOwnerOnServer } from '../../lib/adminOwnersApi'
 import { isAdminSession } from '../../utils/adminSession'
-import { isOwnerDeleted } from '../../utils/deletedOwnersStore'
-import {
-  adminDeleteOwnerUser,
-  formatDateDots,
-  getAllOwnerProfilesForAdmin,
-  type OwnerProfile,
-} from '../../utils/ownerSession'
+import { formatDateDots, type OwnerProfile } from '../../utils/ownerSession'
 import {
   type CountryFilterState,
   daysUntilSubscriptionEnd,
@@ -25,19 +20,30 @@ function planLabel(p: OwnerProfile, t: (k: string) => string): string {
 
 export function AdminExpiringPage() {
   const { t } = useTranslation()
-  const [epoch, setEpoch] = useState(0)
+  const [profiles, setProfiles] = useState<OwnerProfile[]>([])
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState<CountryFilterState>('all')
   const [contactModal, setContactModal] = useState<OwnerProfile | null>(null)
 
-  const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const reload = useCallback(async () => {
+    const list = await fetchAdminOwnersProfiles()
+    if (list === null) {
+      setLoadError(true)
+      setProfiles([])
+      return
+    }
+    setLoadError(false)
+    setProfiles(list)
+  }, [])
+
+  useEffect(() => {
+    void reload()
+  }, [reload])
 
   const base = useMemo(() => {
-    void epoch
-    return getAllOwnerProfilesForAdmin().filter(
-      (p) => !isOwnerDeleted(p.userId) && hasActiveSubscriptionWindow(p),
-    )
-  }, [epoch])
+    return profiles.filter((p) => hasActiveSubscriptionWindow(p))
+  }, [profiles])
 
   const filtered = useMemo(() => {
     return filterByCountrySet(base, country).filter((p) => matchesOwnerSearch(p, search))
@@ -58,17 +64,30 @@ export function AdminExpiringPage() {
   }, [filtered])
 
   const onDelete = (p: OwnerProfile) => {
-    if (!window.confirm(t('admin.expiring.confirmDelete'))) return
-    adminDeleteOwnerUser(p.userId)
-    bump()
+    if (!window.confirm(t('admin.owners.confirmSoftDelete'))) return
+    void (async () => {
+      const res = await softDeleteOwnerOnServer(p.userId)
+      if (!res.ok) {
+        window.alert(t('admin.expiring.deleteError', { detail: res.error ?? '?' }))
+        return
+      }
+      await reload()
+    })()
   }
 
   const onAutoContact = (p: OwnerProfile) => {
-    const subj = encodeURIComponent(t('admin.expiring.mailSubject', { name: p.displayName }))
-    const body = encodeURIComponent(
-      t('admin.expiring.mailBody', { name: p.displayName, date: formatDateDots(p.validUntil) }),
-    )
-    window.location.href = `mailto:${encodeURIComponent(p.email)}?subject=${subj}&body=${body}`
+    void (async () => {
+      const subject = t('admin.expiring.mailSubject', { name: p.displayName })
+      const message = t('admin.expiring.mailBody', { name: p.displayName, date: formatDateDots(p.validUntil) })
+      const ok = await sendAdminOwnerEmail({
+        toEmail: p.email,
+        toName: p.displayName,
+        subject,
+        message,
+      })
+      if (ok) window.alert(t('admin.expiring.emailSent'))
+      else window.alert(t('admin.expiring.emailFail'))
+    })()
   }
 
   const renderTable = (rows: { p: OwnerProfile; d: number }[], emptyKey: string) => (
@@ -131,6 +150,7 @@ export function AdminExpiringPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.nav.expiring')}</h1>
         <p className="ra-admin-subtitle">{t('admin.expiring.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.expiring.loadError')}</p> : null}
       </header>
 
       <div className="ra-admin-toolbar ra-admin-expiring__toolbar">

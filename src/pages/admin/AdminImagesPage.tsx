@@ -1,22 +1,45 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
-import { buildListingDetail } from '../../data/listingDetail'
+import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
 import { listingTitle as listingTitleT } from '../../utils/listingTitle'
 import { isAdminSession } from '../../utils/adminSession'
-import { getAllOwnerListingRows, getOwnerProfileByUserId } from '../../utils/ownerSession'
-import { listingImageUrl } from '../../utils/imageUrl'
-import { isImageBlocked, listGalleryForAdmin, setGalleryOrder, toggleImageBlocked } from '../../utils/listingGalleryAdmin'
-
-type Album = { listingId: string; ownerLabel: string; title: string }
+import {
+  applyListingGalleryOverlayFromPayload,
+  clearGalleryAdminOwnerContext,
+  isImageBlocked,
+  listGalleryForAdmin,
+  setGalleryAdminOwnerContext,
+  setGalleryOrder,
+  toggleImageBlocked,
+} from '../../utils/listingGalleryAdmin'
+import { fetchAdminListingGalleryAlbums, type AdminGalleryAlbumRow } from '../../lib/adminListingGalleryApi'
 
 export function AdminImagesPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [albums, setAlbums] = useState<AdminGalleryAlbumRow[]>([])
+  const [loadError, setLoadError] = useState(false)
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+
+  const reloadAlbums = useCallback(async () => {
+    const rows = await fetchAdminListingGalleryAlbums()
+    if (rows === null) {
+      setAlbums([])
+      setLoadError(true)
+      return
+    }
+    setLoadError(false)
+    setAlbums(rows)
+  }, [])
+
+  useEffect(() => {
+    void reloadAlbums()
+  }, [reloadAlbums])
 
   useEffect(() => {
     const on = () => bump()
@@ -24,38 +47,28 @@ export function AdminImagesPage() {
     return () => window.removeEventListener('rentadria-listing-gallery-admin-changed', on)
   }, [bump])
 
-  const albums: Album[] = useMemo(() => {
-    void epoch
-    const seen = new Set<string>()
-    const out: Album[] = []
-    for (const row of getAllOwnerListingRows()) {
-      const lid = row.publicListingId?.trim()
-      if (!lid || seen.has(lid)) continue
-      const listing = getListingById(lid)
-      if (!listing) continue
-      seen.add(lid)
-      const p = getOwnerProfileByUserId(row.userId)
-      out.push({
-        listingId: lid,
-        ownerLabel: p?.email ?? row.userId,
-        title: listingTitleT(listing, t),
-      })
-    }
-    return out.sort((a, b) => a.listingId.localeCompare(b.listingId))
-  }, [epoch, t])
+  const openAlbum = useMemo(() => albums.find((a) => a.listingId === openId) ?? null, [albums, openId])
 
-  const openAlbum = albums.find((a) => a.listingId === openId)
-  const detail = openAlbum ? getListingById(openAlbum.listingId) : undefined
-  const baseUrls = useMemo(() => {
-    if (!detail) return []
-    const d = buildListingDetail(detail)
-    return d.gallery.map(listingImageUrl)
-  }, [detail, epoch])
+  useEffect(() => {
+    if (!openId || !openAlbum) return
+    setGalleryAdminOwnerContext(openAlbum.listingId, openAlbum.ownerUserId)
+    applyListingGalleryOverlayFromPayload(openAlbum.listingId, openAlbum.blockedUrls, openAlbum.orderedUrls)
+    return () => {
+      clearGalleryAdminOwnerContext(openAlbum.listingId)
+    }
+  }, [openId, openAlbum])
+
+  const displayTitle = useMemo(() => {
+    if (!openAlbum) return ''
+    const listing = getListingById(openAlbum.listingId)
+    return listing ? listingTitleT(listing, t) : openAlbum.title || openAlbum.listingId
+  }, [openAlbum, t])
 
   const gallery = useMemo(() => {
-    if (!openId || !baseUrls.length) return []
-    return listGalleryForAdmin(openId, baseUrls)
-  }, [openId, baseUrls, epoch])
+    void epoch
+    if (!openId || !openAlbum?.baseUrls?.length) return []
+    return listGalleryForAdmin(openId, openAlbum.baseUrls)
+  }, [openId, openAlbum, epoch])
 
   const move = (from: number, to: number) => {
     if (!openId || to < 0 || to >= gallery.length) return
@@ -77,6 +90,7 @@ export function AdminImagesPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.images.heading')}</h1>
         <p className="ra-admin-subtitle">{t('admin.images.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.images.loadError')}</p> : null}
       </header>
 
       {!openId ? (
@@ -98,31 +112,50 @@ export function AdminImagesPage() {
                   </td>
                 </tr>
               ) : (
-                albums.map((a) => (
-                  <tr key={a.listingId}>
-                    <td className="ra-admin-listings__mono">{a.listingId}</td>
-                    <td>{a.ownerLabel}</td>
-                    <td>{a.title}</td>
-                    <td>
-                      <button type="button" className="ra-btn ra-btn--sm ra-btn--primary" onClick={() => setOpenId(a.listingId)}>
-                        {t('admin.images.openAlbum')}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                albums.map((a) => {
+                  const listing = getListingById(a.listingId)
+                  const title = listing ? listingTitleT(listing, t) : a.title || a.listingId
+                  return (
+                    <tr key={a.listingId}>
+                      <td className="ra-admin-listings__mono">{a.listingId}</td>
+                      <td>{a.ownerDisplayName}</td>
+                      <td>{title}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="ra-btn ra-btn--sm ra-btn--primary"
+                          onClick={() => setOpenId(a.listingId)}
+                        >
+                          {t('admin.images.openAlbum')}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="ra-admin-images-album">
-          <button type="button" className="ra-btn ra-btn--ghost" onClick={() => setOpenId(null)}>
-            ← {t('admin.images.back')}
-          </button>
+          <div className="ra-admin-listings__actions" style={{ marginBottom: 12 }}>
+            <button type="button" className="ra-btn ra-btn--ghost" onClick={() => setOpenId(null)}>
+              ← {t('admin.images.back')}
+            </button>
+            {openAlbum ? (
+              <button
+                type="button"
+                className="ra-btn ra-btn--sm ra-admin-listings__btn-view"
+                onClick={() => navigate(`/listing/${openAlbum.listingId}`)}
+              >
+                {t('admin.inquiries.viewListing')}
+              </button>
+            ) : null}
+          </div>
           <h2 className="ra-admin-images-album__h">
-            {openAlbum?.title} · {openAlbum?.listingId}
+            {displayTitle} · {openAlbum?.listingId}
           </h2>
-          <p className="ra-admin-listings__hint">{openAlbum?.ownerLabel}</p>
+          <p className="ra-admin-listings__hint">{openAlbum?.ownerDisplayName}</p>
           <div className="ra-admin-images-grid">
             {gallery.map((url, i) => (
               <figure key={url} className="ra-admin-images-grid__cell">
@@ -143,6 +176,7 @@ export function AdminImagesPage() {
                     type="button"
                     className="ra-btn ra-btn--sm"
                     onClick={() => {
+                      if (!openId) return
                       toggleImageBlocked(openId, url)
                       bump()
                     }}

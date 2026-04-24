@@ -3,8 +3,6 @@ import { allListings, getListingById } from '../data/listings'
 import type { SearchCountryId } from '../data/cities/countryIds'
 import { SEARCH_COUNTRY_IDS, SEARCH_COUNTRY_ISO } from '../data/cities/countryIds'
 import type { Listing, ListingCategory } from '../types'
-import type { OwnerListingRow } from './ownerSession'
-import { deleteOwnerListing, getAllOwnerListingRows } from './ownerSession'
 import type { AccommodationListingDraft } from './accommodationDraft'
 import { loadAccommodationDraftForPublicListingPage } from './accommodationDraft'
 import {
@@ -13,6 +11,7 @@ import {
   MOTO_DRAFT_LS_KEY,
 } from './accommodationDraft'
 import { listingTitle } from './listingTitle'
+import type { AdminOwnerListingIndexRow } from '../lib/adminListingsApi'
 
 export type AdminListingRow = {
   /** Stabilan redni broj u globalnom sortu (ne mijenja se pri filtriranju). */
@@ -29,7 +28,13 @@ export type AdminListingRow = {
   priceDisplay: string
   searchBlob: string
   isOwnerListing: boolean
-  ownerRow: OwnerListingRow | null
+  ownerRow: {
+    id: string
+    userId: string
+    category: ListingCategory
+    title: string
+    publicListingId?: string
+  } | null
   createdAt: string
 }
 
@@ -68,19 +73,6 @@ function countryKeyForListing(
 export function countryKeyForPublicListing(listing: Listing): SearchCountryId | null {
   const draft = loadAccommodationDraftForPublicListingPage(listing.id)
   return countryKeyForListing(listing.id, listing.location, draft)
-}
-
-function ownerNameFromDraft(d: AccommodationListingDraft | null, userId: string): string {
-  const o = d?.contacts?.find((c) => c.type === 'owner')
-  if (o) {
-    const n = `${o.firstName} ${o.lastName}`.trim()
-    if (n) return n
-  }
-  if (userId.includes('@')) {
-    const p = userId.split('@')[0]?.trim()
-    if (p) return p
-  }
-  return userId || '—'
 }
 
 function draftSearchBlob(d: AccommodationListingDraft | null): string {
@@ -131,57 +123,13 @@ function buildMockRow(l: Listing, t: TFunction): AdminListingRow {
   }
 }
 
-function buildOwnerRow(
-  l: Listing,
-  row: OwnerListingRow,
-  t: TFunction,
-): AdminListingRow {
-  const draft = loadAccommodationDraftForPublicListingPage(l.id)
-  const title = listingTitle(l, t)
-  const ownerDisplayName = ownerNameFromDraft(draft, row.userId)
-  const slug = ownerIdSlug(row.userId)
-  const ck = countryKeyForListing(l.id, l.location, draft)
-  const searchBlob = buildSearchBlob([
-    l.id,
-    title,
-    row.userId,
-    row.title,
-    ownerDisplayName,
-    slug,
-    draftSearchBlob(draft),
-    row.userId.includes('@') ? row.userId : '',
-  ])
-  return {
-    numericId: 0,
-    listingId: l.id,
-    listing: l,
-    title,
-    category: l.category,
-    ownerUserId: row.userId,
-    ownerDisplayName,
-    ownerIdSlug: slug,
-    countryKey: ck,
-    priceDisplay: l.priceLabel,
-    searchBlob,
-    isOwnerListing: true,
-    ownerRow: row,
-    createdAt: l.createdAt,
-  }
-}
-
 /** Svi oglasi (demo + vlasnici), sort po datumu, numerisano. */
 export function buildAdminListingIndex(t: TFunction): AdminListingRow[] {
   const map = new Map<string, AdminListingRow>()
   for (const l of allListings) {
     map.set(l.id, buildMockRow(l, t))
   }
-  for (const row of getAllOwnerListingRows()) {
-    const pid = row.publicListingId
-    if (!pid) continue
-    const l = getListingById(pid)
-    if (!l) continue
-    map.set(l.id, buildOwnerRow(l, row, t))
-  }
+  // Owner rows are now loaded from Supabase in admin pages (not from localStorage).
   const rows = [...map.values()].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )
@@ -205,7 +153,56 @@ export function removeOwnerListingDraftLs(rowId: string, category: ListingCatego
   }
 }
 
-export function adminDeleteOwnerListing(userId: string, row: OwnerListingRow): void {
-  deleteOwnerListing(userId, row.id)
-  removeOwnerListingDraftLs(row.id, row.category)
+export function buildAdminListingIndexFromCloud(t: TFunction, ownerRows: AdminOwnerListingIndexRow[]): AdminListingRow[] {
+  const map = new Map<string, AdminListingRow>()
+  for (const l of allListings) {
+    map.set(l.id, buildMockRow(l, t))
+  }
+  for (const r of ownerRows) {
+    const pid = r.publicListingId
+    if (!pid) continue
+    const l = getListingById(pid)
+    if (!l) continue
+    const slug = ownerIdSlug(r.ownerUserId)
+    const ck =
+      r.countryId && (SEARCH_COUNTRY_IDS as readonly string[]).includes(r.countryId)
+        ? (r.countryId as SearchCountryId)
+        : countryKeyFromLocation(l.location)
+    const title = listingTitle(l, t)
+    const searchBlob = buildSearchBlob([
+      l.id,
+      title,
+      r.ownerUserId,
+      slug,
+      r.ownerDisplayName,
+      r.title,
+    ])
+    map.set(l.id, {
+      numericId: 0,
+      listingId: l.id,
+      listing: l,
+      title,
+      category: l.category,
+      ownerUserId: r.ownerUserId,
+      ownerDisplayName: r.ownerDisplayName,
+      ownerIdSlug: slug,
+      countryKey: ck,
+      priceDisplay: l.priceLabel,
+      searchBlob,
+      isOwnerListing: true,
+      ownerRow: {
+        id: r.rowId,
+        userId: r.ownerUserId,
+        category: r.category,
+        title: r.title,
+        publicListingId: pid,
+      },
+      createdAt: r.createdAt,
+    })
+  }
+  const rows = [...map.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  rows.forEach((x, i) => {
+    x.numericId = i + 1
+  })
+  return rows
 }

@@ -7,22 +7,27 @@ import { SEARCH_COUNTRY_ISO } from '../../data/cities/countryIds'
 import {
   deleteAdminPromoOnServer,
   fetchAdminPromoList,
+  fetchAdminOwnerPickList,
   upsertAdminPromoToServer,
+  type AdminOwnerPickRow,
 } from '../../lib/adminPromoApi'
 import { isAdminSession } from '../../utils/adminSession'
 import {
-  addAdminPromoCode,
   ALL_PROMO_COUNTRIES,
-  deleteAdminPromoCode,
   generatePromoCodeString,
-  listAdminPromoCodes,
-  replaceAdminPromoCodes,
   type AdminPromoCodeRecord,
   type PromoBenefitType,
 } from '../../utils/adminPromoCodes'
-import { formatDateDots, getAllOwnerProfilesForAdmin } from '../../utils/ownerSession'
+import { formatDateDots } from '../../utils/ownerSession'
 
 const CATS: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
+
+function isoToDateInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
 
 function benefitLabel(r: AdminPromoCodeRecord, t: (k: string, o?: Record<string, string | number>) => string): string {
   switch (r.type) {
@@ -51,7 +56,12 @@ function statusKey(r: AdminPromoCodeRecord): 'active' | 'expired' | 'exhausted' 
 
 export function AdminPromoPage() {
   const { t } = useTranslation()
-  const [epoch, setEpoch] = useState(0)
+  const [rows, setRows] = useState<AdminPromoCodeRecord[]>([])
+  const [loadError, setLoadError] = useState(false)
+  const [ownerPickList, setOwnerPickList] = useState<AdminOwnerPickRow[]>([])
+  const [ownersLoadError, setOwnersLoadError] = useState(false)
+
+  const [editTarget, setEditTarget] = useState<AdminPromoCodeRecord | null>(null)
   const [type, setType] = useState<PromoBenefitType>('discount_percent')
   const [discountPercent, setDiscountPercent] = useState(20)
   const [validUntil, setValidUntil] = useState('')
@@ -66,45 +76,78 @@ export function AdminPromoPage() {
   const [manualCode, setManualCode] = useState('')
   const [showManual, setShowManual] = useState(false)
 
-  const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const resetFormDefaults = useCallback(() => {
+    setType('discount_percent')
+    setDiscountPercent(20)
+    setValidUntil('')
+    setMaxUses('1')
+    setNote('')
+    setCountries(new Set())
+    setMaxPerCountry('')
+    setCategories(new Set())
+    setOnlyMember(false)
+    setMemberUserId('')
+    setMemberSearch('')
+    setManualCode('')
+    setShowManual(false)
+  }, [])
 
   useEffect(() => {
-    const on = () => bump()
-    window.addEventListener('rentadria-admin-promo-codes-updated', on)
-    return () => window.removeEventListener('rentadria-admin-promo-codes-updated', on)
-  }, [bump])
+    void fetchAdminOwnerPickList().then((list) => {
+      if (list === null) setOwnersLoadError(true)
+      else {
+        setOwnersLoadError(false)
+        setOwnerPickList(list)
+      }
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const remote = await fetchAdminPromoList()
-      if (cancelled || remote === null) return
-      replaceAdminPromoCodes(remote)
-      bump()
+      if (cancelled) return
+      if (remote === null) {
+        setLoadError(true)
+        setRows([])
+        return
+      }
+      setLoadError(false)
+      setRows(remote)
     })()
     return () => {
       cancelled = true
     }
-  }, [bump])
+  }, [])
 
-  const rows = useMemo(() => {
-    void epoch
-    return listAdminPromoCodes()
-  }, [epoch])
-
-  const owners = useMemo(() => getAllOwnerProfilesForAdmin(), [epoch])
+  useEffect(() => {
+    if (!editTarget) return
+    setType(editTarget.type)
+    setDiscountPercent(editTarget.discountPercent ?? 20)
+    setValidUntil(isoToDateInput(editTarget.validUntil))
+    setMaxUses(editTarget.maxUses != null ? String(editTarget.maxUses) : '')
+    setNote(editTarget.note ?? '')
+    setCountries(new Set(editTarget.countries ?? []))
+    setMaxPerCountry(editTarget.maxUsesPerCountry != null ? String(editTarget.maxUsesPerCountry) : '')
+    setCategories(new Set(editTarget.categories ?? []))
+    const rid = editTarget.restrictedUserId
+    setOnlyMember(!!rid)
+    setMemberUserId(rid ?? '')
+    setShowManual(false)
+    setManualCode('')
+  }, [editTarget])
 
   const filteredOwners = useMemo(() => {
     const q = memberSearch.trim().toLowerCase()
-    if (!q) return owners
-    return owners.filter(
+    if (!q) return ownerPickList
+    return ownerPickList.filter(
       (o) =>
         o.displayName.toLowerCase().includes(q) ||
         o.email.toLowerCase().includes(q) ||
         (o.phone && o.phone.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
         (o.phone && o.phone.toLowerCase().includes(q)),
     )
-  }, [owners, memberSearch])
+  }, [ownerPickList, memberSearch])
 
   const toggleCountry = (c: SearchCountryId) => {
     setCountries((prev) => {
@@ -142,50 +185,98 @@ export function AdminPromoPage() {
     }
   }
 
-  const onGenerate = () => {
-    const code = generatePromoCodeString()
-    try {
-      const full = addAdminPromoCode(buildPayload(code))
-      bump()
-      setManualCode('')
-      void upsertAdminPromoToServer(full)
-    } catch {
-      window.alert(t('admin.promo.errDuplicate'))
+  const newId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `promo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+
+  const refresh = async () => {
+    const remote = await fetchAdminPromoList()
+    if (remote === null) {
+      setLoadError(true)
+      return
     }
+    setLoadError(false)
+    setRows(remote)
+  }
+
+  const onGenerate = () => {
+    if (editTarget) return
+    const code = generatePromoCodeString()
+    const full: AdminPromoCodeRecord = {
+      id: newId(),
+      createdAt: new Date().toISOString(),
+      uses: 0,
+      usesByCountry: {},
+      ...buildPayload(code),
+    }
+    void (async () => {
+      const ok = await upsertAdminPromoToServer(full)
+      if (!ok) window.alert(t('admin.promo.errDuplicate'))
+      resetFormDefaults()
+      await refresh()
+    })()
   }
 
   const onManual = () => {
+    if (editTarget) return
     const code = manualCode.trim().toUpperCase().replace(/\s+/g, '')
     if (!code) {
       window.alert(t('admin.promo.errManualEmpty'))
       return
     }
-    try {
-      const full = addAdminPromoCode(buildPayload(code))
-      bump()
-      setManualCode('')
-      setShowManual(false)
-      void upsertAdminPromoToServer(full)
-    } catch {
-      window.alert(t('admin.promo.errDuplicate'))
+    const full: AdminPromoCodeRecord = {
+      id: newId(),
+      createdAt: new Date().toISOString(),
+      uses: 0,
+      usesByCountry: {},
+      ...buildPayload(code),
     }
+    void (async () => {
+      const ok = await upsertAdminPromoToServer(full)
+      if (!ok) window.alert(t('admin.promo.errDuplicate'))
+      resetFormDefaults()
+      await refresh()
+    })()
+  }
+
+  const onSaveEdit = () => {
+    if (!editTarget) return
+    const full: AdminPromoCodeRecord = {
+      ...editTarget,
+      ...buildPayload(editTarget.code),
+      id: editTarget.id,
+      code: editTarget.code,
+      createdAt: editTarget.createdAt,
+      uses: editTarget.uses,
+      usesByCountry: { ...(editTarget.usesByCountry ?? {}) },
+    }
+    void (async () => {
+      const ok = await upsertAdminPromoToServer(full)
+      if (!ok) window.alert(t('admin.promo.errSave'))
+      else {
+        setEditTarget(null)
+        resetFormDefaults()
+        await refresh()
+      }
+    })()
+  }
+
+  const onCancelEdit = () => {
+    setEditTarget(null)
+    resetFormDefaults()
   }
 
   const onDelete = (id: string) => {
     if (!window.confirm(t('admin.promo.confirmDelete'))) return
-    deleteAdminPromoCode(id)
-    bump()
-    void deleteAdminPromoOnServer(id)
-  }
-
-  const onExportJsonEnv = async () => {
-    const json = JSON.stringify(listAdminPromoCodes(), null, 2)
-    try {
-      await navigator.clipboard.writeText(json)
-      window.alert(t('admin.promo.exportJsonDone'))
-    } catch {
-      window.prompt(t('admin.promo.exportJsonCopy'), json)
-    }
+    void (async () => {
+      await deleteAdminPromoOnServer(id)
+      if (editTarget?.id === id) {
+        setEditTarget(null)
+        resetFormDefaults()
+      }
+      await refresh()
+    })()
   }
 
   if (!isAdminSession()) return null
@@ -197,14 +288,17 @@ export function AdminPromoPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <header className="ra-admin-head">
-        <h1 className="ra-admin-title">{t('admin.pageTitle')}</h1>
-        <p className="ra-admin-subtitle">{t('admin.subtitle')}</p>
+        <h1 className="ra-admin-title">{t('admin.promo.pageTitle')}</h1>
+        <p className="ra-admin-subtitle">{t('admin.promo.subtitle')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.promo.loadError')}</p> : null}
       </header>
 
       <section className="ra-admin-promo__form" aria-labelledby="promo-form-h">
         <h2 id="promo-form-h" className="ra-admin-promo__h2">
-          {t('admin.promo.formTitle')}
+          {editTarget ? t('admin.promo.formTitleEdit') : t('admin.promo.formTitle')}
         </h2>
+        {editTarget ? <p className="ra-admin-listings__hint">{t('admin.promo.editingCode', { code: editTarget.code })}</p> : null}
+        {ownersLoadError ? <p className="ra-admin-listings__hint">{t('admin.promo.ownersLoadError')}</p> : null}
 
         <div className="ra-admin-promo__row ra-admin-promo__row--wrap">
           <label className="ra-fld">
@@ -308,19 +402,29 @@ export function AdminPromoPage() {
         </div>
 
         <div className="ra-admin-promo__actions">
-          <button type="button" className="ra-btn ra-btn--primary" onClick={onGenerate}>
-            {t('admin.promo.btnGenerate')}
-          </button>
-          <button type="button" className="ra-btn" onClick={() => setShowManual((v) => !v)}>
-            {showManual ? t('admin.promo.btnHideManual') : t('admin.promo.btnManual')}
-          </button>
-          <button type="button" className="ra-btn ra-btn--ghost" onClick={() => void onExportJsonEnv()}>
-            {t('admin.promo.exportJson')}
-          </button>
+          {editTarget ? (
+            <>
+              <button type="button" className="ra-btn ra-btn--primary" onClick={onSaveEdit}>
+                {t('admin.promo.btnSaveEdit')}
+              </button>
+              <button type="button" className="ra-btn ra-btn--ghost" onClick={onCancelEdit}>
+                {t('admin.promo.btnCancelEdit')}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="ra-btn ra-btn--primary" onClick={onGenerate}>
+                {t('admin.promo.btnGenerate')}
+              </button>
+              <button type="button" className="ra-btn" onClick={() => setShowManual((v) => !v)}>
+                {showManual ? t('admin.promo.btnHideManual') : t('admin.promo.btnManual')}
+              </button>
+            </>
+          )}
         </div>
-        <p className="ra-admin-promo__export-hint">{t('admin.promo.exportJsonHint')}</p>
+        <p className="ra-admin-promo__export-hint">{t('admin.promo.serverHint')}</p>
 
-        {showManual && (
+        {!editTarget && showManual && (
           <div className="ra-admin-promo__manual">
             <label className="ra-fld">
               <span>{t('admin.promo.manualCode')}</span>
@@ -394,6 +498,9 @@ export function AdminPromoPage() {
                       </span>
                     </td>
                     <td>
+                      <button type="button" className="ra-btn ra-btn--sm" onClick={() => setEditTarget(r)}>
+                        {t('admin.promo.edit')}
+                      </button>{' '}
                       <button type="button" className="ra-btn ra-btn--sm ra-admin-listings__btn-del" onClick={() => onDelete(r.id)}>
                         {t('admin.promo.delete')}
                       </button>

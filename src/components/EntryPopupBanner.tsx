@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SearchCountryId } from '../data/cities/countryIds'
 import { LISTING_IMAGE_FALLBACK } from '../data/listings'
@@ -16,23 +16,25 @@ type EntryPopupBannerProps = {
 
 export function EntryPopupBanner({ searchCountryId, epoch }: EntryPopupBannerProps) {
   const { t } = useTranslation()
-  const [banner, setBanner] = useState<AdminBannerItem | null>(null)
+  const [dismissedId, setDismissedId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const banner = useMemo((): AdminBannerItem | null => {
+    void epoch
     const list = listBannersForSlot('popup', searchCountryId)
     const pick = list.find((b) => {
+      if (dismissedId && b.id === dismissedId) return false
       try {
         return !sessionStorage.getItem(SEEN_PREFIX + b.id)
       } catch {
         return true
       }
     })
-    setBanner(pick ?? null)
-  }, [searchCountryId, epoch])
+    return pick ?? null
+  }, [searchCountryId, epoch, dismissedId])
 
   if (!banner) return null
 
-  const src = banner.imageDataUrl?.trim() ? banner.imageDataUrl : LISTING_IMAGE_FALLBACK
+  const src = banner.imageUrl?.trim() || banner.imageDataUrl?.trim() || LISTING_IMAGE_FALLBACK
 
   const close = () => {
     try {
@@ -40,7 +42,7 @@ export function EntryPopupBanner({ searchCountryId, epoch }: EntryPopupBannerPro
     } catch {
       /* ignore */
     }
-    setBanner(null)
+    setDismissedId(banner.id)
   }
 
   return (

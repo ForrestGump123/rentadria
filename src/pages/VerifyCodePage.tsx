@@ -101,7 +101,7 @@ export function VerifyCodePage() {
           const p = getOwnerProfile()
           const promo = (data.promoCode ?? pending?.promoCode)?.trim()
           if (p && promo) {
-            const r = await savePromoCode(p.userId, promo, p)
+            const r = await savePromoCode(promo, p)
             if (!r.ok && import.meta.env.DEV) {
               console.warn('[RentAdria] Promo kod pri registraciji nije primijenjen:', r.reason)
             }

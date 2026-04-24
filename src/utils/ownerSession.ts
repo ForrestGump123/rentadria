@@ -54,11 +54,15 @@ export type OwnerProfile = {
    * ograničenje koje kategorije se smiju koristiti (Pro benefit samo u tom opsegu).
    */
   promoCategoryScope?: ListingCategory[] | null
+  /** Aktivirani promo kod (server). */
+  promoCode?: string | null
   registeredAt: string
   validUntil: string
   /** Kontakt telefon vlasnika (Postavke profila). */
   phone?: string
-  /** Profilna slika / logo (data URL), prikaz pored kontakta na oglasu. */
+  /** Profilna slika / logo (public URL), prikaz pored kontakta na oglasu. */
+  avatarUrl?: string | null
+  /** Legacy: Profilna slika / logo (data URL) — to be phased out. */
   avatarDataUrl?: string | null
   /** SHA-256 hex trenutne lozinke; ako postoji, prijava zahtijeva ispravnu lozinku. */
   passwordHash?: string
@@ -425,13 +429,20 @@ function parseOwnerProfileRecord(p: Partial<OwnerProfile> & Record<string, unkno
   }
 
   const phone = typeof p.phone === 'string' ? p.phone : undefined
+  const avatarUrl =
+    p.avatarUrl === null
+      ? null
+      : typeof p.avatarUrl === 'string'
+        ? p.avatarUrl
+        : undefined
   const avatarDataUrl =
     p.avatarDataUrl === null
       ? null
       : typeof p.avatarDataUrl === 'string'
         ? p.avatarDataUrl
         : undefined
-  const passwordHash = typeof p.passwordHash === 'string' ? p.passwordHash : undefined
+  // Password hash is no longer sent to clients.
+  const passwordHash = undefined
 
   let countryId: SearchCountryId | undefined
   if (
@@ -467,6 +478,7 @@ function parseOwnerProfileRecord(p: Partial<OwnerProfile> & Record<string, unkno
     registeredAt,
     validUntil,
     phone,
+    avatarUrl,
     avatarDataUrl,
     passwordHash,
     countryId,
@@ -572,9 +584,10 @@ export function saveOwnerProfileForAdmin(userId: string, p: OwnerProfile): void 
     /* ignore */
   }
   try {
-    if (next.avatarDataUrl && next.avatarDataUrl.length > 0) {
-      setOwnerAvatarPublic(next.userId, next.avatarDataUrl)
-    } else if (next.avatarDataUrl === null || next.avatarDataUrl === '') {
+    const av = (next.avatarUrl && next.avatarUrl.trim()) || (next.avatarDataUrl && next.avatarDataUrl.trim()) || ''
+    if (av) {
+      setOwnerAvatarPublic(next.userId, av)
+    } else if (next.avatarUrl === null || next.avatarDataUrl === null || next.avatarDataUrl === '') {
       setOwnerAvatarPublic(next.userId, null)
     }
   } catch {
@@ -659,9 +672,10 @@ export function saveOwnerProfile(p: OwnerProfile): void {
   saveOwnerProfilesMap(map)
   setLoggedIn(true)
   try {
-    if (next.avatarDataUrl && next.avatarDataUrl.length > 0) {
-      setOwnerAvatarPublic(next.userId, next.avatarDataUrl)
-    } else if (next.avatarDataUrl === null || next.avatarDataUrl === '') {
+    const av = (next.avatarUrl && next.avatarUrl.trim()) || (next.avatarDataUrl && next.avatarDataUrl.trim()) || ''
+    if (av) {
+      setOwnerAvatarPublic(next.userId, av)
+    } else if (next.avatarUrl === null || next.avatarDataUrl === null || next.avatarDataUrl === '') {
       setOwnerAvatarPublic(next.userId, null)
     }
   } catch {

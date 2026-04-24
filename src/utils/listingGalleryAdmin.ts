@@ -1,21 +1,14 @@
-/** Admin: sakrivanje i redosled slika po javnom ID oglasa (localStorage). */
+/**
+ * Admin gallery: hide images on the public site and reorder thumbnails.
+ * Overlay is cached in memory and persisted to Supabase via admin API; public reads use `/api/listing-gallery-admin`.
+ */
 
-const BLOCK_KEY = 'rentadria_listing_image_blocked_v1'
-const ORDER_KEY = 'rentadria_listing_gallery_order_v1'
+type Overlay = { blocked: string[]; order: string[] }
 
-function loadBlock(): Record<string, string[]> {
-  try {
-    const raw = localStorage.getItem(BLOCK_KEY)
-    if (!raw) return {}
-    const o = JSON.parse(raw) as unknown
-    return o && typeof o === 'object' ? (o as Record<string, string[]>) : {}
-  } catch {
-    return {}
-  }
-}
+const overlay: Record<string, Overlay> = {}
+const adminOwnerByListing = new Map<string, string>()
 
-function saveBlock(m: Record<string, string[]>) {
-  localStorage.setItem(BLOCK_KEY, JSON.stringify(m))
+function bump() {
   try {
     window.dispatchEvent(new Event('rentadria-listing-gallery-admin-changed'))
   } catch {
@@ -23,29 +16,73 @@ function saveBlock(m: Record<string, string[]>) {
   }
 }
 
-function loadOrder(): Record<string, string[]> {
-  try {
-    const raw = localStorage.getItem(ORDER_KEY)
-    if (!raw) return {}
-    const o = JSON.parse(raw) as unknown
-    return o && typeof o === 'object' ? (o as Record<string, string[]>) : {}
-  } catch {
-    return {}
-  }
+export function setGalleryAdminOwnerContext(listingId: string, ownerUserId: string): void {
+  const lid = listingId.trim()
+  if (!lid) return
+  adminOwnerByListing.set(lid, ownerUserId.trim().toLowerCase())
 }
 
-function saveOrder(m: Record<string, string[]>) {
-  localStorage.setItem(ORDER_KEY, JSON.stringify(m))
+export function clearGalleryAdminOwnerContext(listingId: string): void {
+  adminOwnerByListing.delete(listingId.trim())
+}
+
+function ensureOverlay(lid: string): Overlay {
+  if (!overlay[lid]) overlay[lid] = { blocked: [], order: [] }
+  return overlay[lid]!
+}
+
+export function applyListingGalleryOverlayFromPayload(
+  listingId: string,
+  blockedUrls: string[],
+  orderedUrls: string[],
+): void {
+  const lid = listingId.trim()
+  if (!lid) return
+  overlay[lid] = { blocked: [...blockedUrls], order: [...orderedUrls] }
+  bump()
+}
+
+export async function hydrateListingGalleryFromServer(listingId: string): Promise<void> {
+  const lid = listingId.trim()
+  if (!lid) return
   try {
-    window.dispatchEvent(new Event('rentadria-listing-gallery-admin-changed'))
+    const r = await fetch(`/api/listing-gallery-admin?listingId=${encodeURIComponent(lid)}`)
+    const j = (await r.json()) as { ok?: boolean; blockedUrls?: string[]; orderedUrls?: string[] }
+    if (r.ok && j.ok) {
+      applyListingGalleryOverlayFromPayload(lid, j.blockedUrls ?? [], j.orderedUrls ?? [])
+    }
   } catch {
     /* ignore */
   }
 }
 
-/** Puna lista za admin album (uključuje blokirane), s primijenjenim redom. */
+async function persistOverlay(listingId: string): Promise<boolean> {
+  const lid = listingId.trim()
+  const uid = adminOwnerByListing.get(lid)
+  if (!uid) return false
+  const o = overlay[lid] ?? { blocked: [], order: [] }
+  try {
+    const r = await fetch('/api/admin-listing-gallery', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        listingId: lid,
+        ownerUserId: uid,
+        blockedUrls: o.blocked,
+        orderedUrls: o.order,
+      }),
+    })
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
+/** Puna lista za admin album (uključuje sakrivene), s primijenjenim redom. */
 export function listGalleryForAdmin(listingId: string, base: string[]): string[] {
-  const order = loadOrder()[listingId]
+  const lid = listingId.trim()
+  const order = overlay[lid]?.order
   if (order?.length) {
     const inOrder = order.filter((u) => base.includes(u))
     const rest = base.filter((u) => !inOrder.includes(u))
@@ -56,8 +93,9 @@ export function listGalleryForAdmin(listingId: string, base: string[]): string[]
 
 /** `base` = npr. detail.gallery.map(listingImageUrl) */
 export function getEffectiveGallery(listingId: string, base: string[]): string[] {
-  const blocked = new Set(loadBlock()[listingId] ?? [])
-  const order = loadOrder()[listingId]
+  const lid = listingId.trim()
+  const blocked = new Set(overlay[lid]?.blocked ?? [])
+  const order = overlay[lid]?.order
   const filtered = base.filter((u) => !blocked.has(u))
   if (order?.length) {
     const inOrder = order.filter((u) => filtered.includes(u))
@@ -68,22 +106,26 @@ export function getEffectiveGallery(listingId: string, base: string[]): string[]
 }
 
 export function setGalleryOrder(listingId: string, urls: string[]): void {
-  const m = loadOrder()
-  m[listingId] = urls
-  saveOrder(m)
+  const lid = listingId.trim()
+  const o = ensureOverlay(lid)
+  o.order = [...urls]
+  void persistOverlay(lid)
+  bump()
 }
 
 export function toggleImageBlocked(listingId: string, imageUrl: string): boolean {
-  const m = loadBlock()
-  const arr = [...(m[listingId] ?? [])]
+  const lid = listingId.trim()
+  const o = ensureOverlay(lid)
+  const arr = [...o.blocked]
   const i = arr.indexOf(imageUrl)
   if (i >= 0) arr.splice(i, 1)
   else arr.push(imageUrl)
-  m[listingId] = arr
-  saveBlock(m)
+  o.blocked = arr
+  void persistOverlay(lid)
+  bump()
   return i < 0
 }
 
 export function isImageBlocked(listingId: string, imageUrl: string): boolean {
-  return (loadBlock()[listingId] ?? []).includes(imageUrl)
+  return (overlay[listingId.trim()]?.blocked ?? []).includes(imageUrl)
 }

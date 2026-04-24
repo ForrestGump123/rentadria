@@ -9,6 +9,7 @@ import {
   type RegisteredOwnerApiRow,
 } from '../server/lib/registeredOwnersDb.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { getSupabaseAdmin } from '../server/lib/supabaseAdmin.js'
 
 const VALID_CAT = new Set(['accommodation', 'car', 'motorcycle'])
 
@@ -19,14 +20,27 @@ function jsonProfile(row: RegisteredOwnerApiRow) {
     displayName: row.displayName,
     phone: row.phone ?? null,
     countryId: row.countryId ?? null,
-    passwordHash: row.passwordHash ?? null,
     registeredAt: row.registeredAt,
     validUntil: row.validUntil,
     plan: row.plan,
     subscriptionActive: row.subscriptionActive,
     basicCategoryChoice: row.basicCategoryChoice ?? null,
+    avatarUrl: row.avatarUrl ?? null,
     avatarDataUrl: row.avatarDataUrl ?? null,
     promoCategoryScope: row.promoCategoryScope ?? null,
+    promoCode: row.promoCode ?? null,
+    adminMeta: null as
+      | null
+      | {
+          blocked: boolean
+          extraListingsAcc: number
+          extraListingsCar: number
+          extraListingsMoto: number
+          extraCatAcc: boolean
+          extraCatCar: boolean
+          extraCatMoto: boolean
+          planOverride: boolean
+        },
   }
 }
 
@@ -52,11 +66,11 @@ function parsePatch(body: Record<string, unknown>): OwnerSelfProfilePatch | null
     patch.countryId = body.countryId
     any = true
   }
-  if (body.avatarDataUrl === null) {
-    patch.avatarDataUrl = null
+  if (body.avatarUrl === null) {
+    patch.avatarUrl = null
     any = true
-  } else if (typeof body.avatarDataUrl === 'string') {
-    patch.avatarDataUrl = body.avatarDataUrl === '' ? null : body.avatarDataUrl
+  } else if (typeof body.avatarUrl === 'string') {
+    patch.avatarUrl = body.avatarUrl === '' ? null : body.avatarUrl
     any = true
   }
   if (body.basicCategoryChoice === null || typeof body.basicCategoryChoice === 'string') {
@@ -82,8 +96,12 @@ function parsePatch(body: Record<string, unknown>): OwnerSelfProfilePatch | null
     patch.promoCategoryScope = out.length > 0 ? out : null
     any = true
   }
-  if (typeof body.passwordHash === 'string') {
-    patch.passwordHash = body.passwordHash.trim().toLowerCase()
+  if (typeof body.oldPasswordHash === 'string') {
+    patch.oldPasswordHash = body.oldPasswordHash.trim().toLowerCase()
+    any = true
+  }
+  if (typeof body.newPasswordHash === 'string') {
+    patch.newPasswordHash = body.newPasswordHash.trim().toLowerCase()
     any = true
   }
 
@@ -116,7 +134,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
         return
       }
-      res.status(200).json({ ok: true, profile: jsonProfile(row) })
+      const profile = jsonProfile(row)
+      const sb = getSupabaseAdmin()
+      if (sb) {
+        const { data } = await sb
+          .from('rentadria_registered_owners')
+          .select('admin_meta')
+          .eq('user_id', ownerUid)
+          .maybeSingle()
+        const am =
+          data && typeof data === 'object' && (data as { admin_meta?: unknown }).admin_meta && typeof (data as { admin_meta?: unknown }).admin_meta === 'object' && !Array.isArray((data as { admin_meta?: unknown }).admin_meta)
+            ? ((data as { admin_meta?: unknown }).admin_meta as Record<string, unknown>)
+            : null
+        if (am) {
+          profile.adminMeta = {
+            blocked: am.blocked === true,
+            extraListingsAcc: Math.max(0, Number(am.extraListingsAcc) || 0),
+            extraListingsCar: Math.max(0, Number(am.extraListingsCar) || 0),
+            extraListingsMoto: Math.max(0, Number(am.extraListingsMoto) || 0),
+            extraCatAcc: am.extraCatAcc === true,
+            extraCatCar: am.extraCatCar === true,
+            extraCatMoto: am.extraCatMoto === true,
+            planOverride: am.plan_override === true,
+          }
+        }
+      }
+      res.status(200).json({ ok: true, profile })
       return
     }
 
@@ -142,6 +185,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return
           case 'invalid_avatar':
             res.status(400).json({ ok: false, error: 'invalid_avatar' })
+            return
+          case 'old_password_required':
+            res.status(400).json({ ok: false, error: 'old_password_required' })
+            return
+          case 'bad_password':
+            res.status(400).json({ ok: false, error: 'bad_password' })
+            return
+          case 'invalid_new_password':
+            res.status(400).json({ ok: false, error: 'invalid_new_password' })
             return
           default:
             res.status(400).json({ ok: false, error: result.error })

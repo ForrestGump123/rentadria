@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -7,9 +7,9 @@ import type { ListingCategory } from '../../types'
 import type { OwnerProfile } from '../../utils/ownerSession'
 import {
   type AdminListingRow,
-  adminDeleteOwnerListing,
-  buildAdminListingIndex,
+  buildAdminListingIndexFromCloud,
 } from '../../utils/adminListingsIndex'
+import { adminDeleteOwnerListingOnServer, fetchAdminOwnerListingsIndex } from '../../lib/adminListingsApi'
 
 const AccommodationListingModal = lazy(() =>
   import('../../components/owner/AccommodationListingModal').then((m) => ({
@@ -42,13 +42,26 @@ export function AdminListingsPage() {
   const [category, setCategory] = useState<ListingCategory | ''>(CAT_ALL)
   const [country, setCountry] = useState<string>(COUNTRY_ALL)
   const [listEpoch, setListEpoch] = useState(0)
+  const [ownerRows, setOwnerRows] = useState<Awaited<ReturnType<typeof fetchAdminOwnerListingsIndex>>>([])
   const [editRow, setEditRow] = useState<AdminListingRow | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const rows = await fetchAdminOwnerListingsIndex()
+      if (cancelled || rows === null) return
+      setOwnerRows(rows)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [listEpoch])
+
   const allRows = useMemo(() => {
     void listEpoch
-    return buildAdminListingIndex(t)
-  }, [t, listEpoch])
+    return buildAdminListingIndexFromCloud(t, ownerRows ?? [])
+  }, [t, listEpoch, ownerRows])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -79,8 +92,11 @@ export function AdminListingsPage() {
       return
     }
     if (!window.confirm(t('admin.listings.confirmDelete'))) return
-    adminDeleteOwnerListing(row.ownerUserId, row.ownerRow)
-    bump()
+    const rowId = row.ownerRow.id
+    void (async () => {
+      await adminDeleteOwnerListingOnServer(row.ownerUserId, rowId)
+      bump()
+    })()
   }
 
   const closeModal = () => {
@@ -93,9 +109,7 @@ export function AdminListingsPage() {
     closeModal()
   }
 
-  const editProfile = editRow
-    ? adminProxyOwnerProfile(editRow.ownerUserId, editRow.ownerDisplayName)
-    : null
+  const editProfile = editRow ? adminProxyOwnerProfile(editRow.ownerUserId, editRow.ownerDisplayName) : null
 
   return (
     <div className="ra-admin-listings">

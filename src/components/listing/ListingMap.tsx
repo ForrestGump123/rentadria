@@ -26,8 +26,8 @@ export function ListingMap({ lat, lng }: ListingMapProps) {
     const el = wrapRef.current
     if (!el) return
     if (typeof IntersectionObserver === 'undefined') {
-      setMounted(true)
-      return
+      const tid = setTimeout(() => setMounted(true), 0)
+      return () => clearTimeout(tid)
     }
     const io = new IntersectionObserver(
       (entries) => {

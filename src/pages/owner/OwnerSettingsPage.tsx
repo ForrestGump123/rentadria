@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { getPricingPlans, resolvePlanForSubscription } from '../../content/pricingPlans'
 import type { SubscriptionPlan } from '../../types/plan'
 import {
   getInquiryNotificationPrefs,
+  pullInquiryNotificationPrefs,
   saveInquiryNotificationPrefs,
   type InquiryNotificationPrefs,
 } from '../../utils/inquiryNotificationPrefs'
@@ -12,7 +13,6 @@ import {
   activateOwnerSubscription,
   clearOwnerSession,
   formatDateDots,
-  softDeleteOwnerUser,
   type OwnerProfile,
 } from '../../utils/ownerSession'
 
@@ -26,17 +26,40 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
   const navigate = useNavigate()
   const pricingPlans = useMemo(() => getPricingPlans(i18n.language), [i18n.language])
 
-  const [prefs, setPrefs] = useState<InquiryNotificationPrefs>(() =>
-    getInquiryNotificationPrefs(profile.userId),
-  )
+  const [prefs, setPrefs] = useState<InquiryNotificationPrefs>(() => getInquiryNotificationPrefs())
   const [savedFlash, setSavedFlash] = useState(false)
+  const [loadPrefsError, setLoadPrefsError] = useState(false)
 
   const planLabel = profile.plan ? t(`pricing.planNames.${profile.plan}`) : '—'
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const p = await pullInquiryNotificationPrefs()
+      if (cancelled) return
+      if (p) {
+        setLoadPrefsError(false)
+        setPrefs(p)
+      } else {
+        setLoadPrefsError(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [profile.userId])
+
   const onSaveNotif = () => {
-    saveInquiryNotificationPrefs(profile.userId, prefs)
-    setSavedFlash(true)
-    window.setTimeout(() => setSavedFlash(false), 2500)
+    void (async () => {
+      const r = await saveInquiryNotificationPrefs(prefs)
+      if (!r.ok) {
+        setLoadPrefsError(true)
+        return
+      }
+      setLoadPrefsError(false)
+      setSavedFlash(true)
+      window.setTimeout(() => setSavedFlash(false), 2500)
+    })()
   }
 
   const selectPlan = (planId: SubscriptionPlan) => {
@@ -47,9 +70,15 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
 
   const onDeleteAccount = () => {
     if (!window.confirm(t('owner.settingsPage.deleteConfirm'))) return
-    softDeleteOwnerUser(profile.userId)
-    clearOwnerSession()
-    navigate('/', { replace: true })
+    void (async () => {
+      try {
+        await fetch('/api/owner-delete-account', { method: 'POST', credentials: 'include' })
+      } catch {
+        /* ignore */
+      }
+      clearOwnerSession()
+      navigate('/', { replace: true })
+    })()
   }
 
   return (
@@ -123,6 +152,7 @@ export function OwnerSettingsPage({ profile, refreshProfile }: Props) {
       <div className="ra-owner-settings__notif">
         <h2 className="ra-owner-settings__notif-title">{t('owner.settingsPage.notifTitle')}</h2>
         <p className="ra-owner-settings__notif-lead">{t('owner.settingsPage.notifLead')}</p>
+        {loadPrefsError && <p className="ra-owner-settings__saved">{t('owner.settingsPage.prefsLoadError')}</p>}
 
         <label className="ra-owner-settings__check ra-check">
           <input

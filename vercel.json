@@ -23,6 +23,14 @@
     {
       "path": "/api/social-process-queue",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron-owner-expiry-reminders",
+      "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/cron-purge-deleted-owners",
+      "schedule": "30 3 * * *"
     }
   ],
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]

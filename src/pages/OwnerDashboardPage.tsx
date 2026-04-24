@@ -28,6 +28,7 @@ import {
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
 import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
+import { pullOwnerNotificationsToLocal } from '../utils/ownerNotifications'
 import { getUnreadThreadCountForOwner } from '../utils/ownerAdminMessages'
 import { countInquiriesThisMonth, getInquiryUnreadCount } from '../utils/visitorInquiries'
 import { OwnerEditProfilePage } from './owner/OwnerEditProfilePage'
@@ -39,6 +40,7 @@ import { OwnerForumPage } from './owner/OwnerForumPage'
 import { OwnerCodePage } from './owner/OwnerCodePage'
 
 const CAT_ORDER: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
+const PROMO_FREE_PRO_VALID_UNTIL_ISO = '2027-12-31T22:59:59.999Z'
 
 export function OwnerDashboardPage() {
   const { t, i18n } = useTranslation()
@@ -83,10 +85,10 @@ export function OwnerDashboardPage() {
     return () => window.removeEventListener('rentadria-inquiries-updated', onInv)
   }, [])
 
-  const profile = useMemo(
-    () => (isLoggedIn() ? getOwnerProfile() : null),
-    [sessionEpoch],
-  )
+  const profile = useMemo(() => {
+    void sessionEpoch
+    return isLoggedIn() ? getOwnerProfile() : null
+  }, [sessionEpoch])
 
   useEffect(() => {
     if (!profile?.userId) return
@@ -95,6 +97,7 @@ export function OwnerDashboardPage() {
       const [listOk] = await Promise.all([
         pullOwnerListingsFromCloud(profile.userId),
         pullOwnerProfileFromCloud(profile.userId),
+        pullOwnerNotificationsToLocal(80),
       ])
       if (!cancelled && listOk) setListVersion((v) => v + 1)
     })()
@@ -118,7 +121,7 @@ export function OwnerDashboardPage() {
 
   useEffect(() => {
     const syncMsg = () => {
-      if (profile) setMsgUnread(getUnreadThreadCountForOwner(profile.userId))
+      if (profile) setMsgUnread(getUnreadThreadCountForOwner())
     }
     syncMsg()
     window.addEventListener('rentadria-owner-messages-unread-changed', syncMsg)
@@ -129,6 +132,7 @@ export function OwnerDashboardPage() {
   const refreshProfile = useCallback(() => setSessionEpoch((e) => e + 1), [])
 
   const listings = useMemo(() => {
+    void listVersion
     if (!profile) return []
     return getOwnerListings(profile.userId)
   }, [profile, listVersion])
@@ -153,6 +157,7 @@ export function OwnerDashboardPage() {
   )
 
   const stats = useMemo(() => {
+    void inquiryEpoch
     const views = filtered.reduce((s, x) => s + x.viewsMonth, 0)
     const contacts = filtered.reduce((s, x) => s + x.contactClicksMonth, 0)
     const inquiries = profile ? countInquiriesThisMonth(profile.userId) : 0
@@ -160,10 +165,11 @@ export function OwnerDashboardPage() {
   }, [filtered, profile, inquiryEpoch])
 
   const codeNavBadge = useMemo(() => {
+    void sessionEpoch
     if (!profile) return 0
     const ready = profile.subscriptionActive === true && profile.plan != null
     if (ready) return 0
-    return getSavedPromoCode(profile.userId) ? 0 : 1
+    return getSavedPromoCode(profile) ? 0 : 1
   }, [profile, sessionEpoch])
 
   const ownerOverviewBadge = inquiryUnread + msgUnread + codeNavBadge
@@ -190,6 +196,7 @@ export function OwnerDashboardPage() {
   const firstName = displayFirstName(profile.displayName)
   const subscriptionReady = profile.subscriptionActive === true && profile.plan != null
   const blocked = getAdminOwnerMeta(profile.userId).blocked
+  const planOverride = getAdminOwnerMeta(profile.userId).planOverride === true
   const onMessagesRoute =
     location.pathname === '/owner/messages' || location.pathname.startsWith('/owner/messages/')
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -207,6 +214,13 @@ export function OwnerDashboardPage() {
 
   const planLabel = profile.plan ? t(`pricing.planNames.${profile.plan}`) : '—'
   const planSummary = profile.plan ? t(`owner.planSummary.${profile.plan}`) : ''
+  const freeAdDays = profile.plan === 'agency' ? 90 : profile.plan === 'pro' ? 15 : 0
+  const promoFreeProActive =
+    profile.plan === 'pro' &&
+    profile.subscriptionActive === true &&
+    !planOverride &&
+    typeof profile.validUntil === 'string' &&
+    profile.validUntil.trim() === PROMO_FREE_PRO_VALID_UNTIL_ISO
 
   return (
     <div className="ra-app ra-owner-with-chrome">
@@ -435,6 +449,9 @@ export function OwnerDashboardPage() {
                   <span className="ra-owner-plan__badge">{planLabel}</span>
                   <span className="ra-owner-plan__summary">{planSummary}</span>
                 </p>
+                <p className="ra-owner-lead ra-owner-lead--free-ads">
+                  {t('owner.freeAdsIncluded', { days: freeAdDays })}
+                </p>
               </div>
             </header>
             <div className="ra-owner-banner" role="status">
@@ -483,6 +500,9 @@ export function OwnerDashboardPage() {
                           <span className="ra-owner-plan__badge">{planLabel}</span>
                           <span className="ra-owner-plan__summary">{planSummary}</span>
                         </p>
+                        <p className="ra-owner-lead ra-owner-lead--free-ads">
+                          {t('owner.freeAdsIncluded', { days: freeAdDays })}
+                        </p>
                       </div>
                       <div className="ra-owner-head__btns">
                         <button
@@ -501,6 +521,11 @@ export function OwnerDashboardPage() {
                 validUntil: formatDateDots(profile.validUntil),
               })}
             </div>
+            {promoFreeProActive ? (
+              <p className="ra-owner-banner ra-owner-banner--promo-scope" role="note">
+                {t('owner.freeProNote', { validUntil: formatDateDots(profile.validUntil) })}
+              </p>
+            ) : null}
             {profile.promoCategoryScope && profile.promoCategoryScope.length > 0 && (
               <p className="ra-owner-banner ra-owner-banner--promo-scope" role="note">
                 {t('owner.promoScopeNote', {

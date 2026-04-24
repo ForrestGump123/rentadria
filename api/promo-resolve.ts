@@ -5,7 +5,7 @@ import { clientIp, rateLimitIp } from '../server/lib/rateLimitIp.js'
 import { getSupabaseAdmin } from '../server/lib/supabaseAdmin.js'
 
 /**
- * Rješavanje koda: 1) Supabase, 2) RENTADRIA_ADMIN_PROMO_JSON (fallback).
+ * Rješavanje koda: Supabase (`rentadria_promo_codes`), zatim opcioni `RENTADRIA_ADMIN_PROMO_JSON` ako je postavljen.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {

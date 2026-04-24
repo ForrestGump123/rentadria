@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
 import { isAdminSession } from '../../utils/adminSession'
-import { clearAdminReportsUnread, loadAllReports } from '../../utils/storage'
 import { formatDateDots } from '../../utils/ownerSession'
 
 type ReportRow = Record<string, string> & { at?: string }
@@ -18,7 +17,6 @@ export function AdminReportsPage() {
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
-    clearAdminReportsUnread()
     bump()
   }, [bump])
 
@@ -38,7 +36,7 @@ export function AdminReportsPage() {
           rows?: { id: string; payload: Record<string, string>; at: string }[]
         }
         if (cancelled || !r.ok || !j.ok || !Array.isArray(j.rows)) {
-          if (!cancelled) setRows(loadAllReports().slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')))
+          if (!cancelled) setRows([])
           return
         }
         setRows(
@@ -48,7 +46,7 @@ export function AdminReportsPage() {
           })),
         )
       } catch {
-        if (!cancelled) setRows(loadAllReports().slice().sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')))
+        if (!cancelled) setRows([])
       }
     })()
     return () => {

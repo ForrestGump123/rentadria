@@ -1,15 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import type { ListingCategory } from '../../types'
 import { adminSyncRequest } from '../../lib/adminSyncRequest'
-import { getAdminOwnerMeta, setAdminOwnerMeta } from '../../utils/adminOwnerMeta'
+import { fetchAdminOwnersProfiles } from '../../lib/adminOwnersApi'
 import { isAdminSession } from '../../utils/adminSession'
+import { type OwnerProfile } from '../../utils/ownerSession'
 import {
-  getAllOwnerProfilesForAdmin,
-  type OwnerProfile,
-} from '../../utils/ownerSession'
-import { deletePartner, loadJobs, loadPartners, upsertPartner } from '../../utils/syncPartnersStore'
+  deleteImportPartner,
+  fetchImportJobs,
+  fetchImportOwnerSettings,
+  fetchImportPartners,
+  saveImportOwnerSettings,
+  upsertImportPartner,
+  type SyncPartner,
+  type SyncJob,
+} from '../../lib/adminImportApi'
 
 const CATS: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
 
@@ -19,6 +25,10 @@ export function AdminImportPage() {
   const { t } = useTranslation()
   const [epoch, setEpoch] = useState(0)
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const [partners, setPartners] = useState<SyncPartner[]>([])
+  const [jobs, setJobs] = useState<SyncJob[]>([])
+  const [profiles, setProfiles] = useState<OwnerProfile[]>([])
+  const [loadOwnersError, setLoadOwnersError] = useState(false)
 
   const [partnerName, setPartnerName] = useState('')
   const [partnerUrl, setPartnerUrl] = useState('')
@@ -47,13 +57,27 @@ export function AdminImportPage() {
 
   const [mapDraft, setMapDraft] = useState<Record<string, string>>({})
 
-  const profiles = useMemo(() => {
-    void epoch
-    return getAllOwnerProfilesForAdmin()
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const p = await fetchImportPartners()
+      const j = await fetchImportJobs(30)
+      const owners = await fetchAdminOwnersProfiles()
+      if (cancelled) return
+      if (p) setPartners(p)
+      if (j) setJobs(j.slice().reverse())
+      if (owners) {
+        setLoadOwnersError(false)
+        setProfiles(owners)
+      } else {
+        setLoadOwnersError(true)
+        setProfiles([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [epoch])
-
-  const partners = useMemo(() => loadPartners(), [epoch])
-  const jobs = useMemo(() => loadJobs(30).slice().reverse(), [epoch])
 
   useEffect(() => {
     if (!importOwnerId) {
@@ -61,14 +85,15 @@ export function AdminImportPage() {
       setMapDraft({})
       return
     }
-    const meta = getAdminOwnerMeta(importOwnerId)
-    setImportFeedUrl(meta.xmlImportUrl ?? '')
-    const m = meta.xmlFieldMapping ?? {}
-    const next: Record<string, string> = {}
-    for (const k of XML_MAP_KEYS) {
-      next[k] = m[k] ?? ''
-    }
-    setMapDraft(next)
+    void (async () => {
+      const s = await fetchImportOwnerSettings(importOwnerId)
+      if (!s) return
+      setImportFeedUrl(s.feedUrl ?? '')
+      const m = s.fieldMapping ?? {}
+      const next: Record<string, string> = {}
+      for (const k of XML_MAP_KEYS) next[k] = m[k] ?? ''
+      setMapDraft(next)
+    })()
   }, [importOwnerId])
 
   useEffect(() => {
@@ -79,38 +104,48 @@ export function AdminImportPage() {
 
   const persistFeedUrl = () => {
     if (!importOwnerId) return
-    const meta = getAdminOwnerMeta(importOwnerId)
-    setAdminOwnerMeta(importOwnerId, { ...meta, xmlImportUrl: importFeedUrl.trim() || undefined })
-    bump()
+    void (async () => {
+      await saveImportOwnerSettings({ ownerUserId: importOwnerId, feedUrl: importFeedUrl.trim() || null, fieldMapping: mapDraft })
+      bump()
+    })()
   }
 
   const persistMapping = () => {
     if (!importOwnerId) return
-    const meta = getAdminOwnerMeta(importOwnerId)
     const xmlFieldMapping: Record<string, string> = {}
     for (const k of XML_MAP_KEYS) {
       const v = (mapDraft[k] ?? '').trim()
       if (v) xmlFieldMapping[k] = v
     }
-    setAdminOwnerMeta(importOwnerId, {
-      ...meta,
-      xmlFieldMapping: Object.keys(xmlFieldMapping).length ? xmlFieldMapping : undefined,
-    })
-    bump()
+    void (async () => {
+      await saveImportOwnerSettings({
+        ownerUserId: importOwnerId,
+        feedUrl: importFeedUrl.trim() || null,
+        fieldMapping: xmlFieldMapping,
+      })
+      bump()
+    })()
   }
 
   const addPartner = () => {
     if (!partnerName.trim() || !partnerUrl.trim()) return
-    upsertPartner({
-      name: partnerName.trim(),
-      baseUrl: partnerUrl.trim(),
-      apiKey: partnerKey.trim() || undefined,
-      categories: { ...partnerCats },
-    })
-    setPartnerName('')
-    setPartnerUrl('')
-    setPartnerKey('')
-    bump()
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `sync-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    void (async () => {
+      await upsertImportPartner({
+        id,
+        name: partnerName.trim(),
+        baseUrl: partnerUrl.trim(),
+        apiKey: partnerKey.trim() || undefined,
+        categories: { ...partnerCats },
+      })
+      setPartnerName('')
+      setPartnerUrl('')
+      setPartnerKey('')
+      bump()
+    })()
   }
 
   const runSiteSync = async () => {
@@ -155,6 +190,7 @@ export function AdminImportPage() {
         <h1 className="ra-admin-title">{t('admin.import.heading')}</h1>
         <p className="ra-admin-subtitle">{t('admin.import.lead')}</p>
         <p className="ra-admin-owners__hint ra-admin-import__supabase">{t('admin.import.supabaseNote')}</p>
+        {loadOwnersError ? <p className="ra-admin-listings__hint">{t('admin.import.ownersLoadError')}</p> : null}
       </header>
 
       <section className="ra-admin-import__block" aria-labelledby="admin-import-uni-h">
@@ -318,8 +354,10 @@ export function AdminImportPage() {
                   type="button"
                   className="ra-link-btn"
                   onClick={() => {
-                    deletePartner(p.id)
-                    bump()
+                    void (async () => {
+                      await deleteImportPartner(p.id)
+                      bump()
+                    })()
                   }}
                 >
                   {t('admin.owners.removePartner')}

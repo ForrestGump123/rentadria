@@ -59,7 +59,7 @@ export function HomePage() {
   useEffect(() => {
     if (!draftCountry) {
       let cancelled = false
-      setCitiesDraftLoading(true)
+      const tid = setTimeout(() => setCitiesDraftLoading(true), 0)
       loadAllCitiesMerged()
         .then((list) => {
           if (!cancelled) {
@@ -75,10 +75,11 @@ export function HomePage() {
         })
       return () => {
         cancelled = true
+        clearTimeout(tid)
       }
     }
     let cancelled = false
-    setCitiesDraftLoading(true)
+    const tid = setTimeout(() => setCitiesDraftLoading(true), 0)
     loadCitiesForCountry(draftCountry)
       .then((list) => {
         if (!cancelled) {
@@ -94,17 +95,20 @@ export function HomePage() {
       })
     return () => {
       cancelled = true
+      clearTimeout(tid)
     }
   }, [draftCountry])
 
   useEffect(() => {
     if (!appliedCountry) {
-      setCitiesApplied([])
-      setCitiesAppliedLoading(false)
-      return
+      const tid = setTimeout(() => {
+        setCitiesApplied([])
+        setCitiesAppliedLoading(false)
+      }, 0)
+      return () => clearTimeout(tid)
     }
     let cancelled = false
-    setCitiesAppliedLoading(true)
+    const tid = setTimeout(() => setCitiesAppliedLoading(true), 0)
     loadCitiesForCountry(appliedCountry)
       .then((list) => {
         if (!cancelled) {
@@ -120,6 +124,7 @@ export function HomePage() {
       })
     return () => {
       cancelled = true
+      clearTimeout(tid)
     }
   }, [appliedCountry])
 
@@ -165,18 +170,18 @@ export function HomePage() {
 
   const gridIdSet = useMemo(() => new Set(gridItems.map((l) => l.id)), [gridItems])
 
-  const promoSlides = useMemo(
-    () => getPromotedListingsForPlacement(category, 'slideshow'),
-    [category, adsEpoch],
-  )
-  const promoFeatured = useMemo(
-    () => getPromotedListingsForPlacement(category, 'featured'),
-    [category, adsEpoch],
-  )
-  const promoSide = useMemo(
-    () => getPromotedListingsForPlacement(category, 'sideSlideshow'),
-    [category, adsEpoch],
-  )
+  const promoSlides = useMemo(() => {
+    void adsEpoch
+    return getPromotedListingsForPlacement(category, 'slideshow')
+  }, [category, adsEpoch])
+  const promoFeatured = useMemo(() => {
+    void adsEpoch
+    return getPromotedListingsForPlacement(category, 'featured')
+  }, [category, adsEpoch])
+  const promoSide = useMemo(() => {
+    void adsEpoch
+    return getPromotedListingsForPlacement(category, 'sideSlideshow')
+  }, [category, adsEpoch])
 
   const promoSlidesScoped = useMemo(
     () => (hasActiveSearch ? promoSlides.filter((l) => gridIdSet.has(l.id)) : promoSlides),

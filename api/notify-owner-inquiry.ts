@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { sendSafe500, send429 } from '../server/lib/apiSafe.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { sendTransactionalEmail } from '../server/lib/sendBrevoMail.js'
+import { insertInquiryAndBumpUnread } from '../server/lib/visitorInquiriesDb.js'
 
 function escapeHtml(s: string): string {
   return s
@@ -46,6 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const listingTitle = String(body?.listingTitle ?? '').trim().slice(0, 500)
     const listingId = String(body?.listingId ?? '').trim().slice(0, 200)
+    const ownerUserId = String(body?.ownerUserId ?? '').trim().toLowerCase()
     const guestFirst = String(body?.guestFirst ?? '').trim().slice(0, 120)
     const guestLast = String(body?.guestLast ?? '').trim().slice(0, 120)
     const guestEmail = String(body?.guestEmail ?? '').trim().slice(0, 200)
@@ -69,6 +71,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       <p><strong>Poruka:</strong></p>
       <pre style="white-space:pre-wrap;font-family:inherit;border-left:3px solid #2a6edb;padding-left:12px">${escapeHtml(message)}</pre>
     `
+
+    // Store inquiry in Supabase (best-effort).
+    if (ownerUserId) {
+      void insertInquiryAndBumpUnread({
+        ownerUserId,
+        listingId,
+        listingTitle,
+        first: guestFirst,
+        last: guestLast,
+        email: guestEmail,
+        phone: guestPhone,
+        period,
+        guests,
+        message,
+      })
+    }
 
     await sendTransactionalEmail({
       to: toEmail,

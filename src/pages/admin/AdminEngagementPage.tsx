@@ -1,19 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { AdminCountryChips } from '../../components/admin/AdminCountryChips'
+import { fetchAdminOwnersProfiles, sendAdminOwnerEmail } from '../../lib/adminOwnersApi'
 import { isAdminSession } from '../../utils/adminSession'
-import { getMonthContactAggregate } from '../../utils/adminEngagementStore'
-import { isOwnerDeleted } from '../../utils/deletedOwnersStore'
 import { shortOwnerId } from '../../utils/ownerDisplayId'
-import { getAllOwnerProfilesForAdmin, getOwnerListings } from '../../utils/ownerSession'
+import type { OwnerProfile } from '../../utils/ownerSession'
 import {
   type CountryFilterState,
   filterByCountrySet,
   matchesOwnerSearch,
 } from '../../utils/subscriptionAdmin'
-
-const REPORT_FROM = 'info@rentadria.com'
 
 function ymNow(): string {
   const d = new Date()
@@ -22,54 +19,99 @@ function ymNow(): string {
 
 export function AdminEngagementPage() {
   const { t } = useTranslation()
+  const [profiles, setProfiles] = useState<OwnerProfile[]>([])
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState('')
   const [country, setCountry] = useState<CountryFilterState>('all')
+  const [detailsOwner, setDetailsOwner] = useState<string | null>(null)
+  const [server, setServer] = useState<{
+    ym: string
+    totalContacts: number
+    owners: Array<{ ownerUserId: string; views: number; contacts: number; byListing: Array<{ listingId: string; views: number; contacts: number }> }>
+  } | null>(null)
 
   const ym = ymNow()
-  const monthAgg = getMonthContactAggregate(ym)
+
+  const reloadOwners = useCallback(async () => {
+    const list = await fetchAdminOwnersProfiles()
+    if (!list) {
+      setLoadError(true)
+      setProfiles([])
+      return
+    }
+    setLoadError(false)
+    setProfiles(list)
+  }, [])
+
+  const mapByOwner = useMemo(() => {
+    const m = new Map<string, { views: number; contacts: number; byListing: Array<{ listingId: string; views: number; contacts: number }> }>()
+    if (!server?.owners) return m
+    for (const o of server.owners) {
+      m.set(o.ownerUserId, { views: o.views, contacts: o.contacts, byListing: o.byListing })
+    }
+    return m
+  }, [server])
+
+  useEffect(() => {
+    void reloadOwners()
+  }, [reloadOwners])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch(`/api/admin-engagement?ym=${encodeURIComponent(ym)}`, { credentials: 'include' })
+        const j = (await r.json()) as {
+          ok?: boolean
+          ym?: string
+          totalContacts?: number
+          owners?: Array<{ ownerUserId: string; views: number; contacts: number; byListing: Array<{ listingId: string; views: number; contacts: number }> }>
+        }
+        if (!cancelled && r.ok && j.ok && j.ym === ym && Array.isArray(j.owners)) {
+          setServer({ ym, totalContacts: Number(j.totalContacts) || 0, owners: j.owners })
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ym])
 
   const rows = useMemo(() => {
-    const owners = getAllOwnerProfilesForAdmin().filter((p) => !isOwnerDeleted(p.userId))
-    const fc = filterByCountrySet(owners, country).filter((p) => matchesOwnerSearch(p, search))
+    const fc = filterByCountrySet(profiles, country).filter((p) => matchesOwnerSearch(p, search))
     return fc
       .map((p) => {
-        const listings = getOwnerListings(p.userId)
-        const views = listings.reduce((s, x) => s + (x.viewsMonth ?? 0), 0)
-        const contacts = listings.reduce((s, x) => s + (x.contactClicksMonth ?? 0), 0)
+        const m = mapByOwner.get(p.userId.trim().toLowerCase())
+        const views = m?.views ?? 0
+        const contacts = m?.contacts ?? 0
         return { p, views, contacts }
       })
       .sort((a, b) => b.views + b.contacts - (a.views + a.contacts))
-  }, [country, search])
+  }, [profiles, mapByOwner, country, search])
 
-  const totalClicksMonth = monthAgg.contactClicks
+  const totalClicksMonth = server?.totalContacts ?? 0
 
   const sendReportMail = () => {
-    const lines = rows
-      .filter((r) => r.views > 0 || r.contacts > 0)
-      .map(
-        (r) =>
-          `${r.p.displayName} | ${r.p.email} | views: ${r.views} | contact clicks: ${r.contacts}`,
-      )
-    const body = encodeURIComponent(
-      [`From: ${REPORT_FROM}`, '', t('admin.engagement.mailIntro', { ym, total: totalClicksMonth }), '', ...lines].join(
-        '\n',
-      ),
-    )
-    window.location.href = `mailto:${encodeURIComponent(REPORT_FROM)}?subject=${encodeURIComponent(t('admin.engagement.mailSubject', { ym }))}&body=${body}`
+    window.alert(t('admin.engagement.mailDisabled'))
   }
 
-  const mailtoOwner = (row: { p: { displayName: string; email: string }; views: number; contacts: number }) => {
-    const subj = encodeURIComponent(t('admin.engagement.ownerMailSubject', { name: row.p.displayName }))
-    const body = encodeURIComponent(
-      t('admin.engagement.ownerMailBody', {
+  const sendMailOwner = async (row: { p: { displayName: string; email: string }; views: number; contacts: number }) => {
+    const ok = await sendAdminOwnerEmail({
+      toEmail: row.p.email,
+      toName: row.p.displayName,
+      subject: t('admin.engagement.ownerMailSubject', { name: row.p.displayName }),
+      message: t('admin.engagement.ownerMailBody', {
         name: row.p.displayName,
         email: row.p.email,
         views: row.views,
         contacts: row.contacts,
         ym,
       }),
-    )
-    window.location.href = `mailto:${encodeURIComponent(row.p.email)}?subject=${subj}&body=${body}`
+    })
+    if (ok) window.alert(t('admin.engagement.mailSent'))
+    else window.alert(t('admin.engagement.mailSendError', { detail: 'network' }))
   }
 
   if (!isAdminSession()) return null
@@ -83,6 +125,7 @@ export function AdminEngagementPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t('admin.nav.engagement')}</h1>
         <p className="ra-admin-subtitle">{t('admin.engagement.lead')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.engagement.loadError')}</p> : null}
         <p className="ra-admin-engagement__month">
           {t('admin.engagement.monthTotal', { ym, n: totalClicksMonth })}
         </p>
@@ -120,18 +163,46 @@ export function AdminEngagementPage() {
               </tr>
             ) : (
               rows.map(({ p, views, contacts }) => (
+                <>
                 <tr key={p.userId}>
                   <td className="ra-admin-listings__mono">{shortOwnerId(p.userId)}</td>
-                  <td>{p.displayName}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="ra-admin-owner-msg__link"
+                      onClick={() => setDetailsOwner((cur) => (cur === p.userId ? null : p.userId))}
+                    >
+                      {p.displayName}
+                    </button>
+                  </td>
                   <td className="ra-admin-listings__mono">{p.email}</td>
                   <td>{views}</td>
                   <td>{contacts}</td>
                   <td>
-                    <button type="button" className="ra-btn ra-btn--sm" onClick={() => mailtoOwner({ p, views, contacts })}>
+                    <button type="button" className="ra-btn ra-btn--sm" onClick={() => void sendMailOwner({ p, views, contacts })}>
                       {t('admin.engagement.btnMailOwner')}
                     </button>
                   </td>
                 </tr>
+                {detailsOwner === p.userId && (
+                  <tr key={`${p.userId}__details`}>
+                    <td colSpan={6}>
+                      <div className="ra-admin-engagement__details">
+                        <strong>{t('admin.engagement.detailsTitle', { ym })}</strong>
+                        <div className="ra-admin-engagement__details-grid">
+                          {(mapByOwner.get(p.userId.trim().toLowerCase())?.byListing ?? []).map((x) => (
+                            <div key={x.listingId} className="ra-admin-engagement__details-row">
+                              <span className="ra-admin-listings__mono">{x.listingId}</span>
+                              <span>{t('admin.engagement.detailsViews', { n: x.views })}</span>
+                              <span>{t('admin.engagement.detailsContacts', { n: x.contacts })}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </>
               ))
             )}
           </tbody>

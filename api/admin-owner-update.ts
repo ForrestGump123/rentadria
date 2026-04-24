@@ -2,8 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { send429 } from '../server/lib/apiSafe.js'
 import { verifyAdminCookie } from '../server/lib/adminAuthDispatch.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
-import { updateRegisteredOwnerByAdmin } from '../server/lib/registeredOwnersDb.js'
+import { getRegisteredOwnerProfile, updateRegisteredOwnerByAdmin } from '../server/lib/registeredOwnersDb.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { createOwnerNotification } from '../server/lib/ownerNotificationsDb.js'
+import { sendTransactionalEmail } from '../server/lib/sendBrevoMail.js'
 
 const PLANS = new Set(['basic', 'pro', 'agency'])
 
@@ -95,8 +97,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(result.error === 'no_backend' ? 503 : 400).json({ ok: false, error: result.error ?? 'update_failed' })
       return
     }
+
+    // Notify owner about plan/package changes (best-effort; don't fail the admin save).
+    try {
+      const after = await getRegisteredOwnerProfile(userId)
+      if (after) {
+        const title = 'Promjena paketa / pretplate'
+        const planLabel = after.plan ? after.plan.toUpperCase() : 'NEMA'
+        const statusLabel = after.subscriptionActive ? 'AKTIVNO' : 'NEAKTIVNO'
+        const bodyText = `Admin je ažurirao vaš paket.\n\nPlan: ${planLabel}\nStatus: ${statusLabel}\nVaži do: ${after.validUntil || '—'}\n\nAko imate pitanja, pišite adminu kroz „Interne poruke“.`
+        void createOwnerNotification({
+          userId: after.userId,
+          kind: 'plan_change',
+          title,
+          body: bodyText,
+          refValidUntilIso: after.validUntil || null,
+        })
+        void sendTransactionalEmail({
+          to: after.email,
+          toName: after.displayName || after.email,
+          subject: 'RentAdria — promjena paketa',
+          html: `<p>Zdravo${after.displayName ? ` ${escapeHtml(after.displayName)}` : ''},</p>
+<p>Admin je ažurirao vaš paket na <strong>RentAdria</strong>.</p>
+<ul>
+  <li><strong>Plan:</strong> ${escapeHtml(planLabel)}</li>
+  <li><strong>Status:</strong> ${escapeHtml(statusLabel)}</li>
+  <li><strong>Važi do:</strong> ${escapeHtml(after.validUntil || '—')}</li>
+</ul>
+<p>Za dodatna pitanja možete pisati adminu kroz „Interne poruke“ u vlasničkom panelu.</p>`,
+        })
+      }
+    } catch {
+      /* ignore */
+    }
     res.status(200).json({ ok: true })
   } catch {
     res.status(400).json({ ok: false, error: 'bad_request' })
   }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }

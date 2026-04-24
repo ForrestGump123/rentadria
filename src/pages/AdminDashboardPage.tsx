@@ -119,8 +119,8 @@ export function AdminDashboardPage() {
 
   useEffect(() => {
     if (!authed) {
-      setServerDash(null)
-      return
+      const tid = setTimeout(() => setServerDash(null), 0)
+      return () => clearTimeout(tid)
     }
     let cancelled = false
     void (async () => {
@@ -182,7 +182,7 @@ export function AdminDashboardPage() {
       owners: serverDash?.owners ?? countOwnerAccounts(),
       reports: serverDash?.reports ?? countReportRows(),
     }),
-    [authed, serverDash],
+    [serverDash],
   )
 
   const serverBacked = (k: 'owners' | 'listings' | 'reviews' | 'reports') =>

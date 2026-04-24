@@ -45,17 +45,14 @@ import { maxContactsForPlan } from '../../utils/planContactLimits'
 import { VEHICLE_MAKES, vehicleModelsForMake } from '../../data/vehicleCatalog'
 import { MOTORCYCLE_MAKES, motorcycleModelsForMake } from '../../data/motorcycleCatalog'
 import {
-  ACCOMMODATION_DRAFT_LS_KEY,
-  CAR_DRAFT_LS_KEY,
-  MOTO_DRAFT_LS_KEY,
-  loadOwnerListingDraftForEdit,
-  mergeAccommodationDraftTexts,
   ownerAccommodationPublicListingId,
   ownerCarPublicListingId,
   ownerMotorcyclePublicListingId,
 } from '../../utils/accommodationDraft'
 import { syncContactAvatarGlobals } from '../../utils/contactAvatarGlobal'
 import { enqueueListingSocial } from '../../utils/socialEnqueue'
+import { isAdminSession } from '../../utils/adminSession'
+import { fetchDraft, saveDraft } from '../../lib/listingDraftApi'
 import { setListingInquiryNotifyEmail } from '../../utils/visitorInquiries'
 import { formatDateDayMonthYear } from '../../utils/dateDisplay'
 import { translateListingFields } from '../../utils/ownerTranslate'
@@ -75,6 +72,11 @@ function fold(s: string): string {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .toLowerCase()
+}
+
+function asListingCategoryArray(raw: unknown): ListingCategory[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((x): x is ListingCategory => x === 'accommodation' || x === 'car' || x === 'motorcycle')
 }
 
 function MapFlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -655,16 +657,10 @@ export function AccommodationListingModal({
       const nextDesc = { ...descriptionsRef.current, ...dds }
       setTitles(nextTitles)
       setDescriptions(nextDesc)
-      mergeAccommodationDraftTexts(
-        nextTitles,
-        nextDesc,
-        savedDashboardRowIdRef.current ?? editingOwnerRowIdRef.current,
-        formCategory,
-      )
     } finally {
       setTranslating(false)
     }
-  }, [pickSourceLang, formCategory])
+  }, [pickSourceLang])
 
   const translateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flushTranslate = useCallback(() => {
@@ -707,158 +703,223 @@ export function AccommodationListingModal({
   useEffect(() => {
     if (!open) return
     savedDashboardRowIdRef.current = editingOwnerRowId ?? null
-    const d = loadOwnerListingDraftForEdit(formCategory, editingOwnerRowId)
-
     const empty = Object.fromEntries(LISTING_LANG_IDS.map((l) => [l, ''])) as Record<string, string>
 
-    if (!d) {
-      if (formCategory === 'car' || formCategory === 'motorcycle') {
-        setTitles(empty)
-        setDescriptions(empty)
-        setCarMake('')
-        setCarModel('')
-        setCarYear('')
-        setCarFuel('')
-        setCarEngineCc('')
-        setCarMaxPassengers('')
-        setCarDoors('')
-        setCarTransmission('')
-        setCarLuggageLarge('')
-        setCarLuggageSmall('')
-        setCarColor('')
-        setCarSeatsNote('')
-        setCarExtras(defaultCarListingExtras())
-        setMotorcycleExtras(defaultMotorcycleListingExtras())
-        setPropertyType('')
-        setStructure('')
-        setAreaM2('')
-        setFloor('')
-        setPriceEur('')
-        setPricePre('')
-        setPriceSeason('')
-        setPricePost('')
-        setPriceOff('')
-        setFurnished('')
-        setBathrooms('')
-        setPayCashCard(false)
-        setPayCash(false)
-        setPayCard(false)
-        setPayBank(false)
-        setAvailableFrom('')
-        setCountryId('me')
-        setCity('')
-        setMunicipality('')
-        setDistrict('')
-        setStreet('')
-        setStreetNo('')
-        setApt('')
-        setFeatHeating(new Set())
-        setFeatFurniture(new Set())
-        setFeatEquipment(new Set())
-        setFeatRules(new Set())
-        setImages([])
-        setExportSocial(false)
-        setSocialExportConsent(false)
-        setContacts([
-          {
-            id: 'owner-1',
-            firstName: profile.displayName.split(/\s+/)[0] ?? '',
-            lastName: profile.displayName.split(/\s+/).slice(1).join(' ') || '',
-            type: 'owner',
-            phone: '',
-            email: profile.email,
-            viber: '',
-            whatsapp: '',
-            telegram: '',
-            address: '',
-            categories: ['accommodation', 'car', 'motorcycle'],
-            phoneScope: 'this_listing',
-            showAvatarOnAllListings: false,
-          },
-        ])
-        setLinkedContactIds(['owner-1'])
-        setContactVis('both')
-        setMapLat(42.4247)
-        setMapLng(18.7712)
-      }
-      return
+    // Server-backed draft: editing works across devices.
+    if (editingOwnerRowId) {
+      void (async () => {
+        const remote = await fetchDraft({
+          asAdmin: isAdminSession(),
+          ownerUserId: profile.userId,
+          rowId: editingOwnerRowId,
+          category: formCategory,
+        })
+        if (!remote) return
+        // Re-run this init logic with the remote draft.
+        const dd = remote
+        setTitles({ ...empty, ...dd.titles })
+        setDescriptions({ ...empty, ...dd.descriptions })
+        setPropertyType(dd.propertyType)
+        setStructure(dd.structure === 'layout_studio' ? 'layoutStudio' : dd.structure)
+        setAreaM2(dd.areaM2)
+        setFloor(dd.floor)
+        setPriceEur(dd.priceEur)
+        setPricePre(dd.pricePre)
+        setPriceSeason(dd.priceSeason)
+        setPricePost(dd.pricePost)
+        setPriceOff(dd.priceOff)
+        setFurnished(dd.furnished)
+        setBathrooms(dd.bathrooms)
+        setPayCashCard(dd.payCashCard)
+        setPayCash(dd.payCash)
+        setPayCard(dd.payCard)
+        setPayBank(dd.payBank)
+        setAvailableFrom(dd.availableFrom)
+        setCountryId(dd.countryId ?? 'me')
+        setCity(dd.city)
+        setMunicipality(dd.municipality)
+        setDistrict(dd.district)
+        setStreet(dd.street)
+        setStreetNo(dd.streetNo)
+        setApt(dd.apt)
+        setFeatHeating(new Set(dd.featHeating))
+        setFeatFurniture(new Set(dd.featFurniture))
+        setFeatEquipment(new Set(dd.featEquipment))
+        setFeatRules(new Set(dd.featRules))
+        setImages(dd.images.map((label, i) => ({ id: `draft-img-${i}`, label })))
+        setExportSocial(dd.exportSocial)
+        setSocialExportConsent(dd.socialExportConsent)
+        setContacts(
+          (dd.contacts ?? []).map((c) => ({
+            ...c,
+            categories: asListingCategoryArray((c as { categories?: unknown }).categories),
+          })),
+        )
+        setLinkedContactIds(dd.linkedContactIds ?? ['owner-1'])
+        setContactVis(dd.contactVis ?? 'both')
+        setMapLat(dd.lat ?? 42.4247)
+        setMapLng(dd.lng ?? 18.7712)
+        setCarMake(dd.carMake ?? '')
+        setCarModel(dd.carModel ?? '')
+        setCarYear(dd.carYear ?? '')
+        setCarFuel(dd.carFuel ?? '')
+        setCarEngineCc(dd.carEngineCc ?? '')
+        setCarMaxPassengers(dd.carMaxPassengers ?? '')
+        setCarDoors(dd.carDoors ?? '')
+        setCarTransmission(dd.carTransmission ?? '')
+        setCarLuggageLarge(dd.carLuggageLarge ?? '')
+        setCarLuggageSmall(dd.carLuggageSmall ?? '')
+        setCarColor(dd.carColor ?? '')
+        setCarSeatsNote(dd.carSeatsNote ?? '')
+        setCarExtras(normalizeCarListingExtras(dd.carExtras))
+        setMotorcycleExtras(normalizeMotorcycleListingExtras(dd.motorcycleExtras))
+      })()
+      const tmr = window.setTimeout(() => flushTranslateRef.current(), 850)
+      return () => window.clearTimeout(tmr)
     }
 
-    setTitles({ ...empty, ...d.titles })
-    setDescriptions({ ...empty, ...d.descriptions })
-    setPropertyType(d.propertyType)
-    setStructure(d.structure === 'layout_studio' ? 'layoutStudio' : d.structure)
-    setAreaM2(d.areaM2)
-    setFloor(d.floor)
-    setPriceEur(d.priceEur)
-    setPricePre(d.pricePre)
-    setPriceSeason(d.priceSeason)
-    setPricePost(d.pricePost)
-    setPriceOff(d.priceOff)
-    setFurnished(d.furnished)
-    setBathrooms(d.bathrooms)
-    setPayCashCard(d.payCashCard)
-    setPayCash(d.payCash)
-    setPayCard(d.payCard)
-    setPayBank(d.payBank)
-    setAvailableFrom(d.availableFrom)
-    setCountryId(d.countryId)
-    setCity(d.city)
-    setMunicipality(d.municipality)
-    setDistrict(d.district)
-    setStreet(d.street)
-    setStreetNo(d.streetNo)
-    setApt(d.apt)
-    setFeatHeating(new Set(d.featHeating))
-    setFeatFurniture(new Set(d.featFurniture))
-    setFeatEquipment(new Set(d.featEquipment))
-    setFeatRules(new Set(d.featRules))
-    setImages(
-      d.images.length
-        ? d.images.map((label, i) => ({ id: `draft-img-${i}`, label }))
-        : [],
-    )
-    setExportSocial(d.exportSocial)
-    setSocialExportConsent(d.socialExportConsent)
-    if (d.contacts.length)
-      setContacts(d.contacts as unknown as ContactRow[])
-    setLinkedContactIds(
-      d.linkedContactIds.length ? d.linkedContactIds : ['owner-1'],
-    )
-    setContactVis(d.contactVis)
-    setMapLat(d.lat)
-    setMapLng(d.lng)
-    setCarMake(d.carMake ?? '')
-    setCarModel(d.carModel ?? '')
-    setCarYear(d.carYear ?? '')
-    setCarFuel(d.carFuel ?? '')
-    setCarEngineCc(d.carEngineCc ?? '')
-    setCarMaxPassengers(d.carMaxPassengers ?? '')
-    setCarDoors(d.carDoors ?? '')
-    setCarTransmission(d.carTransmission ?? '')
-    setCarLuggageLarge(d.carLuggageLarge ?? '')
-    setCarLuggageSmall(d.carLuggageSmall ?? '')
-    setCarColor(d.carColor ?? '')
-    setCarSeatsNote(d.carSeatsNote ?? '')
-    setCarExtras(normalizeCarListingExtras(d.carExtras))
-    setMotorcycleExtras(normalizeMotorcycleListingExtras(d.motorcycleExtras))
-
-    const tmr = window.setTimeout(() => flushTranslateRef.current(), 850)
-    return () => window.clearTimeout(tmr)
-  }, [open, editingOwnerRowId, formCategory, profile.displayName, profile.email])
+    // New listing draft: keep only in memory until first Save (rowId exists).
+    if (formCategory === 'car' || formCategory === 'motorcycle') {
+      setTitles(empty)
+      setDescriptions(empty)
+      setCarMake('')
+      setCarModel('')
+      setCarYear('')
+      setCarFuel('')
+      setCarEngineCc('')
+      setCarMaxPassengers('')
+      setCarDoors('')
+      setCarTransmission('')
+      setCarLuggageLarge('')
+      setCarLuggageSmall('')
+      setCarColor('')
+      setCarSeatsNote('')
+      setCarExtras(defaultCarListingExtras())
+      setMotorcycleExtras(defaultMotorcycleListingExtras())
+      setPropertyType('')
+      setStructure('')
+      setAreaM2('')
+      setFloor('')
+      setPriceEur('')
+      setPricePre('')
+      setPriceSeason('')
+      setPricePost('')
+      setPriceOff('')
+      setFurnished('')
+      setBathrooms('')
+      setPayCashCard(false)
+      setPayCash(false)
+      setPayCard(false)
+      setPayBank(false)
+      setAvailableFrom('')
+      setCountryId('me')
+      setCity('')
+      setMunicipality('')
+      setDistrict('')
+      setStreet('')
+      setStreetNo('')
+      setApt('')
+      setFeatHeating(new Set())
+      setFeatFurniture(new Set())
+      setFeatEquipment(new Set())
+      setFeatRules(new Set())
+      setImages([])
+      setExportSocial(false)
+      setSocialExportConsent(false)
+      setContacts([
+        {
+          id: 'owner-1',
+          firstName: profile.displayName.split(/\s+/)[0] ?? '',
+          lastName: profile.displayName.split(/\s+/).slice(1).join(' ') || '',
+          type: 'owner',
+          phone: '',
+          email: profile.email,
+          viber: '',
+          whatsapp: '',
+          telegram: '',
+          address: '',
+          categories: ['accommodation', 'car', 'motorcycle'],
+          phoneScope: 'this_listing',
+          showAvatarOnAllListings: false,
+        },
+      ])
+      setLinkedContactIds(['owner-1'])
+      setContactVis('both')
+      setMapLat(42.4247)
+      setMapLng(18.7712)
+    }
+    return
+  }, [open, editingOwnerRowId, formCategory, profile.userId, profile.displayName, profile.email])
 
   useEffect(() => {
     if (!open) return
     const id = window.setTimeout(() => {
-      mergeAccommodationDraftTexts(
+      const rowId = savedDashboardRowIdRef.current ?? editingOwnerRowIdRef.current
+      if (!rowId) return
+      const draft = {
+        formCategory,
         titles,
         descriptions,
-        savedDashboardRowIdRef.current ?? editingOwnerRowIdRef.current,
-        formCategory,
-      )
+        countryId,
+        city,
+        municipality,
+        district,
+        street,
+        streetNo,
+        apt,
+        propertyType,
+        structure,
+        areaM2,
+        floor,
+        bathrooms,
+        furnished,
+        priceEur,
+        pricePre,
+        priceSeason,
+        pricePost,
+        priceOff,
+        availableFrom,
+        payCashCard,
+        payCash,
+        payCard,
+        payBank,
+        featHeating: [...featHeating],
+        featFurniture: [...featFurniture],
+        featEquipment: [...featEquipment],
+        featRules: [...featRules],
+        images: images.map((x) => x.label),
+        exportSocial,
+        socialExportConsent,
+        contacts,
+        linkedContactIds,
+        contactVis,
+        lat: mapLat,
+        lng: mapLng,
+        carMake,
+        carModel,
+        carYear,
+        carFuel,
+        carEngineCc,
+        carMaxPassengers,
+        carDoors,
+        carTransmission,
+        carLuggageLarge,
+        carLuggageSmall,
+        carColor,
+        carSeatsNote,
+        carExtras: formCategory === 'car' ? carExtras : undefined,
+        motorcycleExtras: formCategory === 'motorcycle' ? motorcycleExtras : undefined,
+      }
+      void saveDraft({
+        asAdmin: isAdminSession(),
+        ownerUserId: profile.userId,
+        rowId,
+        category: formCategory,
+        draft,
+      })
     }, 1300)
     return () => window.clearTimeout(id)
-  }, [open, titles, descriptions, editingOwnerRowId, formCategory])
+  }, [open, titles, descriptions, editingOwnerRowId, formCategory, profile.userId, countryId, city, municipality, district, street, streetNo, apt, propertyType, structure, areaM2, floor, bathrooms, furnished, priceEur, pricePre, priceSeason, pricePost, priceOff, availableFrom, payCashCard, payCash, payCard, payBank, featHeating, featFurniture, featEquipment, featRules, images, exportSocial, socialExportConsent, contacts, linkedContactIds, contactVis, mapLat, mapLng, carMake, carModel, carYear, carFuel, carEngineCc, carMaxPassengers, carDoors, carTransmission, carLuggageLarge, carLuggageSmall, carColor, carSeatsNote, carExtras, motorcycleExtras])
 
   const onTitleBlur = () => flushTranslate()
   const onDescBlur = () => flushTranslate()
@@ -1021,28 +1082,19 @@ export function AccommodationListingModal({
       carExtras: formCategory === 'car' ? carExtras : undefined,
       motorcycleExtras: formCategory === 'motorcycle' ? motorcycleExtras : undefined,
     }
-    try {
-      const json = JSON.stringify(payload)
-      const rowId = savedDashboardRowIdRef.current
-      if (formCategory === 'accommodation') {
-        localStorage.setItem(ACCOMMODATION_DRAFT_LS_KEY, json)
-        if (rowId) {
-          localStorage.setItem(`${ACCOMMODATION_DRAFT_LS_KEY}::${rowId}`, json)
-        }
-      } else if (formCategory === 'car') {
-        if (rowId) {
-          localStorage.setItem(`${CAR_DRAFT_LS_KEY}::${rowId}`, json)
-        }
-      } else if (formCategory === 'motorcycle') {
-        if (rowId) {
-          localStorage.setItem(`${MOTO_DRAFT_LS_KEY}::${rowId}`, json)
-        }
-      }
-      if (profile.userId) {
-        syncContactAvatarGlobals(profile.userId, contactsPayload)
-      }
-    } catch {
-      /* ignore */
+    if (profile.userId) {
+      syncContactAvatarGlobals(profile.userId, contactsPayload)
+    }
+
+    const rowId = savedDashboardRowIdRef.current ?? editingOwnerRowIdRef.current
+    if (rowId && profile.userId) {
+      void saveDraft({
+        asAdmin: isAdminSession(),
+        ownerUserId: profile.userId,
+        rowId,
+        category: formCategory,
+        draft: payload,
+      })
     }
   }
 

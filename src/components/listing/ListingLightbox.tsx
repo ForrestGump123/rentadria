@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 type ListingLightboxProps = {
   images: string[]
@@ -32,7 +32,7 @@ export function ListingLightbox({ images, index, onClose, onIndex }: ListingLigh
     }
   }, [onClose, next, prev])
 
-  let touchStartX = 0
+  const touchStartX = useRef(0)
 
   if (!safe.length) return null
 
@@ -57,12 +57,14 @@ export function ListingLightbox({ images, index, onClose, onIndex }: ListingLigh
           className="ra-lb__img"
           onClick={(e) => e.stopPropagation()}
           onTouchStart={(e) => {
-            touchStartX = e.changedTouches[0]?.clientX ?? 0
+            touchStartX.current = e.changedTouches[0]?.clientX ?? 0
           }}
           onTouchEnd={(e) => {
             const x = e.changedTouches[0]?.clientX ?? 0
-            const d = x - touchStartX
-            if (Math.abs(d) > 50) d < 0 ? next() : prev()
+            const d = x - touchStartX.current
+            if (Math.abs(d) <= 50) return
+            if (d < 0) next()
+            else prev()
           }}
         />
       </div>

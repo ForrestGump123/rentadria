@@ -14,9 +14,10 @@ import {
   loadFaqOverride,
   loadPrivacyOverride,
   loadTermsOverride,
-  saveFaqOverride,
-  savePrivacyOverride,
-  saveTermsOverride,
+  pullLegalOverride,
+  resetLegalOverride,
+  saveLegalOverride,
+  type LegalKind,
 } from '../../utils/legalOverrides'
 
 type Page = 'terms' | 'privacy' | 'faq'
@@ -47,6 +48,7 @@ export function AdminLegalEditorPage() {
   const [privacySections, setPrivacySections] = useState<LegalSection[]>([])
   const [faqItems, setFaqItems] = useState<FaqItem[]>([])
   const [err, setErr] = useState('')
+  const [loadError, setLoadError] = useState(false)
 
   const titleKey =
     kind === 'terms' ? 'admin.nav.terms' : kind === 'privacy' ? 'admin.nav.privacy' : 'admin.nav.faq'
@@ -70,31 +72,53 @@ export function AdminLegalEditorPage() {
     loadDefault()
   }, [loadDefault])
 
+  useEffect(() => {
+    void pullLegalOverride(locale, kind as LegalKind).then((r) => {
+      setLoadError(r === null)
+      loadDefault()
+    })
+  }, [locale, kind, loadDefault])
+
   const onSave = () => {
-    try {
-      if (kind === 'faq') {
-        const out = faqItems.map((x, i) => ({
-          id: String(x.id || i + 1),
-          question: x.question.trim(),
-          answer: x.answer.trim(),
-        }))
-        saveFaqOverride(locale, out)
-      } else if (kind === 'privacy') {
-        savePrivacyOverride(
-          locale,
-          privacySections.map((s) => ({ title: s.title.trim(), body: s.body.trim() })),
-        )
-      } else {
-        saveTermsOverride(
-          locale,
-          termsSections.map((s) => ({ title: s.title.trim(), body: s.body.trim() })),
-        )
+    void (async () => {
+      try {
+        let content: unknown[] = []
+        if (kind === 'faq') {
+          content = faqItems.map((x, i) => ({
+            id: String(x.id || i + 1),
+            question: x.question.trim(),
+            answer: x.answer.trim(),
+          }))
+        } else if (kind === 'privacy') {
+          content = privacySections.map((s) => ({ title: s.title.trim(), body: s.body.trim() }))
+        } else {
+          content = termsSections.map((s) => ({ title: s.title.trim(), body: s.body.trim() }))
+        }
+        const ok = await saveLegalOverride(locale, kind as LegalKind, content)
+        if (!ok) {
+          setErr(t('admin.legalEditor.errSave'))
+          return
+        }
+        setErr('')
+        window.alert(t('admin.legalEditor.saved'))
+      } catch {
+        setErr(t('admin.legalEditor.errSave'))
+      }
+    })()
+  }
+
+  const onReset = () => {
+    if (!window.confirm(t('admin.legalEditor.confirmReset'))) return
+    void (async () => {
+      const ok = await resetLegalOverride(locale, kind as LegalKind)
+      if (!ok) {
+        setErr(t('admin.legalEditor.errReset'))
+        return
       }
       setErr('')
-      window.alert(t('admin.legalEditor.saved'))
-    } catch {
-      setErr(t('admin.legalEditor.errSave'))
-    }
+      await pullLegalOverride(locale, kind as LegalKind)
+      loadDefault()
+    })()
   }
 
   const summaryLine = (title: string, fallbackKey: string) =>
@@ -113,6 +137,7 @@ export function AdminLegalEditorPage() {
       <header className="ra-admin-head">
         <h1 className="ra-admin-title">{t(titleKey)}</h1>
         <p className="ra-admin-subtitle">{t('admin.legalEditor.leadSimple')}</p>
+        {loadError ? <p className="ra-admin-listings__hint">{t('admin.legalEditor.loadError')}</p> : null}
       </header>
 
       <div className="ra-admin-toolbar ra-admin-toolbar--legal">
@@ -135,6 +160,9 @@ export function AdminLegalEditorPage() {
         )}
         <button type="button" className="ra-btn" onClick={loadDefault}>
           {t('admin.legalEditor.reload')}
+        </button>
+        <button type="button" className="ra-btn" onClick={onReset}>
+          {t('admin.legalEditor.resetDefaults')}
         </button>
       </div>
 

@@ -1,12 +1,15 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   addReply,
   createTopic,
   getTopic,
   listTopics,
+  pullThread,
+  pullTopics,
   type ForumReply,
   type ForumTopic,
+  type ForumTopicListRow,
 } from '../../utils/ownerForum'
 import { displayFirstName, formatDateDots, type OwnerProfile } from '../../utils/ownerSession'
 
@@ -52,21 +55,51 @@ export function OwnerForumPage({ profile }: Props) {
   const authorLabel = displayFirstName(profile.displayName) || profile.email.split('@')[0] || '—'
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
+  const inflight = useRef(false)
 
   useEffect(() => {
     const on = () => bump()
     window.addEventListener('rentadria-owner-forum-updated', on)
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'rentadria_owner_forum_v1') bump()
-    }
-    window.addEventListener('storage', onStorage)
     return () => {
       window.removeEventListener('rentadria-owner-forum-updated', on)
-      window.removeEventListener('storage', onStorage)
     }
   }, [bump])
 
-  const topics = useMemo(() => listTopics(), [epoch])
+  const topics = useMemo(() => {
+    void epoch
+    return listTopics()
+  }, [epoch])
+
+  const pull = useCallback(async () => {
+    if (inflight.current) return
+    inflight.current = true
+    try {
+      await pullTopics()
+      if (expandedTopicId) await pullThread(expandedTopicId)
+      bump()
+    } finally {
+      inflight.current = false
+    }
+  }, [bump, expandedTopicId])
+
+  useEffect(() => {
+    void pull()
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void pull()
+    }
+    document.addEventListener('visibilitychange', onVis)
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      void pull()
+    }, 30_000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.clearInterval(timer)
+    }
+  }, [pull])
 
   const toggleTopic = (topicId: string) => {
     if (expandedTopicId === topicId) {
@@ -74,10 +107,8 @@ export function OwnerForumPage({ profile }: Props) {
       setReplyDraft('')
       return
     }
-    const topic = getTopic(topicId)
-    const msgs = topic ? threadMessages(topic) : []
-    const tp = Math.max(1, Math.ceil(msgs.length / PAGE_SIZE))
-    setPageByTopic((prev) => ({ ...prev, [topicId]: tp }))
+    void pullThread(topicId).finally(() => bump())
+    setPageByTopic((prev) => ({ ...prev, [topicId]: 1 }))
     setExpandedTopicId(topicId)
     setReplyDraft('')
   }
@@ -95,21 +126,22 @@ export function OwnerForumPage({ profile }: Props) {
       window.alert(t('owner.forumPage.errEmpty'))
       return
     }
-    const row = createTopic({
+    void (async () => {
+      const r = await createTopic({
       authorUserId: profile.userId,
       authorName: authorLabel,
       title: titleDraft,
       initialBody: bodyDraft,
-    })
-    if (row) {
+      })
+      if (!r.ok) return
       setTitleDraft('')
       setBodyDraft('')
       setComposerOpen(false)
-      setExpandedTopicId(row.id)
-      setPageByTopic((prev) => ({ ...prev, [row.id]: 1 }))
+      setExpandedTopicId(r.topicId)
+      setPageByTopic((prev) => ({ ...prev, [r.topicId]: 1 }))
       setReplyDraft('')
       bump()
-    }
+    })()
   }
 
   const onReply = () => {
@@ -118,13 +150,14 @@ export function OwnerForumPage({ profile }: Props) {
       window.alert(t('owner.forumPage.errReply'))
       return
     }
-    const r = addReply({
-      topicId: expandedTopicId,
-      authorUserId: profile.userId,
-      authorName: authorLabel,
-      body: replyDraft,
-    })
-    if (r) {
+    void (async () => {
+      const r = await addReply({
+        topicId: expandedTopicId,
+        authorUserId: profile.userId,
+        authorName: authorLabel,
+        body: replyDraft,
+      })
+      if (!r.ok) return
       setReplyDraft('')
       bump()
       const topic = getTopic(expandedTopicId)
@@ -133,7 +166,7 @@ export function OwnerForumPage({ profile }: Props) {
         const tp = Math.max(1, Math.ceil(msgs.length / PAGE_SIZE))
         setPageByTopic((prev) => ({ ...prev, [expandedTopicId]: tp }))
       }
-    }
+    })()
   }
 
   return (
@@ -191,9 +224,10 @@ export function OwnerForumPage({ profile }: Props) {
               </tr>
             </thead>
             <tbody>
-              {topics.map((row: ForumTopic) => {
+              {topics.map((row: ForumTopicListRow) => {
                 const expanded = expandedTopicId === row.id
-                const msgs = threadMessages(row)
+                const full = expanded ? getTopic(row.id) : undefined
+                const msgs = full ? threadMessages(full) : []
                 const totalPages = Math.max(1, Math.ceil(msgs.length / PAGE_SIZE))
                 const rawPage = pageByTopic[row.id] ?? 1
                 const safePage = Math.min(Math.max(1, rawPage), totalPages)
@@ -224,25 +258,32 @@ export function OwnerForumPage({ profile }: Props) {
                         <td colSpan={3}>
                           <div className="ra-owner-forum__panel" role="region" aria-label={t('owner.forumPage.threadRegion')}>
                             <p className="ra-owner-forum__meta">
-                              {t('owner.forumPage.op')}: <strong>{row.authorName}</strong> · {formatDateDots(row.createdAt)}
+                              {t('owner.forumPage.op')}: <strong>{full?.authorName ?? row.authorName}</strong> ·{' '}
+                              {formatDateDots(full?.createdAt ?? row.createdAt)}
                             </p>
 
                             <div className="ra-owner-forum__messages">
-                              {pageSlice.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className={`ra-owner-forum__msg ${m.kind === 'op' ? 'ra-owner-forum__msg--op' : ''}`}
-                                >
-                                  <div className="ra-owner-forum__msg-head">
-                                    <strong>{m.authorName}</strong>
-                                    <time dateTime={m.createdAt}>{formatDateDots(m.createdAt)}</time>
-                                  </div>
-                                  <p className="ra-owner-forum__msg-body">{m.body}</p>
-                                </div>
-                              ))}
+                              {!full ? (
+                                <p className="ra-owner-forum__empty">{t('owner.forumPage.loadingThread')}</p>
+                              ) : (
+                                <>
+                                  {pageSlice.map((m) => (
+                                    <div
+                                      key={m.id}
+                                      className={`ra-owner-forum__msg ${m.kind === 'op' ? 'ra-owner-forum__msg--op' : ''}`}
+                                    >
+                                      <div className="ra-owner-forum__msg-head">
+                                        <strong>{m.authorName}</strong>
+                                        <time dateTime={m.createdAt}>{formatDateDots(m.createdAt)}</time>
+                                      </div>
+                                      <p className="ra-owner-forum__msg-body">{m.body}</p>
+                                    </div>
+                                  ))}
+                                </>
+                              )}
                             </div>
 
-                            {totalPages > 1 && (
+                            {full && totalPages > 1 && (
                               <div className="ra-owner-forum__pager">
                                 <button
                                   type="button"
@@ -273,9 +314,10 @@ export function OwnerForumPage({ profile }: Props) {
                                 value={replyDraft}
                                 onChange={(e) => setReplyDraft(e.target.value)}
                                 placeholder={t('owner.forumPage.replyPh')}
+                                disabled={!full}
                               />
                             </label>
-                            <button type="button" className="ra-btn ra-btn--primary" onClick={onReply}>
+                            <button type="button" className="ra-btn ra-btn--primary" onClick={onReply} disabled={!full}>
                               {t('owner.forumPage.replySend')}
                             </button>
                             <p className="ra-owner-forum__hint">{t('owner.forumPage.noDelete')}</p>

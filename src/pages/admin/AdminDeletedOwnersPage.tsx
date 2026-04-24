@@ -1,19 +1,45 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
-import { listDeletedOwners } from '../../utils/deletedOwnersStore'
-import { formatDateDots, permanentlyEraseDeletedOwnerRecord, restoreDeletedOwner } from '../../utils/ownerSession'
+import { formatDateDots } from '../../utils/ownerSession'
 import { isAdminSession } from '../../utils/adminSession'
+
+type Row = {
+  userId: string
+  email: string
+  displayName: string
+  deletedAt: string
+}
 
 export function AdminDeletedOwnersPage() {
   const { t } = useTranslation()
   const [epoch, setEpoch] = useState(0)
+  const [rowsServer, setRowsServer] = useState<Row[]>([])
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   const rows = useMemo(() => {
     void epoch
-    return listDeletedOwners()
-  }, [epoch])
+    return rowsServer
+  }, [epoch, rowsServer])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-deleted-owners', { credentials: 'include' })
+        const j = (await r.json()) as { ok?: boolean; owners?: Row[] }
+        if (!cancelled && r.ok && j.ok && Array.isArray(j.owners)) {
+          setRowsServer(j.owners)
+          bump()
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [bump])
 
   if (!isAdminSession()) {
     return null
@@ -51,30 +77,29 @@ export function AdminDeletedOwnersPage() {
             ) : (
               rows.map((r) => (
                 <tr key={r.userId}>
-                  <td>{r.profile.displayName}</td>
-                  <td>{r.profile.email}</td>
+                  <td>{r.displayName}</td>
+                  <td>{r.email}</td>
                   <td>{formatDateDots(r.deletedAt)}</td>
                   <td className="ra-admin-listings__actions ra-admin-owners__actions-row">
                     <button
                       type="button"
                       className="ra-btn ra-btn--sm ra-btn--primary"
                       onClick={() => {
-                        restoreDeletedOwner(r.userId)
-                        bump()
+                        void (async () => {
+                          await fetch('/api/admin-deleted-owners', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ action: 'restore', userId: r.userId }),
+                          }).catch(() => {})
+                          const rr = await fetch('/api/admin-deleted-owners', { credentials: 'include' })
+                          const jj = (await rr.json().catch(() => ({}))) as { ok?: boolean; owners?: Row[] }
+                          if (rr.ok && jj.ok && Array.isArray(jj.owners)) setRowsServer(jj.owners)
+                          bump()
+                        })()
                       }}
                     >
                       {t('admin.deletedOwners.restore')}
-                    </button>
-                    <button
-                      type="button"
-                      className="ra-btn ra-btn--sm ra-admin-listings__btn-del"
-                      onClick={() => {
-                        if (!window.confirm(t('admin.deletedOwners.confirmPermanent'))) return
-                        permanentlyEraseDeletedOwnerRecord(r.userId)
-                        bump()
-                      }}
-                    >
-                      {t('admin.deletedOwners.permanent')}
                     </button>
                   </td>
                 </tr>

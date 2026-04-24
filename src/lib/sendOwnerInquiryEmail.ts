@@ -2,6 +2,7 @@
 
 export type OwnerInquiryEmailPayload = {
   toEmail: string
+  ownerUserId?: string
   listingTitle: string
   listingId: string
   guestFirst: string

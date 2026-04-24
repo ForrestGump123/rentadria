@@ -6,13 +6,7 @@ import { getListingById } from '../../data/listings'
 import type { ListingCategory } from '../../types'
 import { isAdminSession } from '../../utils/adminSession'
 import { formatDateDots, getOwnerProfileByUserId } from '../../utils/ownerSession'
-import {
-  clearAdminVisitorInquiryUnread,
-  deleteVisitorInquiry,
-  getAllVisitorInquiriesForAdmin,
-  updateVisitorInquiry,
-  type VisitorInquiryRecord,
-} from '../../utils/visitorInquiries'
+import type { VisitorInquiryRecord } from '../../utils/visitorInquiries'
 
 type Row = VisitorInquiryRecord & { ownerUserId: string }
 
@@ -23,28 +17,37 @@ export function AdminInquiriesPage() {
   const [open, setOpen] = useState<Row | null>(null)
   const [editMsg, setEditMsg] = useState('')
   const [editReply, setEditReply] = useState('')
+  const [rowsServer, setRowsServer] = useState<Row[]>([])
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
-    clearAdminVisitorInquiryUnread()
     bump()
   }, [bump])
 
   useEffect(() => {
-    const on = () => bump()
-    window.addEventListener('rentadria-inquiries-updated', on)
-    window.addEventListener('rentadria-admin-visitor-inquiries-updated', on)
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch('/api/admin-inquiries', { credentials: 'include' })
+        const j = (await r.json()) as { ok?: boolean; inquiries?: (VisitorInquiryRecord & { ownerUserId: string })[] }
+        if (!cancelled && r.ok && j.ok && Array.isArray(j.inquiries)) {
+          setRowsServer(j.inquiries as Row[])
+          bump()
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
     return () => {
-      window.removeEventListener('rentadria-inquiries-updated', on)
-      window.removeEventListener('rentadria-admin-visitor-inquiries-updated', on)
+      cancelled = true
     }
   }, [bump])
 
   const rows = useMemo(() => {
     void epoch
-    return getAllVisitorInquiriesForAdmin()
-  }, [epoch])
+    return rowsServer
+  }, [epoch, rowsServer])
 
   const openRow = (r: Row) => {
     setOpen(r)
@@ -54,12 +57,25 @@ export function AdminInquiriesPage() {
 
   const saveEdit = () => {
     if (!open) return
-    updateVisitorInquiry(open.ownerUserId, open.id, {
-      message: editMsg,
-      ownerReply: editReply,
-    })
-    setOpen(null)
-    bump()
+    void (async () => {
+      await fetch('/api/admin-inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ownerUserId: open.ownerUserId,
+          id: open.id,
+          patch: { message: editMsg, ownerReply: editReply },
+        }),
+      }).catch(() => {})
+      setOpen(null)
+      const r = await fetch('/api/admin-inquiries', { credentials: 'include' })
+      const j = (await r.json().catch(() => ({}))) as { ok?: boolean; inquiries?: (VisitorInquiryRecord & { ownerUserId: string })[] }
+      if (r.ok && j.ok && Array.isArray(j.inquiries)) {
+        setRowsServer(j.inquiries as Row[])
+      }
+      bump()
+    })()
   }
 
   const catLabel = (listingId: string): string => {
@@ -137,8 +153,20 @@ export function AdminInquiriesPage() {
                         type="button"
                         className="ra-btn ra-btn--sm"
                         onClick={() => {
-                          updateVisitorInquiry(r.ownerUserId, r.id, { paused: !r.paused })
-                          bump()
+                          void (async () => {
+                            await fetch('/api/admin-inquiries', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ ownerUserId: r.ownerUserId, id: r.id, patch: { paused: !r.paused } }),
+                            }).catch(() => {})
+                            const rr = await fetch('/api/admin-inquiries', { credentials: 'include' })
+                            const jj = (await rr.json().catch(() => ({}))) as { ok?: boolean; inquiries?: (VisitorInquiryRecord & { ownerUserId: string })[] }
+                            if (rr.ok && jj.ok && Array.isArray(jj.inquiries)) {
+                              setRowsServer(jj.inquiries as Row[])
+                            }
+                            bump()
+                          })()
                         }}
                       >
                         {r.paused ? t('admin.inquiries.resume') : t('admin.inquiries.pause')}
@@ -148,8 +176,20 @@ export function AdminInquiriesPage() {
                         className="ra-btn ra-btn--sm ra-admin-listings__btn-del"
                         onClick={() => {
                           if (!window.confirm(t('admin.inquiries.confirmDelete'))) return
-                          deleteVisitorInquiry(r.ownerUserId, r.id)
-                          bump()
+                          void (async () => {
+                            await fetch('/api/admin-inquiries', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ action: 'delete', ownerUserId: r.ownerUserId, id: r.id }),
+                            }).catch(() => {})
+                            const rr = await fetch('/api/admin-inquiries', { credentials: 'include' })
+                            const jj = (await rr.json().catch(() => ({}))) as { ok?: boolean; inquiries?: (VisitorInquiryRecord & { ownerUserId: string })[] }
+                            if (rr.ok && jj.ok && Array.isArray(jj.inquiries)) {
+                              setRowsServer(jj.inquiries as Row[])
+                            }
+                            bump()
+                          })()
                         }}
                       >
                         {t('admin.inquiries.delete')}
