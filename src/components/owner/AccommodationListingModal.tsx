@@ -45,9 +45,13 @@ import { maxContactsForPlan } from '../../utils/planContactLimits'
 import { VEHICLE_MAKES, vehicleModelsForMake } from '../../data/vehicleCatalog'
 import { MOTORCYCLE_MAKES, motorcycleModelsForMake } from '../../data/motorcycleCatalog'
 import {
+  ACCOMMODATION_DRAFT_LS_KEY,
+  CAR_DRAFT_LS_KEY,
+  MOTO_DRAFT_LS_KEY,
   ownerAccommodationPublicListingId,
   ownerCarPublicListingId,
   ownerMotorcyclePublicListingId,
+  type AccommodationListingDraft,
 } from '../../utils/accommodationDraft'
 import { syncContactAvatarGlobals } from '../../utils/contactAvatarGlobal'
 import { enqueueListingSocial } from '../../utils/socialEnqueue'
@@ -123,6 +127,31 @@ function publicListingIdForSavedRow(
   if (formCategory === 'car') return ownerCarPublicListingId(rowId)
   if (formCategory === 'motorcycle') return ownerMotorcyclePublicListingId(rowId)
   return ownerAccommodationPublicListingId(rowId)
+}
+
+function localDraftKeyForRow(
+  formCategory: 'accommodation' | 'car' | 'motorcycle',
+  rowId: string,
+): string {
+  if (formCategory === 'car') return `${CAR_DRAFT_LS_KEY}::${rowId}`
+  if (formCategory === 'motorcycle') return `${MOTO_DRAFT_LS_KEY}::${rowId}`
+  return `${ACCOMMODATION_DRAFT_LS_KEY}::${rowId}`
+}
+
+function saveDraftLocally(
+  formCategory: 'accommodation' | 'car' | 'motorcycle',
+  rowId: string,
+  draft: AccommodationListingDraft,
+): void {
+  try {
+    const json = JSON.stringify(draft)
+    localStorage.setItem(localDraftKeyForRow(formCategory, rowId), json)
+    if (formCategory === 'accommodation') {
+      localStorage.setItem(ACCOMMODATION_DRAFT_LS_KEY, json)
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 function deriveNotifyEmail(contacts: ContactRow[], profileEmail: string): string {
@@ -1061,7 +1090,7 @@ export function AccommodationListingModal({
 
   flushDraftRef.current = (contactsOverride?: ContactRow[]) => {
     const contactsPayload = contactsOverride ?? contacts
-    const payload = {
+    const payload: AccommodationListingDraft = {
       formCategory,
       titles,
       descriptions,
@@ -1121,6 +1150,7 @@ export function AccommodationListingModal({
 
     const rowId = savedDashboardRowIdRef.current ?? editingOwnerRowIdRef.current
     if (rowId && profile.userId) {
+      saveDraftLocally(formCategory, rowId, payload)
       void saveDraft({
         asAdmin: isAdminSession(),
         ownerUserId: profile.userId,

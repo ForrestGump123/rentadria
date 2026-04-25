@@ -22,6 +22,7 @@ import { listBannersForSlot } from '../utils/adminBannersStore'
 import { mergePromotedFirst, getPromotedListingsForPlacement } from '../utils/ownerAds'
 import type { SubscriptionPlan } from '../types/plan'
 import { isSubscriptionPlan } from '../types/plan'
+import { pullPublicOwnerListingsToLocal } from '../lib/publicOwnerListings'
 
 const CAT: ListingCategory[] = ['accommodation', 'car', 'motorcycle']
 
@@ -37,6 +38,7 @@ export function HomePage() {
   })
   const [page, setPage] = useState(1)
   const [adsEpoch, setAdsEpoch] = useState(0)
+  const [ownerListingsEpoch, setOwnerListingsEpoch] = useState(0)
   const [bannerEpoch, setBannerEpoch] = useState(0)
   const [registrationIntent, setRegistrationIntent] = useState<{
     plan: SubscriptionPlan | null
@@ -128,7 +130,26 @@ export function HomePage() {
     }
   }, [appliedCountry])
 
-  const baseList = useMemo(() => listingsByCategoryMerged(category), [category])
+  useEffect(() => {
+    let cancelled = false
+    const sync = () => {
+      void pullPublicOwnerListingsToLocal().then((ok) => {
+        if (ok && !cancelled) setOwnerListingsEpoch((e) => e + 1)
+      })
+    }
+    sync()
+    const onUpdate = () => setOwnerListingsEpoch((e) => e + 1)
+    window.addEventListener('rentadria-public-owner-listings-updated', onUpdate)
+    return () => {
+      cancelled = true
+      window.removeEventListener('rentadria-public-owner-listings-updated', onUpdate)
+    }
+  }, [])
+
+  const baseList = useMemo(() => {
+    void ownerListingsEpoch
+    return listingsByCategoryMerged(category)
+  }, [category, ownerListingsEpoch])
 
   const citiesReady = !appliedCountry || !citiesAppliedLoading
 

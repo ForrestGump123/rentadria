@@ -36,6 +36,7 @@ import { isLoggedIn, setLoggedIn } from '../utils/storage'
 import type { ListingCategory } from '../types'
 import type { OwnerContact } from '../types/listingDetail'
 import { useCurrency } from '../context/CurrencyContext'
+import { pullPublicOwnerListingsToLocal } from '../lib/publicOwnerListings'
 
 function trField(v: string, t: (k: string) => string) {
   return v.startsWith('detail.') ? t(v) : v
@@ -70,7 +71,11 @@ export function ListingPage() {
   const { formatPriceLabel } = useCurrency()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const listing = id ? getListingById(id) : undefined
+  const [publicOwnerEpoch, setPublicOwnerEpoch] = useState(0)
+  const listing = useMemo(() => {
+    void publicOwnerEpoch
+    return id ? getListingById(id) : undefined
+  }, [id, publicOwnerEpoch])
   const displayTitle = useMemo(() => {
     if (!listing) return ''
     if (isAccommodationDraftListingId(listing.id)) {
@@ -137,6 +142,17 @@ export function ListingPage() {
   useEffect(() => {
     document.documentElement.lang = i18n.language.split('-')[0]
   }, [i18n.language])
+
+  useEffect(() => {
+    if (!id || listing || !isAccommodationDraftListingId(id)) return
+    let cancelled = false
+    void pullPublicOwnerListingsToLocal().then((ok) => {
+      if (ok && !cancelled) setPublicOwnerEpoch((e) => e + 1)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [id, listing])
 
   useEffect(() => {
     if (!listing?.id) return
