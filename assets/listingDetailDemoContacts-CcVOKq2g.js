@@ -1,0 +1,1 @@
+import{n as e}from"./listingDetail-Eyx3LhL_.js";function t(t){let n=e(t.id),r=[{display:`+382 69 123 456`,e164:`+38269123456`}];return n%5==0&&r.push({display:`+382 68 999 001`,e164:`+38268999001`}),[{displayName:`Milan Petrović`,email:`owner.example@rentadria.com`,phones:r,telegram:`milan_rent`}]}export{t as getDemoOwnerContactsForListing};

@@ -1,0 +1,37 @@
+var e=`Banja Luka
+Bijeljina
+Bihać
+Bosanska Krupa
+Brčko
+Cazin
+Čapljina
+Derventa
+Doboj
+Goražde
+Gračanica
+Gradačac
+Gradiška
+Istočno Sarajevo
+Konjic
+Laktaši
+Livno
+Lukavac
+Ljubuški
+Mostar
+Novi Travnik
+Orašje
+Prijedor
+Prnjavor
+Sarajevo
+Srebrenik
+Stolac
+Široki Brijeg
+Teslić
+Trebinje
+Tuzla
+Visoko
+Zavidovići
+Zenica
+Zvornik
+Živinice
+`;export{e as default};

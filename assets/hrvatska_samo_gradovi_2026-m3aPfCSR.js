@@ -1,0 +1,129 @@
+var e=`Dugo Selo
+Ivanić-Grad
+Jastrebarsko
+Samobor
+Sveta Nedelja
+Sveti Ivan Zelina
+Velika Gorica
+Vrbovec
+Zaprešić
+Donja Stubica
+Klanjec
+Krapina
+Oroslavje
+Pregrada
+Zabok
+Zlatar
+Glina
+Hrvatska Kostajnica
+Kutina
+Novska
+Petrinja
+Popovača
+Sisak
+Duga Resa
+Karlovac
+Ogulin
+Ozalj
+Slunj
+Gospić
+Novalja
+Otočac
+Senj
+Ivanec
+Lepoglava
+Ludbreg
+Novi Marof
+Varaždin
+Varaždinske Toplice
+Đurđevac
+Koprivnica
+Križevci
+Bjelovar
+Čazma
+Daruvar
+Garešnica
+Grubišno Polje
+Bakar
+Cres
+Crikvenica
+Čabar
+Delnice
+Kastav
+Kraljevica
+Krk
+Mali Lošinj
+Novi Vinodolski
+Opatija
+Rab
+Rijeka
+Vrbovsko
+Orahovica
+Slatina
+Virovitica
+Kutjevo
+Lipik
+Pakrac
+Pleternica
+Požega
+Nova Gradiška
+Slavonski Brod
+Benkovac
+Biograd na Moru
+Nin
+Obrovac
+Pag
+Zadar
+Beli Manastir
+Belišće
+Donji Miholjac
+Đakovo
+Našice
+Osijek
+Valpovo
+Dubrovnik
+Korčula
+Metković
+Opuzen
+Ploče
+Drniš
+Knin
+Skradin
+Šibenik
+Vodice
+Ilok
+Otok
+Vinkovci
+Vukovar
+Županja
+Hvar
+Imotski
+Kaštela
+Komiža
+Makarska
+Omiš
+Sinj
+Solin
+Split
+Stari Grad
+Supetar
+Trilj
+Trogir
+Vis
+Vrgorac
+Vrlika
+Buje-Buie
+Buzet
+Labin
+Novigrad-Cittanova
+Pazin
+Poreč-Parenzo
+Pula-Pola
+Rovinj-Rovigno
+Umag-Umago
+Vodnjan-Dignano
+Čakovec
+Mursko Središće
+Prelog
+Zagreb
+`;export{e as default};
