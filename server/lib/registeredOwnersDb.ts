@@ -309,10 +309,35 @@ export async function getRegisteredOwnerProfile(userId: string): Promise<Registe
   const supabase = getSupabaseAdmin()
   if (!supabase) return null
   const uid = userId.trim().toLowerCase()
-  const { data, error } = await supabase.from(TABLE).select('*').eq('user_id', uid).maybeSingle()
+  const { data, error } = await supabase.from(TABLE).select('*').eq('user_id', uid).is('deleted_at', null).maybeSingle()
   if (error || !data || typeof data !== 'object') return null
   const raw = data as Record<string, unknown>
   return applyFreeProPromoOwnerView(rowToApi(raw), raw)
+}
+
+export async function getRegisteredOwnerAdminFlags(
+  userId: string,
+): Promise<{ blocked: boolean; deleted: boolean } | null> {
+  const supabase = getSupabaseAdmin()
+  if (!supabase) return null
+  const uid = userId.trim().toLowerCase()
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('admin_meta, deleted_at')
+    .eq('user_id', uid)
+    .maybeSingle()
+  if (error || !data || typeof data !== 'object') return { blocked: false, deleted: false }
+  const raw = data as Record<string, unknown>
+  const adminMeta = raw.admin_meta
+  const am =
+    adminMeta && typeof adminMeta === 'object' && !Array.isArray(adminMeta)
+      ? (adminMeta as Record<string, unknown>)
+      : null
+  const deletedAt = raw.deleted_at
+  return {
+    blocked: am?.blocked === true,
+    deleted: deletedAt != null && String(deletedAt).trim() !== '',
+  }
 }
 
 export async function patchRegisteredOwnerSelf(
@@ -507,7 +532,7 @@ export async function listRegisteredOwnersForAdmin(): Promise<RegisteredOwnerLis
 
 export type OwnerLoginResult =
   | { ok: true; profile: RegisteredOwnerApiRow }
-  | { ok: false; reason: 'no_backend' | 'not_found' | 'bad_password' | 'no_password' }
+  | { ok: false; reason: 'no_backend' | 'not_found' | 'bad_password' | 'no_password' | 'deleted' }
 
 /** Broj redova u `rentadria_registered_owners` (admin pregled). */
 export async function countRegisteredOwners(): Promise<number | null> {
@@ -529,6 +554,8 @@ export async function loginRegisteredOwner(email: string, passwordPlain: string)
 
   if (error || !data || typeof data !== 'object') return { ok: false, reason: 'not_found' }
   const rec = data as Record<string, unknown>
+  const deletedAt = rec.deleted_at
+  if (deletedAt != null && String(deletedAt).trim() !== '') return { ok: false, reason: 'deleted' }
   const stored = typeof rec.password_hash === 'string' ? rec.password_hash.trim().toLowerCase() : ''
   if (!/^[a-f0-9]{64}$/.test(stored)) return { ok: false, reason: 'no_password' }
 

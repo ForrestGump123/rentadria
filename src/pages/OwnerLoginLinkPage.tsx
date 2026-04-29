@@ -6,7 +6,6 @@ import { Footer } from '../components/Footer'
 import { verifyOwnerLoginLink } from '../lib/ownerLoginLink'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
 import { pullOwnerProfileFromCloud } from '../lib/ownerProfileCloud'
-import { removeDeletedOwner } from '../utils/deletedOwnersStore'
 import { saveOwnerProfile } from '../utils/ownerSession'
 
 export function OwnerLoginLinkPage() {
@@ -31,16 +30,17 @@ export function OwnerLoginLinkPage() {
       .then(async (r) => {
         if (cancelled) return
         if (!r.ok) {
-          setErr(r.error === 'owner_not_found' ? t('auth.loginNotRegistered') : t('auth.loginLinkInvalid'))
+          setErr(
+            r.error === 'owner_deleted'
+              ? t('auth.loginAccountDeleted')
+              : r.error === 'owner_not_found'
+                ? t('auth.loginNotRegistered')
+                : t('auth.loginLinkInvalid'),
+          )
           setLoading(false)
           return
         }
         saveOwnerProfile(r.profile)
-        try {
-          removeDeletedOwner(r.profile.userId.trim().toLowerCase())
-        } catch {
-          /* ignore */
-        }
         await Promise.all([pullOwnerListingsFromCloud(r.profile.userId), pullOwnerProfileFromCloud(r.profile.userId)])
         navigate('/owner', { replace: true })
       })

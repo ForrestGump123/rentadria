@@ -48,3 +48,9 @@ export async function markOwnerNotificationRead(id: string): Promise<boolean> {
   return true
 }
 
+export async function markAllOwnerNotificationsRead(): Promise<void> {
+  const unreadIds = load().filter((n) => !n.readAt).map((n) => n.id)
+  if (unreadIds.length === 0) return
+  await Promise.all(unreadIds.map((id) => markOwnerNotificationRead(id)))
+}
+

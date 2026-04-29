@@ -6,7 +6,7 @@ import { getListingById } from '../../data/listings'
 import type { ListingCategory } from '../../types'
 import { isAdminSession } from '../../utils/adminSession'
 import { formatDateDots, getOwnerProfileByUserId } from '../../utils/ownerSession'
-import type { VisitorInquiryRecord } from '../../utils/visitorInquiries'
+import { clearAdminVisitorInquiryUnread, type VisitorInquiryRecord } from '../../utils/visitorInquiries'
 
 type Row = VisitorInquiryRecord & { ownerUserId: string }
 
@@ -22,6 +22,7 @@ export function AdminInquiriesPage() {
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
+    clearAdminVisitorInquiryUnread()
     bump()
   }, [bump])
 

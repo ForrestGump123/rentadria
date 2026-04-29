@@ -9,6 +9,7 @@ import {
   cloudUpsertOwnerListing,
 } from '../server/lib/rentadriaCloudData.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { getRegisteredOwnerAdminFlags } from '../server/lib/registeredOwnersDb.js'
 
 function parseListing(rec: Record<string, unknown>, ownerUid: string): CloudOwnerListingRow | null {
   const id = typeof rec.id === 'string' ? rec.id.trim() : ''
@@ -75,6 +76,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
+      const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+      if (flags?.deleted) {
+        res.status(410).json({ ok: false, error: 'owner_deleted' })
+        return
+      }
+      if (flags?.blocked) {
+        res.status(403).json({ ok: false, error: 'owner_blocked' })
+        return
+      }
       const body = parseRequestJsonRecord(req)
       const listingRaw = body?.listing
       if (!listingRaw || typeof listingRaw !== 'object' || Array.isArray(listingRaw)) {
@@ -96,6 +106,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
+      const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+      if (flags?.deleted) {
+        res.status(410).json({ ok: false, error: 'owner_deleted' })
+        return
+      }
+      if (flags?.blocked) {
+        res.status(403).json({ ok: false, error: 'owner_blocked' })
+        return
+      }
       const q = req.query
       const id = typeof q.id === 'string' ? q.id.trim() : Array.isArray(q.id) ? String(q.id[0]).trim() : ''
       if (!id) {

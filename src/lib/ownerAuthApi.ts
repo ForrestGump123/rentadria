@@ -11,6 +11,7 @@ export type OwnerRemoteLoginResult =
         | 'no_password_stored'
         | 'backend_unavailable'
         | 'session_unavailable'
+        | 'deleted'
     }
 
 /** Prijava vlasnika preko servera (Supabase) kad lokalni profil ne postoji na ovom uređaju. */
@@ -39,6 +40,9 @@ export async function fetchOwnerRemoteLogin(email: string, password: string): Pr
     }
     if (r.status === 404 && j.error === 'owner_not_found') {
       return { ok: false, error: 'not_found' }
+    }
+    if (r.status === 410 && j.error === 'owner_deleted') {
+      return { ok: false, error: 'deleted' }
     }
     if (r.status === 401 && j.error === 'wrong_password') {
       return { ok: false, error: 'wrong_password' }

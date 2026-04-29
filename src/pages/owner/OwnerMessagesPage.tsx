@@ -6,12 +6,18 @@ import {
   lastMessagePreview,
   listThreadsForOwner,
   getThreadMessagesOwner,
+  markAllThreadsSeenByOwner,
   markThreadSeenByOwner,
   pullThreadsForOwner,
   type OwnerAdminThread,
 } from '../../utils/ownerAdminMessages'
 import { formatDateDots } from '../../utils/ownerSession'
-import { listOwnerNotifications, markOwnerNotificationRead, pullOwnerNotificationsToLocal } from '../../utils/ownerNotifications'
+import {
+  listOwnerNotifications,
+  markAllOwnerNotificationsRead,
+  markOwnerNotificationRead,
+  pullOwnerNotificationsToLocal,
+} from '../../utils/ownerNotifications'
 
 type Props = {
   ownerUserId: string
@@ -50,8 +56,11 @@ export function OwnerMessagesPage({ ownerUserId, ownerEmail }: Props) {
   }, [bump])
 
   useEffect(() => {
-    void pullOwnerNotificationsToLocal(80)
-    void pullThreadsForOwner().then(() => bump())
+    void (async () => {
+      await Promise.all([pullOwnerNotificationsToLocal(80), pullThreadsForOwner()])
+      await Promise.all([markAllOwnerNotificationsRead(), markAllThreadsSeenByOwner()])
+      bump()
+    })()
   }, [ownerUserId, bump])
 
   const pullAll = useCallback(async () => {

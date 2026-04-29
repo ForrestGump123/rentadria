@@ -7,9 +7,16 @@ import { fetchAdminOwnerListingsIndex } from '../../lib/adminListingsApi'
 import { listingTitle as listingTitleT } from '../../utils/listingTitle'
 import { isAdminSession } from '../../utils/adminSession'
 import { formatDateDots } from '../../utils/ownerSession'
+import { shortOwnerId } from '../../utils/ownerDisplayId'
 import { clearAdminReviewUnread, saveReviewsForListing, type StoredReview } from '../../utils/reviewStorage'
 
 type ReviewBucket = { listingId: string; reviews: StoredReview[] }
+
+function compactId(value: string): string {
+  const s = value.trim()
+  if (s.length <= 28) return s
+  return `${s.slice(0, 18)}…${s.slice(-8)}`
+}
 
 export function AdminReviewsPage() {
   const { t } = useTranslation()
@@ -17,7 +24,7 @@ export function AdminReviewsPage() {
   const [epoch, setEpoch] = useState(0)
   const [openListingId, setOpenListingId] = useState<string | null>(null)
   const [items, setItems] = useState<ReviewBucket[]>([])
-  const [ownerByListingId, setOwnerByListingId] = useState<Record<string, string>>({})
+  const [ownerByListingId, setOwnerByListingId] = useState<Record<string, { label: string; userId: string }>>({})
 
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
@@ -49,11 +56,16 @@ export function AdminReviewsPage() {
     void (async () => {
       const rows = await fetchAdminOwnerListingsIndex()
       if (cancelled || !rows) return
-      const map: Record<string, string> = {}
+      const map: Record<string, { label: string; userId: string }> = {}
       for (const r of rows) {
         const pid = r.publicListingId
         if (!pid) continue
-        map[pid] = r.ownerUserId
+        const name = r.ownerDisplayName.trim()
+        const label =
+          name && name.toLowerCase() !== r.ownerUserId.trim().toLowerCase()
+            ? name
+            : shortOwnerId(r.ownerUserId)
+        map[pid] = { label, userId: r.ownerUserId }
       }
       setOwnerByListingId(map)
     })()
@@ -145,6 +157,7 @@ export function AdminReviewsPage() {
                 const title = listing ? listingTitleT(listing, t) : lid
                 const reviews = items.find((x) => x.listingId === lid)?.reviews ?? []
                 const expanded = openListingId === lid
+                const owner = ownerByListingId[lid]
                 return (
                   <Fragment key={lid}>
                     <tr className="ra-admin-reviews__summary-row">
@@ -156,9 +169,11 @@ export function AdminReviewsPage() {
                         >
                           {title}
                         </button>
-                        <div className="ra-admin-listings__hint">{lid}</div>
+                        <div className="ra-admin-listings__hint" title={lid}>
+                          {compactId(lid)}
+                        </div>
                       </td>
-                      <td>{ownerByListingId[lid] ?? '—'}</td>
+                      <td title={owner?.userId}>{owner?.label ?? '—'}</td>
                       <td>{reviews.length}</td>
                       <td className="ra-admin-listings__actions">
                         <button

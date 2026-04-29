@@ -170,6 +170,12 @@ export async function markThreadSeenByOwner(threadId: string): Promise<void> {
   }
 }
 
+export async function markAllThreadsSeenByOwner(): Promise<void> {
+  const unreadIds = ownerThreadsCache.filter((t) => t.unreadForOwner).map((t) => t.id)
+  if (unreadIds.length === 0) return
+  await Promise.all(unreadIds.map((id) => markThreadSeenByOwner(id)))
+}
+
 export async function markThreadSeenByAdmin(threadId: string): Promise<void> {
   try {
     await fetch(`/api/admin-owner-thread?id=${encodeURIComponent(threadId)}`, {
@@ -182,6 +188,12 @@ export async function markThreadSeenByAdmin(threadId: string): Promise<void> {
   } catch {
     /* ignore */
   }
+}
+
+export async function markAllThreadsSeenByAdmin(): Promise<void> {
+  const unreadIds = adminThreadsCache.filter((t) => t.unreadForAdmin).map((t) => t.id)
+  if (unreadIds.length === 0) return
+  await Promise.all(unreadIds.map((id) => markThreadSeenByAdmin(id)))
 }
 
 export function lastMessagePreview(thread: OwnerAdminThread): string {

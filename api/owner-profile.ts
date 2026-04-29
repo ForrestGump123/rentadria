@@ -3,6 +3,7 @@ import { send429 } from '../server/lib/apiSafe.js'
 import { ownerUserIdFromCookie } from '../server/lib/ownerSessionAuth.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import {
+  getRegisteredOwnerAdminFlags,
   getRegisteredOwnerProfile,
   patchRegisteredOwnerSelf,
   type OwnerSelfProfilePatch,
@@ -129,6 +130,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
+      const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+      if (flags?.deleted) {
+        res.status(410).json({ ok: false, error: 'owner_deleted' })
+        return
+      }
       const row = await getRegisteredOwnerProfile(ownerUid)
       if (!row) {
         res.status(503).json({ ok: false, error: 'owner_backend_unavailable' })
@@ -164,6 +170,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PATCH') {
+      const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+      if (flags?.deleted) {
+        res.status(410).json({ ok: false, error: 'owner_deleted' })
+        return
+      }
+      if (flags?.blocked) {
+        res.status(403).json({ ok: false, error: 'owner_blocked' })
+        return
+      }
       const body = parseRequestJsonRecord(req)
       if (!body) {
         res.status(400).json({ ok: false, error: 'invalid_body' })

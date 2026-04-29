@@ -26,7 +26,7 @@
     "loginSessionUnavailable": "Prijava ne može napraviti sigurnu vlasničku sesiju. U Vercel Environment Variables podesite OWNER_SESSION_SECRET (najmanje 32 znaka) ili JWT_SECRET, pa se prijavite ponovo.",
     "loginNotRegistered": "Nema naloga za ovu adresu. Prije prijave potrebna je registracija vlasnika.",
     "loginBlocked": "Ovaj nalog je suspendovan. Kontaktirajte podršku.",
-    "loginAccountDeleted": "Ovaj nalog je uklonjen. Administrator ga može vratiti u Admin → Izbrisani nalozi.",
+    "loginAccountDeleted": "Ovaj nalog je obrisan od strane administratora. Za sva dodatna pitanja obratite se administratoru putem emaila.",
     "loginWrongEmail": "Prijavite se emailom koji ste koristili pri registraciji.",
     "nameLabel": "Ime i prezime / firma",
     "namePlaceholder": "Ime i prezime / Firma",
@@ -172,7 +172,7 @@
     },
     "welcome": "Dobrodošli, {{name}}!",
     "lead": "Upravljajte oglasima po kategorijama. Kategorije koje niste platili ovdje se ne prikazuju.",
-    "blockedLead": "Vaš nalog je suspendovan. Oglasi su sakriveni sa sajta. Možete samo Poruke — kontakt s administratorom.",
+    "blockedLead": "Vaš nalog je blokiran od strane administratora. Sve funkcije su zaključane osim internih poruka. Administratora možete kontaktirati putem emaila ili kroz Interne poruke.",
     "onboarding": {
       "lead": "Izaberite i aktivirajte paket da biste otključali kategorije i kreirali oglase. Do tada panel ostaje prazan.",
       "registeredLine": "Datum registracije: {{registered}}",

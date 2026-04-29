@@ -302,6 +302,8 @@ export function AccommodationListingModal({
   const [translating, setTranslating] = useState(false)
   const titlesRef = useRef(titles)
   const descriptionsRef = useRef(descriptions)
+  const translateRunIdRef = useRef(0)
+  const lastEditedLangRef = useRef<ListingLangId>('cnr')
   titlesRef.current = titles
   descriptionsRef.current = descriptions
 
@@ -672,16 +674,17 @@ export function AccommodationListingModal({
   }, [cities, city])
 
   const pickSourceLang = useCallback((): ListingLangId | null => {
-    const acT = titlesRef.current[activeLang]?.trim() ?? ''
-    const acD = descriptionsRef.current[activeLang]?.trim() ?? ''
-    if (acT || acD) return activeLang
+    const editedLang = lastEditedLangRef.current
+    const editedTitle = titlesRef.current[editedLang]?.trim() ?? ''
+    const editedDescription = descriptionsRef.current[editedLang]?.trim() ?? ''
+    if (editedTitle || editedDescription) return editedLang
     for (const l of LISTING_LANG_IDS) {
       const ti = titlesRef.current[l]?.trim() ?? ''
       const de = descriptionsRef.current[l]?.trim() ?? ''
       if (ti || de) return l
     }
     return null
-  }, [activeLang])
+  }, [])
 
   const runTranslate = useCallback(async () => {
     const src = pickSourceLang()
@@ -689,16 +692,18 @@ export function AccommodationListingModal({
     const ti = titlesRef.current[src]?.trim() ?? ''
     const de = descriptionsRef.current[src]?.trim() ?? ''
     if (!ti && !de) return
+    const runId = ++translateRunIdRef.current
     setTranslating(true)
     try {
       const targets = LISTING_LANG_IDS.filter((l) => l !== src)
       const { titles: tts, descriptions: dds } = await translateListingFields(src, ti, de, targets)
+      if (runId !== translateRunIdRef.current) return
       const nextTitles = { ...titlesRef.current, ...tts }
       const nextDesc = { ...descriptionsRef.current, ...dds }
       setTitles(nextTitles)
       setDescriptions(nextDesc)
     } finally {
-      setTranslating(false)
+      if (runId === translateRunIdRef.current) setTranslating(false)
     }
   }, [pickSourceLang])
 
@@ -721,17 +726,12 @@ export function AccommodationListingModal({
   const flushTranslateRef = useRef(flushTranslate)
   flushTranslateRef.current = flushTranslate
 
-  const prevActiveLangRef = useRef<ListingLangId | null>(null)
   useEffect(() => {
     if (!open) {
-      prevActiveLangRef.current = null
-      return
+      translateRunIdRef.current += 1
+      setTranslating(false)
     }
-    const prev = prevActiveLangRef.current
-    prevActiveLangRef.current = activeLang
-    if (prev === null || prev === activeLang) return
-    scheduleTranslate()
-  }, [activeLang, open, scheduleTranslate])
+  }, [open])
 
   useEffect(
     () => () => {
@@ -2195,6 +2195,8 @@ export function AccommodationListingModal({
                     <input
                       value={titles[activeLang] ?? ''}
                       onChange={(e) => {
+                        lastEditedLangRef.current = activeLang
+                        translateRunIdRef.current += 1
                         setTitles((p) => ({ ...p, [activeLang]: e.target.value }))
                         scheduleTranslate()
                       }}
@@ -2217,6 +2219,8 @@ export function AccommodationListingModal({
                       className="ra-owner-listing__desc-ta"
                       value={descriptions[activeLang] ?? ''}
                       onChange={(e) => {
+                        lastEditedLangRef.current = activeLang
+                        translateRunIdRef.current += 1
                         setDescriptions((p) => ({ ...p, [activeLang]: e.target.value }))
                         scheduleTranslate()
                       }}

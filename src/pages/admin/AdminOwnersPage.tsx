@@ -19,6 +19,7 @@ import {
   getOwnerListings,
   getOwnerProfileByUserId,
   saveOwnerProfileForAdmin,
+  softDeleteOwnerUser,
   type OwnerProfile,
 } from '../../utils/ownerSession'
 import { isAdminSession } from '../../utils/adminSession'
@@ -225,6 +226,7 @@ export function AdminOwnersPage() {
           window.alert(t('admin.owners.serverSaveError', { detail: j.error ?? String(r.status) }))
           return
         }
+        softDeleteOwnerUser(p.userId)
         bump()
       } catch {
         window.alert(t('admin.owners.serverSaveError', { detail: 'network' }))

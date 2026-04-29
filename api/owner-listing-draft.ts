@@ -5,6 +5,7 @@ import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { getSupabaseAdmin } from '../server/lib/supabaseAdmin.js'
 import { getListingDraft, upsertListingDraft, type ListingDraftCategory } from '../server/lib/listingDraftsDb.js'
+import { getRegisteredOwnerAdminFlags } from '../server/lib/registeredOwnersDb.js'
 
 function parseCat(raw: unknown): ListingDraftCategory | null {
   if (raw === 'accommodation' || raw === 'car' || raw === 'motorcycle') return raw
@@ -62,6 +63,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {
+    const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+    if (flags?.deleted) {
+      res.status(410).json({ ok: false, error: 'owner_deleted' })
+      return
+    }
+    if (flags?.blocked) {
+      res.status(403).json({ ok: false, error: 'owner_blocked' })
+      return
+    }
     const body = parseRequestJsonRecord(req)
     const rowId = typeof body.rowId === 'string' ? body.rowId.trim() : ''
     const cat = parseCat(body.category)

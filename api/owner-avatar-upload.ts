@@ -4,6 +4,7 @@ import { ownerUserIdFromCookie } from '../server/lib/ownerSessionAuth.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { uploadOwnerAvatarFromDataUrl } from '../server/lib/ownerAvatarImageStorage.js'
+import { getRegisteredOwnerAdminFlags } from '../server/lib/registeredOwnersDb.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
@@ -25,6 +26,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ownerUid = await ownerUserIdFromCookie(cookieHeader)
   if (!ownerUid) {
     res.status(401).json({ ok: false, error: 'owner_auth_required' })
+    return
+  }
+  const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+  if (flags?.deleted) {
+    res.status(410).json({ ok: false, error: 'owner_deleted' })
+    return
+  }
+  if (flags?.blocked) {
+    res.status(403).json({ ok: false, error: 'owner_blocked' })
     return
   }
 

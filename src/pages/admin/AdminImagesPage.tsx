@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
 import { listingTitle as listingTitleT } from '../../utils/listingTitle'
 import { isAdminSession } from '../../utils/adminSession'
+import { shortOwnerId } from '../../utils/ownerDisplayId'
 import {
   applyListingGalleryOverlayFromPayload,
   clearGalleryAdminOwnerContext,
@@ -15,6 +16,18 @@ import {
   toggleImageBlocked,
 } from '../../utils/listingGalleryAdmin'
 import { fetchAdminListingGalleryAlbums, type AdminGalleryAlbumRow } from '../../lib/adminListingGalleryApi'
+
+function compactId(value: string): string {
+  const s = value.trim()
+  if (s.length <= 28) return s
+  return `${s.slice(0, 18)}…${s.slice(-8)}`
+}
+
+function ownerLabel(ownerDisplayName: string, ownerUserId: string): string {
+  const name = ownerDisplayName.trim()
+  if (name && name.toLowerCase() !== ownerUserId.trim().toLowerCase()) return name
+  return shortOwnerId(ownerUserId)
+}
 
 export function AdminImagesPage() {
   const { t } = useTranslation()
@@ -115,10 +128,13 @@ export function AdminImagesPage() {
                 albums.map((a) => {
                   const listing = getListingById(a.listingId)
                   const title = listing ? listingTitleT(listing, t) : a.title || a.listingId
+                  const owner = ownerLabel(a.ownerDisplayName, a.ownerUserId)
                   return (
                     <tr key={a.listingId}>
-                      <td className="ra-admin-listings__mono">{a.listingId}</td>
-                      <td>{a.ownerDisplayName}</td>
+                      <td className="ra-admin-listings__mono" title={a.listingId}>
+                        {compactId(a.listingId)}
+                      </td>
+                      <td title={a.ownerUserId}>{owner}</td>
                       <td>{title}</td>
                       <td>
                         <button
@@ -153,9 +169,11 @@ export function AdminImagesPage() {
             ) : null}
           </div>
           <h2 className="ra-admin-images-album__h">
-            {displayTitle} · {openAlbum?.listingId}
+            {displayTitle} · {openAlbum ? compactId(openAlbum.listingId) : ''}
           </h2>
-          <p className="ra-admin-listings__hint">{openAlbum?.ownerDisplayName}</p>
+          <p className="ra-admin-listings__hint" title={openAlbum?.ownerUserId}>
+            {openAlbum ? ownerLabel(openAlbum.ownerDisplayName, openAlbum.ownerUserId) : ''}
+          </p>
           <div className="ra-admin-images-grid">
             {gallery.map((url, i) => (
               <figure key={url} className="ra-admin-images-grid__cell">

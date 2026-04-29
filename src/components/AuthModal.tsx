@@ -14,7 +14,7 @@ import { sha256Hex } from '../utils/passwordHash'
 import { isValidRegisterPhone } from '../utils/phoneValidation'
 import type { SubscriptionPlan } from '../types/plan'
 import { getAdminOwnerMeta } from '../utils/adminOwnerMeta'
-import { isEmailInDeletedOwners, removeDeletedOwner } from '../utils/deletedOwnersStore'
+import { isEmailInDeletedOwners } from '../utils/deletedOwnersStore'
 import { findOwnerProfileByEmail, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 import { fetchAdminLogin } from '../lib/adminAuthApi'
 import { pullOwnerListingsFromCloud } from '../lib/ownerCloudSync'
@@ -96,11 +96,6 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
         } catch {
           /* ignore */
         }
-        try {
-          removeDeletedOwner(profile.userId.trim().toLowerCase())
-        } catch {
-          /* ignore */
-        }
         saveOwnerProfile(profile)
         void Promise.all([
           pullOwnerListingsFromCloud(profile.userId.trim()),
@@ -113,7 +108,7 @@ export function AuthModal({ open, mode, onClose, onSwitchMode, initialPlan = nul
 
       const handleRemoteOwnerLoginFailure = (loginEm: string, remote: OwnerRemoteLoginResult) => {
         if (remote.ok) return
-        if (remote.error === 'not_found' && isEmailInDeletedOwners(loginEm)) {
+        if (remote.error === 'deleted' || (remote.error === 'not_found' && isEmailInDeletedOwners(loginEm))) {
           setLoginErr(t('auth.loginAccountDeleted'))
           return
         }

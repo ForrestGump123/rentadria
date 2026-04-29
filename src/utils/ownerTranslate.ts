@@ -1,7 +1,15 @@
 /**
- * Prevod naslova/opisa u pregledaču: MyMemory → Google (gtx) → LibreTranslate javni.
- * LibreTranslate često ne radi (kvota, 403); Google translate_a/single ima CORS * i u praksi je najstabilniji.
+ * Prevod naslova/opisa: prvo naš server-side Gemini endpoint, zatim browser fallback
+ * MyMemory → Google (gtx) → LibreTranslate javni.
  */
+
+type ListingTranslateResult = {
+  titles: Record<string, string>
+  descriptions: Record<string, string>
+}
+
+const AI_CACHE_KEY = 'rentadria_ai_listing_translate_cache_v1'
+const AI_CACHE_MAX = 80
 
 const MYMEMORY_MAP: Record<string, string> = {
   en: 'en',
@@ -10,8 +18,8 @@ const MYMEMORY_MAP: Record<string, string> = {
   es: 'es',
   cnr: 'hr',
   hr: 'hr',
-  bs: 'bs',
-  sr: 'sr',
+  bs: 'hr',
+  sr: 'hr',
 }
 
 /**
@@ -24,8 +32,8 @@ const SERVICE_LANG: Record<string, string> = {
   es: 'es',
   cnr: 'hr',
   hr: 'hr',
-  bs: 'bs',
-  sr: 'sr',
+  bs: 'hr',
+  sr: 'hr',
 }
 
 const LIBRE_MAP: Record<string, string> = {
@@ -35,8 +43,8 @@ const LIBRE_MAP: Record<string, string> = {
   es: 'es',
   cnr: 'hr',
   hr: 'hr',
-  bs: 'bs',
-  sr: 'sr',
+  bs: 'hr',
+  sr: 'hr',
 }
 
 function serviceLang(id: string): string {
@@ -53,6 +61,91 @@ function libreCode(id: string): string {
 
 function mmLangpair(from: string, to: string): string {
   return `${from}|${to}`
+}
+
+function simpleHash(s: string): string {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(36)
+}
+
+function loadAiCache(): Record<string, ListingTranslateResult> {
+  try {
+    const raw = localStorage.getItem(AI_CACHE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, ListingTranslateResult>)
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveAiCache(cache: Record<string, ListingTranslateResult>) {
+  try {
+    const entries = Object.entries(cache)
+    const trimmed = Object.fromEntries(entries.slice(Math.max(0, entries.length - AI_CACHE_MAX)))
+    localStorage.setItem(AI_CACHE_KEY, JSON.stringify(trimmed))
+  } catch {
+    /* ignore */
+  }
+}
+
+function aiCacheKey(sourceLang: string, title: string, description: string, targetLangs: readonly string[]): string {
+  return simpleHash(JSON.stringify({ sourceLang, title, description, targetLangs: [...targetLangs].sort() }))
+}
+
+function cleanTranslationRecord(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === 'string' && v.trim()) out[k] = v.trim()
+  }
+  return out
+}
+
+async function aiTranslateListingFields(
+  sourceLang: string,
+  title: string,
+  description: string,
+  targetLangs: readonly string[],
+): Promise<ListingTranslateResult | null> {
+  const targets = targetLangs.filter((l) => l !== sourceLang)
+  if (targets.length === 0) return { titles: {}, descriptions: {} }
+  const key = aiCacheKey(sourceLang, title, description, targets)
+  const cache = loadAiCache()
+  if (cache[key]) return cache[key]
+
+  try {
+    const r = await fetch('/api/ai-listing-translate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceLang,
+        title,
+        description,
+        targetLangs: targets,
+      }),
+    })
+    if (!r.ok) return null
+    const j = (await r.json()) as { ok?: boolean; titles?: unknown; descriptions?: unknown }
+    if (!j.ok) return null
+    const result = {
+      titles: cleanTranslationRecord(j.titles),
+      descriptions: cleanTranslationRecord(j.descriptions),
+    }
+    if (Object.keys(result.titles).length === 0 && Object.keys(result.descriptions).length === 0) return null
+    cache[key] = result
+    saveAiCache(cache)
+    return result
+  } catch {
+    return null
+  }
 }
 
 async function myMemoryTranslate(text: string, fromLang: string, toLang: string): Promise<string | null> {
@@ -162,11 +255,20 @@ export async function translateListingFields(
   const ti = title.trim()
   const de = description.trim()
 
+  const ai = await aiTranslateListingFields(sourceLang, ti, de, targetLangs)
+  if (ai) {
+    Object.assign(titles, ai.titles)
+    Object.assign(descriptions, ai.descriptions)
+  }
+
   for (const lang of targetLangs) {
     if (lang === sourceLang) continue
+    const needsTitle = ti && !titles[lang]
+    const needsDescription = de && !descriptions[lang]
+    if (!needsTitle && !needsDescription) continue
     await new Promise((r) => setTimeout(r, 120))
     try {
-      if (ti) {
+      if (needsTitle) {
         const out = await translateText(ti, sourceLang, lang)
         if (out) titles[lang] = out
       }
@@ -175,7 +277,7 @@ export async function translateListingFields(
     }
     await new Promise((r) => setTimeout(r, 120))
     try {
-      if (de) {
+      if (needsDescription) {
         const parts = de.length > 2200 ? chunkString(de, 2000) : [de]
         const outs: string[] = []
         for (const p of parts) {

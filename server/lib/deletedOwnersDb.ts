@@ -49,6 +49,17 @@ export async function softDeleteOwner(userId: string): Promise<boolean> {
   return !error
 }
 
+export async function isOwnerSoftDeleted(userId: string): Promise<boolean | null> {
+  const sb = getSupabaseAdmin()
+  if (!sb) return null
+  const uid = userId.trim().toLowerCase()
+  if (!uid) return false
+  const { data, error } = await sb.from(TABLE).select('deleted_at').eq('user_id', uid).maybeSingle()
+  if (error || !data || typeof data !== 'object') return false
+  const deletedAt = (data as Record<string, unknown>).deleted_at
+  return deletedAt != null && String(deletedAt).trim() !== ''
+}
+
 export async function restoreDeletedOwner(userId: string): Promise<boolean> {
   const sb = getSupabaseAdmin()
   if (!sb) return false

@@ -46,6 +46,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         case 'not_found':
           res.status(404).json({ ok: false, error: 'owner_not_found' })
           return
+        case 'deleted':
+          res.status(410).json({ ok: false, error: 'owner_deleted' })
+          return
         case 'bad_password':
           res.status(401).json({ ok: false, error: 'wrong_password' })
           return

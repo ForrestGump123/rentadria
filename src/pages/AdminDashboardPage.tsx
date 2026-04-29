@@ -15,7 +15,6 @@ import {
   countReportRows,
   countReviewBuckets,
 } from '../utils/adminStats'
-import { listDeletedOwners } from '../utils/deletedOwnersStore'
 import { getUnreadThreadCountForAdmin, pullThreadsForAdmin } from '../utils/ownerAdminMessages'
 import { getAdminReviewUnreadCount } from '../utils/reviewStorage'
 import { getAdminReportsUnreadCount } from '../utils/storage'
@@ -109,7 +108,6 @@ export function AdminDashboardPage() {
   const [badgeReports, setBadgeReports] = useState(0)
   const [badgeReviews, setBadgeReviews] = useState(0)
   const [badgeMessages, setBadgeMessages] = useState(0)
-  const [badgeDeletedOwners, setBadgeDeletedOwners] = useState(0)
   const [serverDash, setServerDash] = useState<{
     owners: number | null
     listings: number | null
@@ -148,7 +146,6 @@ export function AdminDashboardPage() {
       setBadgeReports(getAdminReportsUnreadCount())
       setBadgeReviews(getAdminReviewUnreadCount())
       setBadgeMessages(getUnreadThreadCountForAdmin())
-      setBadgeDeletedOwners(listDeletedOwners().length)
     }
     sync()
     const names = [
@@ -156,7 +153,6 @@ export function AdminDashboardPage() {
       'rentadria-admin-reports-unread-changed',
       'rentadria-admin-reviews-unread-changed',
       'rentadria-admin-messages-unread-changed',
-      'rentadria-deleted-owners-updated',
     ] as const
     names.forEach((n) => window.addEventListener(n, sync))
     return () => names.forEach((n) => window.removeEventListener(n, sync))
@@ -180,36 +176,11 @@ export function AdminDashboardPage() {
     }
   }, [authed])
 
-  const adminPanelBadge =
-    badgeInquiries + badgeReports + badgeReviews + badgeMessages + badgeDeletedOwners
-
   const navBadgeCount = (navId: string) => {
-    if (
-      navId === 'overview' ||
-      navId === 'visits' ||
-      navId === 'engagement' ||
-      navId === 'listings' ||
-      navId === 'owners' ||
-      navId === 'deletedOwners' ||
-      navId === 'inquiries' ||
-      navId === 'reports' ||
-      navId === 'reviews' ||
-      navId === 'users' ||
-      navId === 'images' ||
-      navId === 'staff' ||
-      navId === 'ownerMessages' ||
-      navId === 'promo' ||
-      navId === 'expiring' ||
-      navId === 'paused' ||
-      navId === 'banners' ||
-      navId === 'pricing' ||
-      navId === 'terms' ||
-      navId === 'privacy' ||
-      navId === 'faq' ||
-      navId === 'import'
-    ) {
-      return adminPanelBadge
-    }
+    if (navId === 'inquiries') return badgeInquiries
+    if (navId === 'reports') return badgeReports
+    if (navId === 'reviews') return badgeReviews
+    if (navId === 'ownerMessages') return badgeMessages
     return 0
   }
 

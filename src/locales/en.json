@@ -26,7 +26,7 @@
     "loginSessionUnavailable": "Sign-in could not create the secure owner session. In Vercel Environment Variables, set OWNER_SESSION_SECRET (at least 32 characters) or JWT_SECRET, then sign in again.",
     "loginNotRegistered": "No account found. Registration is required before you can sign in as an owner.",
     "loginBlocked": "This account has been suspended. Contact support.",
-    "loginAccountDeleted": "This account was removed. An administrator can restore it under Admin → Deleted accounts.",
+    "loginAccountDeleted": "This account was deleted by the administrator. For any additional questions, please contact the administrator by email.",
     "loginWrongEmail": "Sign in with the email address you used when you registered.",
     "nameLabel": "Name / company",
     "namePlaceholder": "Full name or company",
@@ -172,7 +172,7 @@
     },
     "welcome": "Welcome, {{name}}!",
     "lead": "Manage your listings by category. Categories you have not paid for are not shown here.",
-    "blockedLead": "Your account is suspended. Your listings are hidden on the site. You can only use Messages to contact the administrator.",
+    "blockedLead": "Your account has been blocked by the administrator. All functions are locked except internal messages. You can contact the administrator by email or through Internal messages.",
     "onboarding": {
       "lead": "Choose and activate a plan to unlock categories and create listings. Until then, your dashboard stays empty.",
       "registeredLine": "Registration date: {{registered}}",

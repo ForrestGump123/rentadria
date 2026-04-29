@@ -3,6 +3,7 @@ import { send429 } from '../server/lib/apiSafe.js'
 import { ownerSessionCookieHeader, signOwnerSessionJwt } from '../server/lib/ownerSessionAuth.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
+import { isOwnerSoftDeleted } from '../server/lib/deletedOwnersDb.js'
 import { getRegisteredOwnerProfile } from '../server/lib/registeredOwnersDb.js'
 import { verifyOwnerLoginLinkToken } from '../server/lib/verifyJwt.js'
 
@@ -37,6 +38,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const v = await verifyOwnerLoginLinkToken(token)
     if (!v?.email) {
       res.status(401).json({ ok: false, error: 'invalid_token' })
+      return
+    }
+
+    if ((await isOwnerSoftDeleted(v.email)) === true) {
+      res.status(410).json({ ok: false, error: 'owner_deleted' })
       return
     }
 

@@ -4,6 +4,7 @@ import {
   appendThreadMessage,
   lastMessagePreview,
   listAllThreadsForAdmin,
+  markAllThreadsSeenByAdmin,
   markThreadSeenByAdmin,
   getThreadMessagesAdmin,
   pullThreadsForAdmin,
@@ -37,7 +38,8 @@ export function AdminOwnerMessagesPage() {
   useEffect(() => {
     let stopped = false
     const pull = () => {
-      void pullThreadsForAdmin().then((ok) => {
+      void pullThreadsForAdmin().then(async (ok) => {
+        if (ok) await markAllThreadsSeenByAdmin()
         if (stopped) return
         setLoadError(!ok)
         bump()

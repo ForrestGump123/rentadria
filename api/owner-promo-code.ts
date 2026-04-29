@@ -4,7 +4,7 @@ import { ownerUserIdFromCookie } from '../server/lib/ownerSessionAuth.js'
 import { parseRequestJsonRecord } from '../server/lib/parseRequestJson.js'
 import { clientIp, rateLimit } from '../server/lib/rateLimitIp.js'
 import { getSupabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { getRegisteredOwnerProfile } from '../server/lib/registeredOwnersDb.js'
+import { getRegisteredOwnerAdminFlags, getRegisteredOwnerProfile } from '../server/lib/registeredOwnersDb.js'
 import { parsePromoRecordJson, validatePromoRecordOnServer } from '../server/lib/promoServerValidate.js'
 
 type Ok = { ok: true; profileUpdated: true }
@@ -107,6 +107,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ownerUid = await ownerUserIdFromCookie(cookieHeader)
   if (!ownerUid) {
     res.status(401).json({ ok: false, reason: 'bad_request' } satisfies Fail)
+    return
+  }
+
+  const flags = await getRegisteredOwnerAdminFlags(ownerUid)
+  if (flags?.deleted || flags?.blocked) {
+    res.status(flags.deleted ? 410 : 403).json({ ok: false, reason: 'restricted' } satisfies Fail)
     return
   }
 

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { getListingById } from '../../data/listings'
 import { isAdminSession } from '../../utils/adminSession'
 import { formatDateDots } from '../../utils/ownerSession'
+import { clearAdminReportsUnread } from '../../utils/storage'
 
 type ReportRow = Record<string, string> & { at?: string }
 
@@ -17,6 +18,7 @@ export function AdminReportsPage() {
   const bump = useCallback(() => setEpoch((e) => e + 1), [])
 
   useEffect(() => {
+    clearAdminReportsUnread()
     bump()
   }, [bump])
 

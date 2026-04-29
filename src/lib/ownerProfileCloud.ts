@@ -1,4 +1,4 @@
-import { ownerProfileFromCloudPayload, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
+import { clearOwnerSession, ownerProfileFromCloudPayload, saveOwnerProfile, type OwnerProfile } from '../utils/ownerSession'
 import { setAdminOwnerMeta } from '../utils/adminOwnerMeta'
 
 const JSON_HDR = { 'Content-Type': 'application/json' } as const
@@ -29,6 +29,10 @@ export async function pullOwnerProfileFromCloud(expectedUserId: string): Promise
   try {
     const r = await fetch('/api/owner-profile', { credentials: 'include' })
     const j = (await r.json()) as { ok?: boolean; profile?: Record<string, unknown> }
+    if (r.status === 410) {
+      clearOwnerSession()
+      return false
+    }
     if (!r.ok || !j.ok || !j.profile || typeof j.profile !== 'object') return false
     const parsed = ownerProfileFromCloudPayload(j.profile)
     if (!parsed || parsed.userId.trim().toLowerCase() !== uid) return false
